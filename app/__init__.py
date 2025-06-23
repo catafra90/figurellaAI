@@ -16,8 +16,11 @@ def create_app():
     app.register_blueprint(daily_report_bp, url_prefix='/daily_report')
     app.register_blueprint(charts_bp)
 
-    # 🚨 TEMP: Print all routes to debug
-    for rule in app.url_map.iter_rules():
-        print(f"{rule.endpoint} -> {rule.rule}")
+    # ✅ Debug route list at startup
+    print("\n📦 Registered Routes:")
+    with app.app_context():
+        for rule in app.url_map.iter_rules():
+            print(f"🔗 {rule.endpoint} --> {rule.rule}")
+    print()
 
     return app
