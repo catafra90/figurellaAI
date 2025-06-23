@@ -1,3 +1,5 @@
+print("✅ daily_report.routes.py loaded")
+
 from flask import Blueprint, request, redirect, render_template, flash
 import pandas as pd
 import os
