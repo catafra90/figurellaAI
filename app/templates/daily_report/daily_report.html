@@ -17,7 +17,7 @@
 </head>
 <body>
     <h1>Daily Report</h1>
-    <form method="POST" action="/submit">
+   <form method="POST" action="{{ url_for('daily_report.submit_report') }}">
 
         <!-- SALES SECTION -->
         <div class="section-card">
