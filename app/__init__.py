@@ -6,8 +6,6 @@ from app.daily_report.routes import daily_report_bp
 from app.charts.routes import charts_bp
 from app.home.routes import home_bp
 
-
-
 def create_app():
     app = Flask(__name__)
     app.secret_key = 'Figurella2025'
@@ -15,7 +13,7 @@ def create_app():
     # Register blueprints
     app.register_blueprint(home_bp)
     app.register_blueprint(clients_bp)
-    app.register_blueprint(daily_report_bp)
+    app.register_blueprint(daily_report_bp, url_prefix='/daily_report')  # ✅ Added url_prefix
     app.register_blueprint(charts_bp)
 
     return app
