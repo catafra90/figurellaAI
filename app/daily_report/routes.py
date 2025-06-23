@@ -9,9 +9,10 @@ from app.common.utils import save_report_to_excel  # ✅ Import updated utility
 
 daily_report_bp = Blueprint('daily_report', __name__)
 
-@daily_report_bp.route('/wizard')
+@daily_report_bp.route('/wizard', endpoint='combined_report_wizard')
 def combined_report_wizard():
     return render_template('daily_report/daily_report.html', active_page='report')
+
 
 @daily_report_bp.route('/report')
 def report_home():
