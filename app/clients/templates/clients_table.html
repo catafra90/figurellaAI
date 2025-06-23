@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="mt-6 space-y-4">
+
+  <!-- Header -->
+  <div class="flex justify-between items-center">
+    <h2 class="text-2xl font-bold figurella-pink">Clients</h2>
+    <form method="POST" action="{{ url_for('clients.refresh_clients') }}">
+      <button type="submit" class="bg-figurella text-white px-4 py-2 rounded-full shadow hover:bg-pink-700 transition">
+        Refresh
+      </button>
+    </form>
+  </div>
+
+  <!-- Table -->
+  <div class="overflow-x-auto bg-white rounded-2xl shadow p-4">
+    <table id="clientTable" class="min-w-full divide-y divide-gray-200 text-sm">
+      <thead class="bg-gray-100 text-left text-sm text-gray-700">
+        <!-- Row 1: Column Names -->
+        <tr>
+          {% for header in headers %}
+            <th class="p-2 font-semibold sticky-header">{{ header }}</th>
+          {% endfor %}
+        </tr>
+        <!-- Row 2: Filter Dropdowns -->
+        <tr>
+          {% for header in headers %}
+            <th class="p-2 filter-header"></th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100">
+        {% for row in table %}
+        <tr>
+          {% for header in headers %}
+            <td class="p-2">{{ row[header] }}</td>
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- DataTables CSS/JS -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+
+<!-- Sticky Header Styling -->
+<style>
+  th.sticky-header {
+    position: sticky;
+    top: 0;
+    background-color: #f3f4f6;
+    z-index: 10;
+  }
+</style>
+
+<!-- Initialize DataTables with dropdown filters in second row -->
+<script>
+  $(document).ready(function () {
+    const table = $('#clientTable').DataTable({
+      paging: true,
+      searching: true,
+      ordering: true,
+      responsive: true,
+      pageLength: 25,
+      lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "All"]],
+      initComplete: function () {
+        this.api().columns().every(function () {
+          const column = this;
+          const colIdx = column.index();
+
+          const headerCell = $('.filter-header').eq(colIdx);
+          const select = $('<select class="border border-gray-300 rounded text-sm px-1 py-0.5 mr-2"><option value="">All</option></select>')
+            .appendTo(headerCell.empty())
+            .on('change', function () {
+              const val = $.fn.dataTable.util.escapeRegex($(this).val());
+              column.search(val ? '^' + val + '$' : '', true, false).draw();
+            });
+
+          column.data().unique().sort().each(function (d) {
+            if (d && d.trim() !== "") {
+              select.append('<option value="' + d + '">' + d + '</option>');
+            }
+          });
+        });
+      }
+    });
+  });
+</script>
+{% endblock %}

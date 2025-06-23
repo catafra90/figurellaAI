@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Figurella Platform</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- Tailwind CSS -->
+  <link href="{{ url_for('static', filename='css/tailwind.min.css') }}" rel="stylesheet">
+
+  <!-- App Icons -->
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/figurella-logo.png') }}">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='images/figurella-logo.png') }}">
+  <meta name="apple-mobile-web-app-title" content="Figurella">
+
+  <!-- PWA Meta & Manifest -->
+  <meta name="theme-color" content="#CC0066">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+
+  <style>
+    .figurella-pink { color: #CC0066; }
+    .bg-figurella { background-color: #CC0066; }
+  </style>
+</head>
+
+<body class="bg-gray-100 text-gray-900 min-h-screen flex flex-col">
+
+  <!-- Mobile Header -->
+  <header class="bg-white shadow px-4 py-3 flex justify-between items-center md:hidden">
+    <img src="{{ url_for('static', filename='images/figurella-logo.png') }}" alt="Figurella Logo" class="h-8">
+    <button id="menuToggle" class="text-gray-700 focus:outline-none text-xl">☰</button>
+  </header>
+
+  <!-- Layout -->
+  <div class="flex flex-1">
+    <aside class="hidden md:block w-64 bg-white shadow-lg p-4">
+      <img src="{{ url_for('static', filename='images/figurella-logo.png') }}" alt="Figurella Logo" class="mb-6 w-32 mx-auto">
+      <nav class="space-y-3">
+        <a href="/" class="block px-3 py-2 rounded-md hover:bg-gray-100 {% if request.endpoint == 'daily_report.report_home' %}bg-gray-200{% endif %}">Daily Report</a>
+        <a href="/clients" class="block px-3 py-2 rounded-md hover:bg-gray-100 {% if request.path.startswith('/clients') %}bg-gray-200{% endif %}">Clients</a>
+      </nav>
+    </aside>
+
+    <main class="flex-1 p-4">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="mb-4 p-3 rounded text-white {{ 'bg-green-600' if category == 'success' else 'bg-red-600' }}">
+              {{ message }}
+            </div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+
+  <!-- Mobile Bottom Navigation -->
+  <nav class="fixed bottom-0 w-full bg-white shadow border-t md:hidden flex justify-around text-sm z-50">
+    <a href="/" class="py-2 px-4 flex-1 text-center {% if request.endpoint == 'daily_report.report_home' %}text-pink-600 font-semibold{% endif %}">Daily</a>
+    <a href="/clients" class="py-2 px-4 flex-1 text-center {% if request.path.startswith('/clients') %}text-pink-600 font-semibold{% endif %}">Clients</a>
+  </nav>
+
+  <!-- Sidebar Toggle -->
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const toggleBtn = document.getElementById('menuToggle');
+      toggleBtn?.addEventListener('click', () => {
+        document.querySelector('aside')?.classList.toggle('hidden');
+      });
+    });
+  </script>
+
+</body>
+</html>

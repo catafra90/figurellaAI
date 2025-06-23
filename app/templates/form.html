@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Daily Report</title>
+  <style>
+    body {
+      background-color: #c50075;
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+    }
+
+    .container {
+      background-color: white;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 40px;
+      border-radius: 12px;
+      box-shadow: 0 0 15px rgba(0,0,0,0.15);
+    }
+
+    h1 {
+      text-align: center;
+      color: white;
+      margin-bottom: 30px;
+    }
+
+    label {
+      display: block;
+      margin-top: 20px;
+      font-weight: bold;
+    }
+
+    textarea, input[type="text"], input[type="number"], input[type="date"] {
+      width: 100%;
+      padding: 12px;
+      font-size: 16px;
+      margin-top: 8px;
+      border: 2px solid #c50075;
+      border-radius: 6px;
+      min-height: 60px;
+      resize: vertical;
+    }
+
+    .step {
+      display: none;
+    }
+
+    .step.active {
+      display: block;
+    }
+
+    .button-row {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 30px;
+    }
+
+    button {
+      background-color: #c50075;
+      color: white;
+      padding: 14px 24px;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #a0005c;
+    }
+
+    @media (max-width: 600px) {
+      .container {
+        width: 95%;
+        padding: 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>📋 Daily Report</h1>
+  <div class="container">
+    <form method="post">
+      <!-- Step 1: Sales -->
+      <div class="step active" id="step-1">
+        <label>Client Name:</label>
+        <textarea name="client_name" required></textarea>
+
+        <label>Package Sold:</label>
+        <textarea name="package"></textarea>
+
+        <label>Revenue ($):</label>
+        <input name="revenue" type="number" step="0.01">
+
+        <div class="button-row">
+          <span></span>
+          <button type="button" onclick="nextStep()">Next →</button>
+        </div>
+      </div>
+
+      <!-- Step 2: Lead -->
+      <div class="step" id="step-2">
+        <label>Lead Name:</label>
+        <textarea name="lead_name"></textarea>
+
+        <label>Lead Date:</label>
+        <input name="lead_date" type="date">
+
+        <label>Lead Source:</label>
+        <textarea name="lead_source"></textarea>
+
+        <div class="button-row">
+          <button type="button" onclick="prevStep()">← Back</button>
+          <button type="button" onclick="nextStep()">Next →</button>
+        </div>
+      </div>
+
+      <!-- Step 3: Consultation -->
+      <div class="step" id="step-3">
+        <label>Consultation Name:</label>
+        <textarea name="consultation_name"></textarea>
+
+        <label>Consultation Outcome:</label>
+        <textarea name="consultation_outcome"></textarea>
+
+        <label>Consultation Source:</label>
+        <textarea name="consultation_source"></textarea>
+
+        <div class="button-row">
+          <button type="button" onclick="prevStep()">← Back</button>
+          <button type="button" onclick="nextStep()">Next →</button>
+        </div>
+      </div>
+
+      <!-- Step 4: Opportunity -->
+      <div class="step" id="step-4">
+        <label>Opportunity Name:</label>
+        <textarea name="opportunity_name"></textarea>
+
+        <label>Opportunity Provider:</label>
+        <textarea name="opportunity_provider"></textarea>
+
+        <label>Opportunity Description:</label>
+        <textarea name="opportunity_description"></textarea>
+
+        <div class="button-row">
+          <button type="button" onclick="prevStep()">← Back</button>
+          <button type="button" onclick="nextStep()">Next →</button>
+        </div>
+      </div>
+
+      <!-- Step 5: Attendance -->
+      <div class="step" id="step-5">
+        <label>Attendances Done:</label>
+        <input name="attendance_done" type="number">
+
+        <label>No Show:</label>
+        <input name="no_show" type="number">
+
+        <div class="button-row">
+          <button type="button" onclick="prevStep()">← Back</button>
+          <button type="submit">✅ Submit Report</button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <script>
+    let currentStep = 1;
+    const totalSteps = 5;
+
+    function showStep(step) {
+      for (let i = 1; i <= totalSteps; i++) {
+        document.getElementById(`step-${i}`).classList.remove("active");
+      }
+      document.getElementById(`step-${step}`).classList.add("active");
+    }
+
+    function nextStep() {
+      if (currentStep < totalSteps) {
+        currentStep++;
+        showStep(currentStep);
+      }
+    }
+
+    function prevStep() {
+      if (currentStep > 1) {
+        currentStep--;
+        showStep(currentStep);
+      }
+    }
+  </script>
+</body>
+</html>
+
+
+

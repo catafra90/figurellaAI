@@ -3,5 +3,8 @@ services:
     name: flask-daily-report
     env: python
     buildCommand: ""
-    startCommand: python form_app.py
+    startCommand: gunicorn run:app
     plan: free
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11
