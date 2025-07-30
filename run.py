@@ -12,11 +12,11 @@ app.register_blueprint(common_bp)
 
 # 3) Daily Check-In is registered in app/__init__.py
 
-# 4) Register Reports (for nav + history views)
-from app.figurella_reports.routes import reports_bp
-app.register_blueprint(reports_bp, url_prefix='/figurella-reports')
+# 4) Register Figurella Reports
+from app.figurella_reports.routes import reports_bp as figurella_reports_bp
+app.register_blueprint(figurella_reports_bp, url_prefix='/figurella-reports')
 
-# 5) Register the Umbrella AI blueprint at /umbrella/query
+# 5) Register the Umbrella AI blueprint at /ai/assistant
 from app.ai_assistant.umbrella import umbrella_bp
 app.register_blueprint(umbrella_bp, url_prefix='/ai/assistant')
 
@@ -28,11 +28,11 @@ def service_worker():
         'service-worker.js'
     )
 
-# ✅ 7) Define a fallback route for "/"
+# 7) Fallback route for "/"
 @app.route('/')
 def index():
     try:
-        return render_template('index.html')  # Only if you have index.html
+        return render_template('index.html')
     except:
         return '✅ Platform is running. Use the navigation menu.'
 
