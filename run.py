@@ -4,7 +4,7 @@ from app import create_app
 
 # 1) Create the Flask app
 app = create_app()
-app.config['PROPAGATE_EXCEPTIONS'] = True  # Enable full traceback display
+app.config['PROPAGATE_EXCEPTIONS'] = True
 
 # Service worker
 @app.route('/service-worker.js')
