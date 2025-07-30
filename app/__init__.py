@@ -30,7 +30,8 @@ def create_app():
     # ─── Register Blueprints ─────────────────────────────────────────────────
     app.register_blueprint(home_bp)
     app.register_blueprint(clients_bp)
-    app.register_blueprint(daily_checkin_bp, url_prefix='/daily-check-in')
+    # daily_checkin is now registered in run.py to avoid duplicate registration
+    # app.register_blueprint(daily_checkin_bp, url_prefix='/daily-check-in')
     app.register_blueprint(charts_bp, url_prefix='/charts')  # ✅ set charts route prefix
     app.register_blueprint(figurella_reports_bp, url_prefix='/figurella-reports')
     app.register_blueprint(legacy_ai_bp, url_prefix='/ai')
