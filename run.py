@@ -10,9 +10,7 @@ app.config['PROPAGATE_EXCEPTIONS'] = True  # Enable full traceback display
 from app.common.routes import common_bp
 app.register_blueprint(common_bp)
 
-# 3) Register Daily Check-In (so umbrella can navigate back)
-from app.daily_checkin.routes import daily_checkin_bp
-app.register_blueprint(daily_checkin_bp, url_prefix='/daily-check-in')
+# 3) (Removed) Daily Check-In is now registered in app/__init__.py
 
 # 4) Register Reports (for nav + history views)
 from app.reports.routes import reports_bp
