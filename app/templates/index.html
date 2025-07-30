@@ -1,29 +1,54 @@
+
 {% extends "base.html" %}
 
 {% block content %}
-<div class="mt-6 space-y-6">
+<div class="container mx-auto p-6">
+  <!-- Dashboard Header -->
+  <h1 class="text-3xl font-bold mb-6">Gym Manager Dashboard</h1>
 
-
-
-    <!-- Daily Report Card -->
-<a href="{{ url_for('daily_report.report_home') }}" class="block bg-white rounded-2xl shadow p-6 hover:bg-gray-50 transition">
-      <h3 class="text-lg font-semibold text-gray-800">📝 Daily Report</h3>
-      <p class="text-sm text-gray-500 mt-1">Submit today's sales, leads, and performance.</p>
-    </a>
-
-    <!-- Clients Card -->
-    <a href="{{ url_for('clients.clients') }}" class="block bg-white rounded-2xl shadow p-6 hover:bg-gray-50 transition">
-      <h3 class="text-lg font-semibold text-gray-800">👥 Clients</h3>
-      <p class="text-sm text-gray-500 mt-1">View, refresh, and follow up with clients.</p>
-    </a>
-
-    <!-- Future Dashboard -->
-    <a href="#" class="block bg-white rounded-2xl shadow p-6 opacity-50 cursor-not-allowed">
-      <h3 class="text-lg font-semibold text-gray-800">📊 Dashboard (Coming Soon)</h3>
-      <p class="text-sm text-gray-500 mt-1">Visual reports and insights.</p>
-    </a>
-
+  <!-- 14-Day Trends Chart -->
+  <div class="mt-8">
+    <h2 class="text-2xl font-semibold mb-4">Last 14 Days Trends</h2>
+    <canvas id="trendChart" class="bg-white rounded-lg shadow p-4"></canvas>
   </div>
 </div>
 
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  async function loadChart() {
+    try {
+      const res = await fetch('/ai/chart-data');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const { data } = await res.json();
+      const labels     = data.map(r => r.Date);
+      const salesData  = data.map(r => r.Revenue);
+      const leadsData  = data.map(r => r.Leads);
+      const attendData = data.map(r => r.Attendance);
+
+      new Chart(
+        document.getElementById('trendChart').getContext('2d'),
+        {
+          type: 'line',
+          data: {
+            labels,
+            datasets: [
+              { label: 'Sales',      data: salesData,  fill: false, borderWidth: 2 },
+              { label: 'Leads',      data: leadsData,  fill: false, borderWidth: 2 },
+              { label: 'Attendance', data: attendData, fill: false, borderWidth: 2 },
+            ]
+          },
+          options: {
+            responsive: true,
+            scales: { y: { beginAtZero: true } }
+          }
+        }
+      );
+    } catch (e) {
+      console.error('Chart load error:', e);
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', loadChart);
+</script>
 {% endblock %}

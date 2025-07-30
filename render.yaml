@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: flask-daily-report
+    name: flask-daily-checkin
     env: python
     buildCommand: ""
     startCommand: gunicorn run:app

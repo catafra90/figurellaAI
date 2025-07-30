@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="p-4">
+  <div class="flex items-center justify-between mb-6">
+    <h1 class="text-2xl font-bold">Figurella Reports</h1>
+    <form method="post" action="{{ url_for('reports_bp.refresh_all_reports') }}">
+      <button type="submit"
+              class="px-4 py-2 bg-figurella text-white rounded-lg shadow hover:bg-pink-700 transition">
+        🔄 Refresh All
+      </button>
+    </form>
+  </div>
+
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+    {% for report_name, history_file in reports.items() %}
+      <div class="bg-white rounded-xl shadow p-6 flex flex-col items-center">
+        <!-- Icon now links to the in-browser history view -->
+        <a href="{{ url_for('reports_bp.view_history', report_name=report_name) }}"
+           class="block mb-3 hover:opacity-80 transition">
+          {% set icon_path = 'icons/' + report_name + '.png' %}
+          <img src="{{ url_for('static', filename=icon_path) }}"
+               alt="{{ report_name }} History"
+               class="h-16" />
+        </a>
+        <span class="font-semibold mt-2">{{ report_name }}</span>
+      </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+  {{ super() }}
+  <!-- no additional scripts needed here -->
+{% endblock %}

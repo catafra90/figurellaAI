@@ -1,0 +1,38 @@
+<div class="flex items-start gap-8">
+  <!-- Left Panel: Client Profile -->
+  <div class="bg-white rounded-lg p-6 shadow flex-1 max-w-md">
+    <h2 class="text-lg font-semibold mb-4">Client Profile</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div><label class="block text-sm font-medium text-gray-700">Name</label><span class="block py-1">{{ client }}</span></div>
+      <div><label class="block text-sm font-medium text-gray-700">Date of Birth</label><span class="block py-1">&nbsp;</span></div>
+      <div><label class="block text-sm font-medium text-gray-700">Height (m)</label><span class="block py-1">&nbsp;</span></div>
+      <div class="md:col-span-2"><label class="block text-sm font-medium text-gray-700">Goals</label><span class="block py-1">&nbsp;</span></div>
+      <div><label class="block text-sm font-medium text-gray-700">Initial Weight</label><span class="block py-1">&nbsp;</span></div>
+      <div><label class="block text-sm font-medium text-gray-700">Initial Date</label><span class="block py-1">&nbsp;</span></div>
+      <div><label class="block text-sm font-medium text-gray-700">Lowest Weight</label><span class="block py-1">&nbsp;</span></div>
+      <div><label class="block text-sm font-medium text-gray-700">Date</label><span class="block py-1">&nbsp;</span></div>
+      <div><label class="block text-sm font-medium text-gray-700">Most Recent Weight</label><span class="block py-1">&nbsp;</span></div>
+      <div><label class="block text-sm font-medium text-gray-700">Date</label><span class="block py-1">&nbsp;</span></div>
+      <div><label class="block text-sm font-medium text-gray-700">Target Weight</label><span class="block py-1">&nbsp;</span></div>
+    </div>
+  </div>
+
+  <!-- Right Panel: Extra Notes -->
+  <div class="bg-white rounded-lg p-6 shadow flex-1 max-w-md">
+    <h2 class="text-lg font-semibold mb-4">Additional Info</h2>
+    <div class="space-y-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700">Initial Consultation Notes</label>
+        <textarea rows="3" class="w-full border rounded p-2"></textarea>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700">First Contract Date</label>
+        <input type="date" class="w-full border rounded p-2" />
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700">Motivation</label>
+        <textarea rows="3" class="w-full border rounded p-2"></textarea>
+      </div>
+    </div>
+  </div>
+</div>

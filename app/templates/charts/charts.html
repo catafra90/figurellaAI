@@ -1,0 +1,727 @@
+{% extends "base.html" %}
+
+{% block extra_head %}
+<style>
+  /*========================================
+    RESET & FULL-PAGE LAYOUT
+  ========================================*/
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    overflow: hidden;
+  }
+  #charts-main {
+    position: absolute;
+    top: 64px;
+    bottom: 44px;
+    left: 0;
+    right: 0;
+    display: flex;
+    overflow: hidden;
+  }
+
+  /*========================================
+    WRAPPER: SIDEBAR + CHART AREA
+  ========================================*/
+  #charts-wrapper {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .panel {
+    background: white;
+    border-radius: 0.75rem;
+    box-shadow: 0px 0px 16px 4px rgba(0,0,0,0.15);
+    padding: 1rem;
+    height: 100%;
+    overflow: auto;
+    box-sizing: border-box;
+  }
+  #chart-panel.panel { padding: 0; }
+
+  /*========================================
+    SIDEBAR PANEL (collapsible)
+  ========================================*/
+  #client-panel {
+    position: absolute;
+    top: 0; bottom: 0; left: 0;
+    width: 200px;
+    display: flex;
+    flex-direction: column;
+    background: white;
+    z-index: 1000;
+    transition: width 0.2s, background 0.2s;
+  }
+  #client-panel.collapsed {
+    width: 60px;
+    background: #f3f4f6;
+  }
+  #client-panel.collapsed::after {
+    content: "Current Client";
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%,-50%) rotate(-90deg);
+    color: #ec4899;
+    font-family: 'Brush Script MT', cursive;
+    font-size: 2rem;
+    pointer-events: none;
+  }
+  #client-panel .mb-4,
+  #client-panel .px-4,
+  #client-panel input,
+  #client-panel table {
+    transition: opacity 0.2s;
+  }
+  #client-panel.collapsed .mb-4,
+  #client-panel.collapsed .px-4,
+  #client-panel.collapsed input,
+  #client-panel.collapsed table {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  #client-panel table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0;
+  }
+  #client-panel td {
+    white-space: nowrap;
+    padding: 0.5rem;
+    cursor: pointer;
+  }
+  #client-panel thead { display: none; }
+  #client-panel th:nth-child(2),
+  #client-panel td:nth-child(2) { display: none; }
+
+  /*========================================
+    SIDEBAR DIVIDER
+  ========================================*/
+  .sidebar-divider {
+    position: absolute;
+    top: 0; bottom: 0;
+    left: 200px;
+    width: 8px;
+    cursor: ew-resize;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1001;
+    background: transparent;
+    transition: left 0.2s;
+  }
+  #client-panel.collapsed ~ .sidebar-divider {
+    left: 60px !important;
+  }
+  .sidebar-divider i {
+    transform: rotate(90deg);
+    font-size: 1.25rem;
+    color: rgba(0,0,0,0.2);
+  }
+
+  /*========================================
+    CHART AREA
+  ========================================*/
+  #chart-panel {
+    position: absolute;
+    top: 0; bottom: 0; left: 200px; right: 0;
+    display: flex;
+    align-items: flex-start;
+    overflow: hidden;
+    box-sizing: border-box;
+    transition: left 0.2s;
+  }
+  #client-panel.collapsed ~ #chart-panel {
+    left: 60px !important;
+  }
+
+  /* CARD SPLITTER */
+  .card-divider {
+    flex: 0 0 8px;
+    cursor: col-resize;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 500;
+  }
+  .card-divider i {
+    font-size: 1.25rem;
+    color: rgba(0,0,0,0.2);
+  }
+
+  /* CHART CARD */
+  .chart-card {
+    position: relative;
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    background: white;
+    border-radius: 0.75rem;
+    box-shadow: 0 0 8px rgba(0,0,0,0.1);
+    overflow: hidden;
+    box-sizing: border-box;
+  }
+  .scale-target {
+    transform-origin: top left;
+    width: 100%; height: 100%;
+  }
+  .scale-content {
+    display: flex;
+    flex-direction: column;
+    width: 100%; height: 100%;
+  }
+  .chart-header {
+    background: #1f2937;
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 1rem;
+    flex-shrink: 0;
+  }
+  .chart-close {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.25rem;
+    cursor: pointer;
+  }
+  .chart-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: auto;
+  }
+  .chart-body canvas,
+  .chart-body table {
+    flex: 1 1 auto;
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  /* EDIT MODE HIGHLIGHT */
+  .modal-window .scale-target[contenteditable="true"] {
+    outline: 2px dashed #ec4899;
+  }
+
+  /* EDIT BUTTON */
+  .modal-window .edit-modal {
+    background: none;
+    border: none;
+    color: #ec4899;
+    font-size: 1.25rem;
+    margin-right: 0.5rem;
+    cursor: pointer;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<main id="charts-main">
+  <div id="charts-wrapper">
+
+    <!-- Sidebar Panel: client list and filter -->
+    <div id="client-panel" class="panel">
+      <div class="flex items-center mb-4">
+        <i class="bi bi-bar-chart-fill text-2xl text-figurella"></i>
+        <h1 class="text-2xl font-bold text-figurella ml-2">Charts</h1>
+      </div>
+      <div class="px-4 pb-2">
+        <input
+          type="text"
+          id="clientSearch"
+          placeholder="Filter…"
+          class="w-full h-6 text-xs placeholder-gray-400 border border-gray-300 rounded px-2 focus:outline-none focus:ring-1 focus:ring-figurella"
+          autocomplete="off"
+        />
+      </div>
+      <div class="overflow-y-auto" style="flex:1">
+        <table>
+          <thead>
+            <tr>
+              {% for col in columns %}
+                <th>{{ col }}</th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in data|sort(attribute=columns[0]) %}
+              <tr>
+                {% for col in columns %}
+                  <td
+                    {% if loop.first %}
+                      class="client-name text-figurella truncate"
+                      data-name="{{ row[col] }}"
+                    {% endif %}
+                  >{{ row[col] }}</td>
+                {% endfor %}
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Divider -->
+    <div class="sidebar-divider"><i class="bi bi-grip-horizontal"></i></div>
+
+    <!-- Chart Cards Area -->
+    <div id="chart-panel" class="panel"></div>
+  </div>
+</main>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Main interactive script for client charts
+document.addEventListener('DOMContentLoaded', () => {
+  const searchInput = document.getElementById('clientSearch');
+  const clientPanel = document.getElementById('client-panel');
+  const chartPanel  = document.getElementById('chart-panel');
+  const divider     = document.querySelector('.sidebar-divider');
+  const COLLAPSE_THRESHOLD = 60;
+
+  // CLIENT FILTER
+  searchInput.addEventListener('input', () => {
+    const q = searchInput.value.toLowerCase();
+    document.querySelectorAll('#client-panel tbody tr').forEach(tr => {
+      const name = tr.querySelector('td.client-name').textContent.toLowerCase();
+      tr.style.display = name.includes(q) ? '' : 'none';
+    });
+  });
+
+  // SIDEBAR RESIZE/COLLAPSE
+  divider.addEventListener('mousedown', startDrag);
+  divider.addEventListener('touchstart', startDrag);
+  function startDrag(e) {
+    e.preventDefault(); document.body.style.cursor = 'ew-resize';
+    const startX = e.touches ? e.touches[0].clientX : e.clientX;
+    const startW = clientPanel.getBoundingClientRect().width;
+    function onMove(ev) {
+      const x = ev.touches ? ev.touches[0].clientX : ev.clientX;
+      const newW = Math.max(0, startW + (x - startX));
+      clientPanel.style.width = `${newW}px`;
+      const offset = newW < COLLAPSE_THRESHOLD
+        ? COLLAPSE_THRESHOLD
+        : (clientPanel.classList.remove('collapsed'), newW);
+      if (newW < COLLAPSE_THRESHOLD) clientPanel.classList.add('collapsed');
+      divider.style.left    = `${offset}px`;
+      chartPanel.style.left = `${offset}px`;
+    }
+    function onUp() {
+      document.body.style.cursor = '';
+      if (clientPanel.classList.contains('collapsed')) {
+        clientPanel.style.width    = `${COLLAPSE_THRESHOLD}px`;
+        divider.style.left         = `${COLLAPSE_THRESHOLD}px`;
+        chartPanel.style.left      = `${COLLAPSE_THRESHOLD}px`;
+      }
+      ['mousemove','touchmove'].forEach(evt => window.removeEventListener(evt, onMove));
+      ['mouseup','touchend'].forEach(evt => window.removeEventListener(evt, onUp));
+    }
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('touchmove',  onMove);
+    window.addEventListener('mouseup',    onUp);
+    window.addEventListener('touchend',   onUp);
+  }
+
+  // CARD SPLITTER DRAG
+  function makeDraggable(div, leftEl, rightEl) {
+    div.addEventListener('mousedown', startColDrag);
+    div.addEventListener('touchstart', startColDrag);
+    function startColDrag(e) {
+      e.preventDefault(); document.body.style.cursor = 'col-resize';
+      const startX = e.touches ? e.touches[0].clientX : e.clientX;
+      const leftW  = leftEl.getBoundingClientRect().width;
+      const rightW = rightEl.getBoundingClientRect().width;
+      function onMove(ev) {
+        const x = ev.touches ? ev.touches[0].clientX : ev.clientX;
+        const dx = x - startX;
+        const newL = leftW + dx;
+        const newR = rightW - dx;
+        if (newL < 100 || newR < 100) return;
+        leftEl.style.flex  = `0 0 ${newL}px`;
+        rightEl.style.flex = `0 0 ${newR}px`;
+      }
+      function onUp() {
+        document.body.style.cursor = '';
+        ['mousemove','touchmove'].forEach(evt => window.removeEventListener(evt, onMove));
+        ['mouseup','touchend'].forEach(evt => window.removeEventListener(evt, onUp));
+      }
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('touchmove',  onMove);
+      window.addEventListener('mouseup',    onUp);
+      window.addEventListener('touchend',   onUp);
+    }
+  }
+
+  // SCALE CHART CONTENT
+  function scaleChart(card) {
+    const tgt = card.querySelector('.scale-target');
+    const cnt = card.querySelector('.scale-content');
+    const sX  = card.clientWidth  / cnt.scrollWidth;
+    const sY  = card.clientHeight / cnt.scrollHeight;
+    tgt.style.transform = `scale(${Math.min(sX, sY, 1)})`;
+  }
+
+  // INIT TABS WITH UNDERLINE
+  function initTabs(card) {
+    const tabs      = card.querySelectorAll('.tab-btn');
+    const panes     = card.querySelectorAll('.tab-content');
+    const underline = card.querySelector('#tabUnderline');
+    function activate(i) {
+      tabs.forEach((b,j) => b.classList.toggle('active', j===i));
+      panes.forEach((p,j) => p.classList.toggle('hidden', j!==i));
+      const btnRect = tabs[i].getBoundingClientRect();
+      const parentRect = tabs[i].parentElement.getBoundingClientRect();
+      underline.style.width = `${btnRect.width}px`;
+      underline.style.left  = `${btnRect.left - parentRect.left}px`;
+    }
+    tabs.forEach((btn,i) => btn.addEventListener('click', () => activate(i)));
+    activate(0);
+  }
+
+  // REBUILD & UPDATE CARDS
+  function updateCardWidths() {
+    const cards = chartPanel.querySelectorAll('.chart-card'); if (!cards.length) return;
+    const gap = 1;
+    cards.forEach(c => c.style.flex = `0 0 calc((100% - ${gap*(cards.length-1)}rem)/${cards.length})`);
+  }
+  function rebuildCards() {
+    const cards = Array.from(chartPanel.querySelectorAll('.chart-card'));
+    chartPanel.innerHTML = '';
+    cards.forEach((card,i) => {
+      chartPanel.appendChild(card);
+      if (i < cards.length - 1) {
+        const div = document.createElement('div');
+        div.className = 'card-divider';
+        div.innerHTML = '<i class="bi bi-grip-vertical"></i>';
+        chartPanel.appendChild(div);
+        makeDraggable(div, cards[i], cards[i+1]);
+      }
+    });
+    updateCardWidths();
+  }
+
+  // ADD CHART CARD
+  function addCard(name) {
+    if (chartPanel.querySelectorAll('.chart-card').length >= 4) return;
+    const card = document.createElement('div');
+    card.className = 'chart-card panel';
+    card.innerHTML = `
+      <div class="scale-target">
+        <div class="scale-content">
+          <div class="chart-header">
+            <span class="truncate">${name}</span>
+            <button class="chart-edit" title="Edit">✎</button>
+            <button class="chart-close" title="Close">×</button>
+          </div>
+          <div class="chart-body">Loading…</div>
+        </div>
+      </div>`;
+    chartPanel.appendChild(card);
+
+    // LOAD CHART CONTENT
+    fetch(`/charts/client/${encodeURIComponent(name)}`)
+      .then(r => r.text())
+      .then(html => {
+        const body = card.querySelector('.chart-body');
+        body.innerHTML = html;
+
+        // disable until edit
+        body.querySelectorAll('input, textarea').forEach(el => el.disabled = true);
+        body.querySelectorAll('td').forEach(td => td.contentEditable = false);
+        requestAnimationFrame(() => { initTabs(card); scaleChart(card); });
+      });
+
+    // EDIT & SAVE
+    let isEditing = false;
+    const editBtn = card.querySelector('.chart-edit');
+    editBtn.addEventListener('click', () => {
+      isEditing = !isEditing;
+      card.querySelectorAll('.chart-body input, .chart-body textarea').forEach(el => el.disabled = !isEditing);
+      card.querySelectorAll('.chart-body td').forEach(td => td.contentEditable = isEditing);
+      editBtn.textContent = isEditing ? '🔒' : '✎';
+      editBtn.title       = isEditing ? 'Lock & Save' : 'Edit';
+
+      if (!isEditing) {
+        const sheets = {};
+
+        // serialize tables except measures
+        card.querySelectorAll('.chart-body table').forEach((table, idx) => {
+          const pane = table.closest('.tab-content');
+          const id   = pane?.id || `sheet${idx+1}`;
+          if (id === 'measures') return;
+          const heads = Array.from(table.querySelectorAll('thead th')).map(th => th.textContent.trim());
+          const rows  = Array.from(table.querySelectorAll('tbody tr')).map(tr => {
+            const cells = Array.from(tr.querySelectorAll('td'));
+            return heads.reduce((o,h,i) => { o[h] = (cells[i]?.textContent||'').trim(); return o; }, {});
+          });
+          sheets[id] = { columns: heads, data: rows };
+        });
+
+// ─── WORKOUT TAB → SINGLE “workout” SHEET excell ───
+const workoutPane = card.querySelector('#workout');
+if (workoutPane) {
+  // 1) Pull KG, Tools, Stretching
+  const KG         = workoutPane.querySelector('input[name="workout_kg"]')?.value.trim()      || '';
+  const Tools      = workoutPane.querySelector('input[name="workout_tools"]')?.value.trim()   || '';
+  const Stretching = workoutPane.querySelector('input[name="stretching"]')?.value.trim()     || '';
+
+  // 2) Grab Rings table
+  const ringsTbl = workoutPane.querySelector('table.zebra-pink');
+  const ringHdrs = ringsTbl
+    ? Array.from(ringsTbl.querySelectorAll('thead th')).map(th => th.textContent.trim())
+    : [];
+  const ringRows = ringsTbl
+    ? Array.from(ringsTbl.querySelectorAll('tbody tr')).map(tr => {
+        const cells = Array.from(tr.querySelectorAll('td'));
+        return ringHdrs.reduce((o,h,i) => {
+          o[h] = (cells[i]?.textContent || '').trim();
+          return o;
+        }, {});
+      })
+    : [];
+
+  // 3) Grab Goldorack table
+  const goldTbl = workoutPane.querySelector('#goldorack-table');
+  const goldRows = goldTbl
+    ? Array.from(goldTbl.querySelectorAll('tbody tr')).map(tr => {
+        const [labelCell, valCell] = tr.querySelectorAll('td');
+        return {
+          'Goldorack': labelCell.textContent.trim(),
+          'Value':     valCell.textContent.trim()
+        };
+      })
+    : [];
+
+  // 4) Assemble combined sheet
+  sheets['workout'] = {
+    columns: ['KG','Tools','Stretching', ...ringHdrs, 'Goldorack','Value'],
+    data: [
+      // top row
+      { KG, Tools, Stretching },
+      // rings rows
+      ...ringRows.map(r => ({ KG:'', Tools:'', Stretching:'', ...r })),
+      // goldorack rows
+      ...goldRows.map(r => {
+        // blank out ring columns
+        const blanks = ringHdrs.reduce((o,h)=>{ o[h]=''; return o; }, {});
+        return { KG:'', Tools:'', Stretching:'', ...blanks, ...r };
+      })
+    ]
+  };
+}
+
+
+// ─── MEASURES → ONE “measures” SHEET EXCEL ───
+const measureTables = Array.from(card.querySelectorAll('#measures table'));
+if (measureTables.length > 0) {
+  // 1) Base headers from the first table’s THEAD
+  const rawHdr = Array.from(
+    measureTables[0].querySelectorAll('thead th')
+  ).map(th => th.textContent.trim());
+  // Rename the very first header to "Field"
+  const columns = rawHdr.map((h,i) => i === 0 ? 'Field' : h);
+
+  // 2) Labels for the first (big) table's rows
+  const fieldNames = ['DATE','FA','Freq.','Reps','STEP','NC','Weight','Notes'];
+
+  // 3) Flatten all tables into one data array
+  const data = [];
+  measureTables.forEach((tbl, tIdx) => {
+    tbl.querySelectorAll('tbody tr').forEach((tr,rowIdx) => {
+      const obj = {};
+      const th = tr.querySelector('th');
+      const tds = Array.from(tr.querySelectorAll('td'));
+
+      columns.forEach((hdr,colIdx) => {
+        if (colIdx === 0) {
+          // First column = Field
+          // Table 0 uses fieldNames[], others render their own <th>
+          obj['Field'] = tIdx === 0
+            ? (fieldNames[rowIdx] || '')
+            : (th?.textContent.trim() || '');
+        } else {
+          // Other columns map 1–1 to the tds
+          obj[hdr] = (tds[colIdx-1]?.textContent.trim() || '');
+        }
+      });
+
+      data.push(obj);
+    });
+  });
+
+  // 4) Write into the one key your Flask route will pick up
+  sheets['measures'] = { columns, data };
+}
+
+
+
+        // nutrition & communication
+        card.querySelectorAll('.chart-body .tab-content').forEach(pane => {
+          if (pane.id === 'profile') return; // Skip profile for this section
+          const rowsEls = pane.querySelectorAll('.form-row');
+          if (rowsEls.length) {
+            const data = Array.from(rowsEls).map(row => {
+              const o = {};
+              row.querySelectorAll('input, textarea').forEach(el => {
+                const key = el.name.replace(/\[\]$/,'');
+                o[key] = el.value.trim();
+              });
+              return o;
+            });
+            sheets[pane.id] = { columns: Object.keys(data[0]||{}), data };
+          }
+        });
+
+
+// ─── PROFILE ─── Goals, Weights, Frequency, Expiration, First Session, Health/Injuries, Rewards, Friends ───
+const profilePane = card.querySelector('#profile');
+
+// 1) Grab the raw values
+const goalsVal = profilePane.querySelector('textarea')?.value.trim() || '';
+
+const dateInputs = Array.from(profilePane.querySelectorAll('input[type="date"]'));
+const textInputs = Array.from(
+  profilePane.querySelectorAll('.space-y-4 > .flex.items-center input[type="text"]')
+);
+const initDate     = dateInputs[0]?.value.trim() || '';
+const initWeight   = textInputs[0]?.value.trim() || '';
+const lowestDate   = dateInputs[1]?.value.trim() || '';
+const lowestWeight = textInputs[1]?.value.trim() || '';
+const targetDate   = dateInputs[2]?.value.trim() || '';
+const targetWeight = textInputs[2]?.value.trim() || '';
+
+const freqCells = Array.from(profilePane.querySelectorAll('table tbody tr td'));
+const months    = ['Jan','Feb','Mar','Apr','May','June','July','Aug','Sept','Oct','Nov','Dec'];
+const freqData  = {};
+freqCells.forEach((td,i) => {
+  freqData[months[i]] = td.textContent.trim();
+});
+
+const sessionRows     = Array.from(profilePane.querySelectorAll('.space-y-4 > .flex.items-center'));
+const expirationVal   = sessionRows[3]?.querySelector('input')?.value.trim() || '';
+const firstSessionVal = sessionRows[4]?.querySelector('input')?.value.trim() || '';
+
+// 2) Build the “vertical” rows (Goals → Weights → Expiration → First Session)
+const profileRows = [
+  { Field: 'Goals',                  Value: goalsVal },
+  { Field: 'Initial Weight', Date: initDate, Weight: initWeight },
+  { Field: 'Lowest Weight',   Date: lowestDate, Weight: lowestWeight },
+  { Field: 'Target Weight',   Date: targetDate, Weight: targetWeight },
+  { Field: 'Expiration / Remaining', Value: expirationVal },
+  { Field: 'First Session Date',     Value: firstSessionVal }
+];
+
+// 3) Blank row so months land on Excel row 9:
+const blanksNeeded = 9 - (1 + profileRows.length + 1);
+const blankRows    = Array(Math.max(0, blanksNeeded)).fill({});
+
+// 4) Month header (row 9) and frequency row (row 10)
+const monthHeaderRow = months.reduce((o,m) => (o[m] = m, o), { Field: '' });
+const freqRow        = Object.assign({ Field: 'Frequency' }, freqData);
+
+// 5) Health/Injuries (one row per flag/comment)
+const healthFields = [
+  { key:'diabetes',         label:'Diabetes' },
+  { key:'bp',               label:'Blood Pressure Issues' },
+  { key:'vertigo',          label:'Dizziness / Vertigo' },
+  { key:'thyroid',          label:'Thyroid Imbalances' },
+  { key:'heart',            label:'Heart Disease' },
+  { key:'spine',            label:'Back / Neck Issues' },
+  { key:'hips',             label:'Hips Issues' },
+  { key:'legs',             label:'Legs Issues' },
+  { key:'arms',             label:'Arms Issues' },
+  { key:'vascular',         label:'Vascular Pathologies' },
+  { key:'irregular_period', label:'Irregular Menstrual Period / Hormonal Issues' },
+  { key:'menopause_years',  label:'Menopause – # of Years' },
+  { key:'blood_work',       label:'Blood Work Alterations' }
+];
+const healthRows = healthFields.map(f => ({
+  Field:   f.label,
+  Flag:    profilePane.querySelector(`input[name="flag_${f.key}"]`)?.checked ? 'Yes' : 'No',
+  Comment: profilePane.querySelector(`input[name="comment_${f.key}"]`)?.value.trim() || ''
+}));
+
+// 6) Rewards / Deals
+const rewardRows = Array.from(profilePane.querySelectorAll('#rewards-table tbody tr')).map(tr => {
+  const used    = tr.querySelector('input[name="used[]"]')?.checked ? 'Yes' : 'No';
+  const [ , dealCell, notesCell ] = Array.from(tr.querySelectorAll('td'));
+  return {
+    Field:       'Reward / Deal',
+    Used:        used,
+    RewardDeal:  dealCell.textContent.trim(),
+    RewardNotes: notesCell.textContent.trim()
+  };
+});
+
+// 7) Friends
+const friendRows = Array.from(profilePane.querySelectorAll('#friends-table tbody tr')).map(tr => {
+  const sel     = tr.querySelector('input[name="friend-selected[]"]')?.checked ? 'Yes' : 'No';
+  const [ , nameCell, notesCell ] = Array.from(tr.querySelectorAll('td'));
+  return {
+    Field:       'Friend',
+    Select:      sel,
+    FriendName:  nameCell.textContent.trim(),
+    FriendNotes: notesCell.textContent.trim()
+  };
+});
+
+// 8) Define columns as a flat array of strings
+const columns = [
+  'Field','Value','Flag','Comment','Date','Weight',
+  ...months,
+  'Used','RewardDeal','RewardNotes',
+  'Select','FriendName','FriendNotes'
+];
+
+// 9) Assemble into your sheet
+sheets['profile'] = {
+  columns,
+  data: [
+    ...profileRows,   // rows 2–7
+    ...blankRows,     // row 8
+    monthHeaderRow,   // row 9
+    freqRow,          // row 10
+    ...healthRows,    // rows 11–23
+    {},               // blank separator
+    { Field: 'Rewards / Deals' },
+    ...rewardRows,
+    {},               // blank
+    { Field: 'Friends' },
+    ...friendRows
+  ]
+};
+
+
+
+
+        // send to server
+        const clientName = card.querySelector('.truncate').textContent;
+        fetch(`/charts/client/${encodeURIComponent(clientName)}/save`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sheets })
+        })
+        .then(r => r.json())
+        .then(resp => { if (resp.status !== 'success') console.error('Save failed', resp); })
+        .catch(console.error);
+      }
+    });
+
+    // close card
+    card.querySelector('.chart-close').addEventListener('click', () => { card.remove(); rebuildCards(); });
+    rebuildCards();
+  }
+
+  // open card
+  document.getElementById('client-panel').addEventListener('click', e => { const td = e.target.closest('td.client-name'); if (!td) return; addCard(td.dataset.name); });
+
+  // window resize
+  window.addEventListener('resize', updateCardWidths);
+});
+</script>
+{% endblock %}

@@ -1,94 +1,199 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
 
 {% block content %}
-<div class="mt-6 space-y-4">
+<main class="bg-gray-100 pt-[20px] pb-[24px] min-h-[calc(100vh-64px-44px)]">
+  <div class="max-w-screen-xl mx-auto px-4 flex gap-6">
 
-  <!-- Header -->
-  <div class="flex justify-between items-center">
-    <h2 class="text-2xl font-bold figurella-pink">Clients</h2>
-    <form method="POST" action="{{ url_for('clients.refresh_clients') }}">
-      <button type="submit" class="bg-figurella text-white px-4 py-2 rounded-full shadow hover:bg-pink-700 transition">
-        Refresh
-      </button>
-    </form>
+    <!-- Clients Table Column -->
+    <div class="bg-white rounded-xl shadow-lg px-6 pt-6 pb-4 w-[48%] min-w-[420px] h-[calc(100vh-194px)] flex flex-col justify-start">
+      <div class="flex items-center justify-between mb-6">
+        <div class="flex items-center">
+          <i class="bi bi-people-fill text-2xl text-figurella mr-2"></i>
+          <h1 class="text-2xl font-bold text-figurella tracking-tight">Clients</h1>
+        </div>
+        <button
+          id="refresh-clients"
+          class="px-4 py-2 bg-pink-500 text-white rounded-lg shadow hover:bg-pink-600 transition">
+          Refresh
+        </button>
+      </div>
+
+      <!-- Search -->
+      <div class="mb-4">
+        <label for="custom-search" class="block text-sm font-medium text-gray-700 mb-1">Search:</label>
+        <input
+          type="text"
+          id="custom-search"
+          class="w-full max-w-xs px-3 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-figurella"
+          placeholder="Search clients...">
+      </div>
+
+      <!-- Table -->
+      <div class="flex-1 overflow-auto border border-gray-300 rounded-lg shadow-inner bg-white w-full">
+        {{ clients_table|safe }}
+      </div>
+    </div>
+
+    <!-- Stats Panel Column -->
+    <div class="flex-1 h-[calc(100vh-194px)]">
+      <div class="bg-white rounded-xl shadow-lg p-4 h-full flex flex-col gap-4">
+        <div>
+          <h2 class="text-lg font-semibold text-figurella mb-2">Status Overview</h2>
+          <div class="flex items-center gap-4">
+            <div>
+              <label for="from-date" class="block text-sm font-medium text-gray-600">From</label>
+              <input type="date" id="from-date" class="border rounded px-2 py-1 w-full text-sm" />
+            </div>
+            <div>
+              <label for="to-date" class="block text-sm font-medium text-gray-600">To</label>
+              <input type="date" id="to-date" class="border rounded px-2 py-1 w-full text-sm" />
+            </div>
+            <button
+              id="update-stats"
+              class="mt-4 px-3 py-1 bg-figurella text-white rounded hover:bg-pink-700 transition">
+              Update
+            </button>
+          </div>
+        </div>
+
+        <!-- Status Counters -->
+        <div class="grid grid-cols-2 md:grid-cols-3 gap-2 mt-4">
+          <div class="flex justify-between items-center border-b pb-1">
+            <span class="font-medium text-gray-700">Scheduled</span>
+            <span id="scheduled-count" class="text-figurella font-bold">0</span>
+          </div>
+          <div class="flex justify-between items-center border-b pb-1">
+            <span class="font-medium text-gray-700">No Show</span>
+            <span id="noshow-count" class="text-figurella font-bold">0</span>
+          </div>
+          <div class="flex justify-between items-center border-b pb-1">
+            <span class="font-medium text-gray-700">Flop</span>
+            <span id="flop-count" class="text-figurella font-bold">0</span>
+          </div>
+          <div class="flex justify-between items-center border-b pb-1">
+            <span class="font-medium text-gray-700">Try</span>
+            <span id="try-count" class="text-figurella font-bold">0</span>
+          </div>
+          <div class="flex justify-between items-center border-b pb-1">
+            <span class="font-medium text-gray-700">Expired</span>
+            <span id="expired-count" class="text-figurella font-bold">0</span>
+          </div>
+          <div class="flex justify-between items-center border-b pb-1">
+            <span class="font-medium text-gray-700">Current Client</span>
+            <span id="current-count" class="text-figurella font-bold">0</span>
+          </div>
+        </div>
+
+        <!-- Pie Chart with Vertical Legend -->
+        <div class="mt-6">
+          <h3 class="text-md font-semibold text-gray-700 mb-4">Status Distribution</h3>
+          <div class="flex flex-col md:flex-row items-center justify-center gap-6">
+            <div class="w-[200px] h-[200px]">
+              <canvas id="statusPieChart"></canvas>
+            </div>
+            <ul class="text-sm space-y-1">
+              <li><span class="inline-block w-4 h-4 mr-2 bg-[#CC0066]"></span> Scheduled</li>
+              <li><span class="inline-block w-4 h-4 mr-2 bg-[#999999]"></span> No Show</li>
+              <li><span class="inline-block w-4 h-4 mr-2 bg-[#FF0000]"></span> Flop</li>
+              <li><span class="inline-block w-4 h-4 mr-2 bg-[#fbbf24]"></span> Try</li>
+              <li><span class="inline-block w-4 h-4 mr-2 bg-[#6b7280]"></span> Expired</li>
+              <li><span class="inline-block w-4 h-4 mr-2 bg-[#10b981]"></span> Current Client</li>
+            </ul>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
   </div>
+</main>
+{% endblock %}
 
-  <!-- Table -->
-  <div class="overflow-x-auto bg-white rounded-2xl shadow p-4">
-    <table id="clientTable" class="min-w-full divide-y divide-gray-200 text-sm">
-      <thead class="bg-gray-100 text-left text-sm text-gray-700">
-        <!-- Row 1: Column Names -->
-        <tr>
-          {% for header in headers %}
-            <th class="p-2 font-semibold sticky-header">{{ header }}</th>
-          {% endfor %}
-        </tr>
-        <!-- Row 2: Filter Dropdowns -->
-        <tr>
-          {% for header in headers %}
-            <th class="p-2 filter-header"></th>
-          {% endfor %}
-        </tr>
-      </thead>
-      <tbody class="divide-y divide-gray-100">
-        {% for row in table %}
-        <tr>
-          {% for header in headers %}
-            <td class="p-2">{{ row[header] }}</td>
-          {% endfor %}
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-</div>
+{% block extra_head %}
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css">
+  <link rel="stylesheet" href="https://cdn.datatables.net/fixedHeader/3.3.3/css/fixedHeader.dataTables.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
 
-<!-- DataTables CSS/JS -->
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+{% block scripts %}
+  {{ super() }}
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+  <script src="https://cdn.datatables.net/fixedHeader/3.3.3/js/dataTables.fixedHeader.min.js"></script>
 
-<!-- Sticky Header Styling -->
-<style>
-  th.sticky-header {
-    position: sticky;
-    top: 0;
-    background-color: #f3f4f6;
-    z-index: 10;
-  }
-</style>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const table = $('#clients-table').DataTable({
+        scrollX: true,
+        paging: false,
+        info: false,
+        ordering: true,
+        fixedHeader: true,
+        dom: 't'
+      });
 
-<!-- Initialize DataTables with dropdown filters in second row -->
-<script>
-  $(document).ready(function () {
-    const table = $('#clientTable').DataTable({
-      paging: true,
-      searching: true,
-      ordering: true,
-      responsive: true,
-      pageLength: 25,
-      lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "All"]],
-      initComplete: function () {
-        this.api().columns().every(function () {
-          const column = this;
-          const colIdx = column.index();
+      document.getElementById('custom-search').addEventListener('keyup', () => {
+        table.search(event.target.value).draw();
+      });
 
-          const headerCell = $('.filter-header').eq(colIdx);
-          const select = $('<select class="border border-gray-300 rounded text-sm px-1 py-0.5 mr-2"><option value="">All</option></select>')
-            .appendTo(headerCell.empty())
-            .on('change', function () {
-              const val = $.fn.dataTable.util.escapeRegex($(this).val());
-              column.search(val ? '^' + val + '$' : '', true, false).draw();
-            });
+      document.getElementById('refresh-clients').addEventListener('click', function () {
+        fetch("{{ url_for('clients.refresh_clients') }}", { method: 'POST' })
+          .then(() => window.location.reload());
+      });
 
-          column.data().unique().sort().each(function (d) {
-            if (d && d.trim() !== "") {
-              select.append('<option value="' + d + '">' + d + '</option>');
-            }
-          });
+      const pieChart = new Chart(document.getElementById('statusPieChart').getContext('2d'), {
+        type: 'pie',
+        data: {
+          labels: ['Scheduled', 'No Show', 'Flop', 'Try', 'Expired', 'Current Client'],
+          datasets: [{
+            data: [0, 0, 0, 0, 0, 0],
+            backgroundColor: ['#CC0066', '#999999', '#FF0000', '#fbbf24', '#6b7280', '#10b981']
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          }
+        }
+      });
+
+      function updateStatusCounts() {
+        const fromDate = new Date(document.getElementById('from-date').value);
+        const toDate = new Date(document.getElementById('to-date').value);
+
+        let scheduled = 0, noShow = 0, flop = 0, tryCount = 0, expired = 0, current = 0;
+
+        document.querySelectorAll('#clients-table tbody tr').forEach(row => {
+          const dateText = row.children[2]?.textContent.trim();
+          const statusText = row.children[3]?.textContent.trim().toLowerCase();
+          if (!dateText || !statusText) return;
+
+          const rowDate = new Date(dateText);
+          if (fromDate && !isNaN(fromDate) && rowDate < fromDate) return;
+          if (toDate && !isNaN(toDate) && rowDate > toDate) return;
+
+          if (statusText === "scheduled") scheduled++;
+          else if (statusText === "no show") noShow++;
+          else if (statusText === "flop") flop++;
+          else if (statusText === "try") tryCount++;
+          else if (statusText === "expired") expired++;
+          else if (statusText === "current client") current++;
         });
+
+        document.getElementById('scheduled-count').textContent = scheduled;
+        document.getElementById('noshow-count').textContent = noShow;
+        document.getElementById('flop-count').textContent = flop;
+        document.getElementById('try-count').textContent = tryCount;
+        document.getElementById('expired-count').textContent = expired;
+        document.getElementById('current-count').textContent = current;
+
+        pieChart.data.datasets[0].data = [scheduled, noShow, flop, tryCount, expired, current];
+        pieChart.update();
       }
+
+      document.getElementById('update-stats').addEventListener('click', updateStatusCounts);
     });
-  });
-</script>
+  </script>
 {% endblock %}

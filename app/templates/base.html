@@ -3,75 +3,305 @@
 <head>
   <meta charset="utf-8">
   <title>Figurella Platform</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=no">
 
   <!-- Tailwind CSS -->
-  <link href="{{ url_for('static', filename='css/tailwind.min.css') }}" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: { figurella: '#CC0066' },
+          fontFamily: { sans: ['ui-sans-serif', 'system-ui', 'sans-serif'] }
+        }
+      }
+    }
+  </script>
 
-  <!-- App Icons -->
-  <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/figurella-logo.png') }}">
-  <link rel="apple-touch-icon" href="{{ url_for('static', filename='images/figurella-logo.png') }}">
-  <meta name="apple-mobile-web-app-title" content="Figurella">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
 
-  <!-- PWA Meta & Manifest -->
-  <meta name="theme-color" content="#CC0066">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  {% block extra_head %}{% endblock %}
 
   <style>
-    .figurella-pink { color: #CC0066; }
-    .bg-figurella { background-color: #CC0066; }
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      overflow-y: auto;     /* allow vertical page scroll */
+    }
+
+    .modal-window {
+      position: absolute;
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: .5rem;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      width: 600px;
+      height: 500px;
+      top: 100px;
+      left: 100px;
+      z-index: 1000;
+      touch-action: none;
+      user-select: none;
+    }
+
+    .modal-header {
+      background: #f3f4f6;
+      padding: 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      flex-direction: column;
+      gap: 0.5rem;
+      position: relative;
+    }
+
+    .modal-header h2 {
+      font-weight: 600;
+    }
+
+    .modal-controls {
+      position: absolute;
+      top: 0.5rem;
+      right: 0.5rem;
+      display: flex;
+      gap: 0.25rem;
+    }
+
+    .modal-controls button {
+      background: #e5e7eb;
+      border-radius: 0.375rem;
+      padding: 0.25rem 0.5rem;
+      font-weight: bold;
+      font-size: 1rem;
+      color: #1f2937;
+      transition: background 0.2s;
+    }
+
+    .modal-controls button:hover {
+      background: #d1d5db;
+    }
+
+    .modal-body {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding: 1rem;
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
+      user-select: text;
+    }
+
+    .modal-resizer {
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      width: 28px;
+      height: 28px;
+      cursor: se-resize;
+      z-index: 20;
+      background: white;
+    }
+
+    .modal-resizer::after {
+      content: '';
+      display: block;
+      width: 16px;
+      height: 16px;
+      background-image: url('data:image/svg+xml,%3Csvg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"%3E%3Cpath d="M1 15L15 1M5 15L15 5M9 15L15 9" stroke="%23999" stroke-width="1.5"/%3E%3C/svg%3E');
+      background-repeat: no-repeat;
+      background-position: center;
+      opacity: 0.5;
+    }
+
+    .scale-target {
+      transition: transform 0.1s ease;
+      transform-origin: 0 0;
+      display: inline-block;
+    }
+
+    .sidebar {
+      transition: transform 0.3s ease;
+    }
+
+    .sidebar-collapsed {
+      transform: translateX(-100%);
+    }
+
+    .sidebar-expanded {
+      transform: translateX(0);
+    }
+
+    #sidebarToggle {
+      transition: left 0.3s ease;
+    }
+
+    
   </style>
 </head>
 
-<body class="bg-gray-100 text-gray-900 min-h-screen flex flex-col">
+<body class="font-sans text-gray-900 h-full flex flex-col overflow-hidden">
 
-  <!-- Mobile Header -->
-  <header class="bg-white shadow px-4 py-3 flex justify-between items-center md:hidden">
-    <img src="{{ url_for('static', filename='images/figurella-logo.png') }}" alt="Figurella Logo" class="h-8">
-    <button id="menuToggle" class="text-gray-700 focus:outline-none text-xl">☰</button>
-  </header>
+ <!-- Sidebar -->
+<div id="sidebar" class="fixed top-0 left-0 h-full w-64 bg-gray-800 border-r z-50 sidebar sidebar-collapsed shadow-lg">
+  <div class="p-4 font-bold text-figurella text-lg border-b border-gray-700">Menu</div>
+  <ul class="flex flex-col gap-2 p-4 text-white">
+    <li><a href="{{ url_for('home.index') }}" class="block py-2 px-3 rounded hover:bg-gray-700 {% if active_page=='home' %}bg-gray-700{% endif %}"><i class="bi bi-house-door"></i> Home</a></li>
+    <li><a href="{{ url_for('daily_checkin.report_home') }}" class="block py-2 px-3 rounded hover:bg-gray-700 {% if active_page=='report' %}bg-gray-700{% endif %}"><i class="bi bi-journal-text"></i> Daily Check-in</a></li>
+    <li><a href="{{ url_for('clients.clients') }}" class="block py-2 px-3 rounded hover:bg-gray-700 {% if active_page=='clients' %}bg-gray-700{% endif %}"><i class="bi bi-people"></i> Clients</a></li>
+    <li><a href="{{ url_for('reports_bp.reports_home') }}" class="block py-2 px-3 rounded hover:bg-gray-700 {% if active_page=='reports' %}bg-gray-700{% endif %}"><i class="bi bi-file-earmark-text"></i> Reports</a></li>
+    <li><a href="{{ url_for('charts.view_charts') }}" class="block py-2 px-3 rounded hover:bg-gray-700 {% if active_page=='charts' %}bg-gray-700{% endif %}"><i class="bi bi-bar-chart-line"></i> Charts</a></li>
+  </ul>
+</div>
 
-  <!-- Layout -->
-  <div class="flex flex-1">
-    <aside class="hidden md:block w-64 bg-white shadow-lg p-4">
-      <img src="{{ url_for('static', filename='images/figurella-logo.png') }}" alt="Figurella Logo" class="mb-6 w-32 mx-auto">
-      <nav class="space-y-3">
-        <a href="/" class="block px-3 py-2 rounded-md hover:bg-gray-100 {% if request.endpoint == 'daily_report.report_home' %}bg-gray-200{% endif %}">Daily Report</a>
-        <a href="/clients" class="block px-3 py-2 rounded-md hover:bg-gray-100 {% if request.path.startswith('/clients') %}bg-gray-200{% endif %}">Clients</a>
-      </nav>
-    </aside>
+<!-- Sidebar Toggle Button -->
+<button id="sidebarToggle" onclick="toggleSidebar()" class="fixed top-2 left-3 z-50 bg-gray-800 border p-2 rounded shadow-lg text-xl text-white">
+  <i class="bi bi-list"></i>
+</button>
 
-    <main class="flex-1 p-4">
-      {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-          {% for category, message in messages %}
-            <div class="mb-4 p-3 rounded text-white {{ 'bg-green-600' if category == 'success' else 'bg-red-600' }}">
-              {{ message }}
-            </div>
-          {% endfor %}
-        {% endif %}
-      {% endwith %}
-      {% block content %}{% endblock %}
-    </main>
-  </div>
+<header class="bg-gray-800 fixed top-0 left-0 w-full z-40 h-16 flex items-center justify-center shadow">
+  <img src="{{ url_for('static', filename='images/figurella-logo.png') }}" alt="Figurella Logo" class="h-10">
+</header>
 
-  <!-- Mobile Bottom Navigation -->
-  <nav class="fixed bottom-0 w-full bg-white shadow border-t md:hidden flex justify-around text-sm z-50">
-    <a href="/" class="py-2 px-4 flex-1 text-center {% if request.endpoint == 'daily_report.report_home' %}text-pink-600 font-semibold{% endif %}">Daily</a>
-    <a href="/clients" class="py-2 px-4 flex-1 text-center {% if request.path.startswith('/clients') %}text-pink-600 font-semibold{% endif %}">Clients</a>
-  </nav>
 
-  <!-- Sidebar Toggle -->
+  <!-- ✅ Light gray background applied here -->
+  
+
+  <main class="flex-1 pt-20 pb-14 overflow-hidden bg-gray-200">
+
+    {% block content %}{% endblock %}
+  </main>
+
+  <nav class="fixed bottom-0 w-full h-11 bg-gray-800 text-white shadow flex justify-around text-xs z-40">
+  <a href="{{ url_for('home.index') }}" class="flex-1 flex items-center justify-center border-t-4 border-transparent hover:border-figurella {% if active_page=='home' %}border-figurella{% endif %}">
+    <i class="bi bi-house-door text-lg"></i>
+  </a>
+  <a href="{{ url_for('daily_checkin.report_home') }}" class="flex-1 flex items-center justify-center border-t-4 border-transparent hover:border-figurella {% if active_page=='report' %}border-figurella{% endif %}">
+    <i class="bi bi-journal-text text-lg"></i>
+  </a>
+  <a href="{{ url_for('clients.clients') }}" class="flex-1 flex items-center justify-center border-t-4 border-transparent hover:border-figurella {% if active_page=='clients' %}border-figurella{% endif %}">
+    <i class="bi bi-people text-lg"></i>
+  </a>
+  <a href="{{ url_for('reports_bp.reports_home') }}" class="flex-1 flex items-center justify-center border-t-4 border-transparent hover:border-figurella {% if active_page=='reports' %}border-figurella{% endif %}">
+    <i class="bi bi-file-earmark-text text-lg"></i>
+  </a>
+  <a href="{{ url_for('charts.view_charts') }}" class="flex-1 flex items-center justify-center border-t-4 border-transparent hover:border-figurella {% if active_page=='charts' %}border-figurella{% endif %}">
+    <i class="bi bi-bar-chart-line text-lg"></i>
+  </a>
+</nav>
+
+  <button id="micButton" class="fixed bottom-20 right-6 w-14 h-14 bg-red-600 text-white rounded-full shadow-lg flex items-center justify-center z-50">
+    <i class="bi bi-mic text-2xl"></i>
+  </button>
+
+  {% block scripts %}
   <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      const toggleBtn = document.getElementById('menuToggle');
-      toggleBtn?.addEventListener('click', () => {
-        document.querySelector('aside')?.classList.toggle('hidden');
+    function toggleSidebar() {
+      const sidebar = document.getElementById('sidebar');
+      const toggleBtn = document.getElementById('sidebarToggle');
+      sidebar.classList.toggle('sidebar-expanded');
+      sidebar.classList.toggle('sidebar-collapsed');
+
+      if (sidebar.classList.contains('sidebar-expanded')) {
+        toggleBtn.style.left = '270px';
+      } else {
+        toggleBtn.style.left = '16px';
+      }
+    }
+
+    function initClientChartZoom(container) {
+      const wrapper = container.querySelector('.scale-target');
+      let scale = 1;
+      let lastDistance = null;
+
+      container.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 2) {
+          const [a, b] = e.touches;
+          lastDistance = getDistance(a, b);
+          const rect = wrapper.getBoundingClientRect();
+          const cx = (a.clientX + b.clientX) / 2 - rect.left;
+          const cy = (a.clientY + b.clientY) / 2 - rect.top;
+          wrapper.style.transformOrigin = `${cx}px ${cy}px`;
+        }
       });
-    });
+
+      container.addEventListener('touchmove', (e) => {
+        if (e.touches.length === 2 && lastDistance) {
+          e.preventDefault();
+          const [a, b] = e.touches;
+          const dist = getDistance(a, b);
+          scale += (dist - lastDistance) * 0.005;
+          scale = Math.max(0.4, Math.min(3, scale));
+          wrapper.style.transform = `scale(${scale})`;
+          lastDistance = dist;
+        }
+      });
+
+      container.addEventListener('touchend', () => lastDistance = null);
+
+      function getDistance(t1, t2) {
+        const dx = t2.clientX - t1.clientX;
+        const dy = t2.clientY - t1.clientY;
+        return Math.sqrt(dx * dx + dy * dy);
+      }
+
+      const zoomIn = container.querySelector('.zoom-in');
+      const zoomOut = container.querySelector('.zoom-out');
+      if (zoomIn) zoomIn.addEventListener('click', () => {
+        scale = Math.min(3, scale + 0.1);
+        wrapper.style.transform = `scale(${scale})`;
+      });
+      if (zoomOut) zoomOut.addEventListener('click', () => {
+        scale = Math.max(0.4, scale - 0.1);
+        wrapper.style.transform = `scale(${scale})`;
+      });
+    }
+
+    function makeInteractive(modal) {
+      let offsetX = 0, offsetY = 0;
+      interact(modal)
+        .draggable({
+          allowFrom: '.modal-header',
+          listeners: {
+            start(event) {
+              const rect = modal.getBoundingClientRect();
+              offsetX = event.client.x - rect.left;
+              offsetY = event.client.y - rect.top;
+            },
+            move(event) {
+              const x = event.client.x - offsetX;
+              const y = event.client.y - offsetY;
+              modal.style.left = `${x}px`;
+              modal.style.top = `${y}px`;
+              modal.style.transform = 'none';
+            }
+          }
+        })
+        .resizable({
+          edges: { bottom: true, right: true },
+          modifiers: [interact.modifiers.restrictSize({ min: { width: 300, height: 200 } })],
+          listeners: {
+            move(event) {
+              modal.style.width = `${event.rect.width}px`;
+              modal.style.height = `${event.rect.height}px`;
+            }
+          }
+        });
+    }
   </script>
+  {% endblock %}
+
+<!-- EDITABLE TABLE POPUP MODAL -->
+<div id="table-modal" class="fixed inset-0 hidden items-center justify-center bg-black bg-opacity-50 z-50">
+  <div class="relative bg-white rounded-lg p-6 max-w-4xl max-h-[80vh] overflow-auto">
+    <button id="table-modal-close" class="absolute top-2 right-2 text-gray-600 hover:text-gray-800 text-2xl leading-none">&times;</button>
+    <div id="table-modal-content"></div>
+  </div>
+</div>
+
 
 </body>
 </html>
