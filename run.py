@@ -6,19 +6,19 @@ from app import create_app
 app = create_app()
 app.config['PROPAGATE_EXCEPTIONS'] = True  # Enable full traceback display
 
-# 2) Register “common” routes
+# 2) Register common routes
 from app.common.routes import common_bp
 app.register_blueprint(common_bp)
 
-# 3) (Removed) Daily Check-In is now registered in app/__init__.py
+# 3) Daily Check-In is registered in app/__init__.py
 
 # 4) Register Reports (for nav + history views)
-from app.reports.routes import reports_bp
-app.register_blueprint(reports_bp)
+from app.figurella_reports.routes import reports_bp
+app.register_blueprint(reports_bp, url_prefix='/figurella-reports')
 
 # 5) Register the Umbrella AI blueprint at /umbrella/query
 from app.ai_assistant.umbrella import umbrella_bp
-app.register_blueprint(umbrella_bp)
+app.register_blueprint(umbrella_bp, url_prefix='/ai/assistant')
 
 # 6) Service worker
 @app.route('/service-worker.js')
