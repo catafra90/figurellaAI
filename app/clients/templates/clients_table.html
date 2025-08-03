@@ -1,199 +1,266 @@
+<!-- File: app/clients/templates/clients_table.html -->
 {% extends "base.html" %}
 
-{% block content %}
-<main class="bg-gray-100 pt-[20px] pb-[24px] min-h-[calc(100vh-64px-44px)]">
-  <div class="max-w-screen-xl mx-auto px-4 flex gap-6">
+{% block extra_head %}
+  <!-- DataTables CSS -->
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css">
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    <!-- Clients Table Column -->
-    <div class="bg-white rounded-xl shadow-lg px-6 pt-6 pb-4 w-[48%] min-w-[420px] h-[calc(100vh-194px)] flex flex-col justify-start">
-      <div class="flex items-center justify-between mb-6">
-        <div class="flex items-center">
-          <i class="bi bi-people-fill text-2xl text-figurella mr-2"></i>
-          <h1 class="text-2xl font-bold text-figurella tracking-tight">Clients</h1>
-        </div>
-        <button
-          id="refresh-clients"
-          class="px-4 py-2 bg-pink-500 text-white rounded-lg shadow hover:bg-pink-600 transition">
-          Refresh
-        </button>
-      </div>
+  <style>
+    html, body { margin:0; padding:0; height:100%; overflow:hidden; }
+    #clients-main {
+      position:absolute; top:64px; bottom:44px; left:0; right:0;
+      display:flex; overflow:hidden;
+    }
+    #clients-wrapper {
+      position:relative; width:100%; height:100%; overflow:hidden;
+    }
+    .panel {
+      background:white;
+      border-radius:.75rem;
+      box-shadow:0 0 16px rgba(0,0,0,0.15);
+      padding:1rem;
+      box-sizing:border-box;
+      display:flex; flex-direction:column;
+      height:100%;
+    }
 
-      <!-- Search -->
-      <div class="mb-4">
-        <label for="custom-search" class="block text-sm font-medium text-gray-700 mb-1">Search:</label>
-        <input
-          type="text"
-          id="custom-search"
-          class="w-full max-w-xs px-3 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-figurella"
-          placeholder="Search clients...">
-      </div>
+    /* --------- clients pane --------- */
+    #clients-pane {
+      position:absolute; top:0; bottom:0; left:0;
+      width:48%; min-width:0;
+      transition: transform .3s ease;
+      z-index:1000;
+    }
+    #clients-pane.collapsed { transform: translateX(-100%); }
 
-      <!-- Table -->
-      <div class="flex-1 overflow-auto border border-gray-300 rounded-lg shadow-inner bg-white w-full">
-        {{ clients_table|safe }}
-      </div>
-    </div>
+    /* --------- permanent “pull-tab” --------- */
+    #pull-tab {
+      position:absolute; top:0; bottom:0; left:0;
+      width:43px;                              /* widened for visibility */
+      background:#e5e7eb;
+      cursor:pointer;
+      display:none;
+      z-index:1001;
+    }
+    #clients-pane.collapsed + #pull-tab { display:block; }
+    #pull-tab::after {
+      content: "Client List";
+      position:absolute; top:50%; left:50%;
+      transform:translate(-50%,-50%) rotate(180deg);
+      writing-mode: vertical-rl;
+      font-family: 'Brush Script MT', cursive;
+      font-size:1.62rem; /* +20% */
+      color:#ec4899;
+      pointer-events:none;
+    }
 
-    <!-- Stats Panel Column -->
-    <div class="flex-1 h-[calc(100vh-194px)]">
-      <div class="bg-white rounded-xl shadow-lg p-4 h-full flex flex-col gap-4">
-        <div>
-          <h2 class="text-lg font-semibold text-figurella mb-2">Status Overview</h2>
-          <div class="flex items-center gap-4">
-            <div>
-              <label for="from-date" class="block text-sm font-medium text-gray-600">From</label>
-              <input type="date" id="from-date" class="border rounded px-2 py-1 w-full text-sm" />
-            </div>
-            <div>
-              <label for="to-date" class="block text-sm font-medium text-gray-600">To</label>
-              <input type="date" id="to-date" class="border rounded px-2 py-1 w-full text-sm" />
-            </div>
-            <button
-              id="update-stats"
-              class="mt-4 px-3 py-1 bg-figurella text-white rounded hover:bg-pink-700 transition">
-              Update
-            </button>
-          </div>
-        </div>
+    /* --------- stats panel --------- */
+    #stats-panel {
+      position:absolute; top:0; bottom:0;
+      left:48%; right:0;
+      padding:1rem; box-sizing:border-box;
+      display:flex; flex-direction:column;
+      transition:left .3s ease;
+    }
+    #clients-pane.collapsed ~ #pull-tab + #stats-panel { left:43px; }
 
-        <!-- Status Counters -->
-        <div class="grid grid-cols-2 md:grid-cols-3 gap-2 mt-4">
-          <div class="flex justify-between items-center border-b pb-1">
-            <span class="font-medium text-gray-700">Scheduled</span>
-            <span id="scheduled-count" class="text-figurella font-bold">0</span>
-          </div>
-          <div class="flex justify-between items-center border-b pb-1">
-            <span class="font-medium text-gray-700">No Show</span>
-            <span id="noshow-count" class="text-figurella font-bold">0</span>
-          </div>
-          <div class="flex justify-between items-center border-b pb-1">
-            <span class="font-medium text-gray-700">Flop</span>
-            <span id="flop-count" class="text-figurella font-bold">0</span>
-          </div>
-          <div class="flex justify-between items-center border-b pb-1">
-            <span class="font-medium text-gray-700">Try</span>
-            <span id="try-count" class="text-figurella font-bold">0</span>
-          </div>
-          <div class="flex justify-between items-center border-b pb-1">
-            <span class="font-medium text-gray-700">Expired</span>
-            <span id="expired-count" class="text-figurella font-bold">0</span>
-          </div>
-          <div class="flex justify-between items-center border-b pb-1">
-            <span class="font-medium text-gray-700">Current Client</span>
-            <span id="current-count" class="text-figurella font-bold">0</span>
-          </div>
-        </div>
+    /* --------- table styling --------- */
+    #clients-table {
+      width:100%; border-collapse:collapse; flex:1;
+    }
+    #clients-table th,
+    #clients-table td {
+      padding:.5rem; border-bottom:1px solid #e5e7eb;
+    }
+    #clients-table thead th {
+      background:#f9fafb;
+      position:sticky; top:0; z-index:10;
+    }
 
-        <!-- Pie Chart with Vertical Legend -->
-        <div class="mt-6">
-          <h3 class="text-md font-semibold text-gray-700 mb-4">Status Distribution</h3>
-          <div class="flex flex-col md:flex-row items-center justify-center gap-6">
-            <div class="w-[200px] h-[200px]">
-              <canvas id="statusPieChart"></canvas>
-            </div>
-            <ul class="text-sm space-y-1">
-              <li><span class="inline-block w-4 h-4 mr-2 bg-[#CC0066]"></span> Scheduled</li>
-              <li><span class="inline-block w-4 h-4 mr-2 bg-[#999999]"></span> No Show</li>
-              <li><span class="inline-block w-4 h-4 mr-2 bg-[#FF0000]"></span> Flop</li>
-              <li><span class="inline-block w-4 h-4 mr-2 bg-[#fbbf24]"></span> Try</li>
-              <li><span class="inline-block w-4 h-4 mr-2 bg-[#6b7280]"></span> Expired</li>
-              <li><span class="inline-block w-4 h-4 mr-2 bg-[#10b981]"></span> Current Client</li>
-            </ul>
-          </div>
-        </div>
-
-      </div>
-    </div>
-
-  </div>
-</main>
+    /* --------- right-side date filters --------- */
+    .stats-filters {
+      display:flex;
+      gap:1rem;
+      align-items:center;
+      margin-bottom:1rem;
+    }
+    .stats-filters label {
+      font-size:.875rem;
+      color:#374151;
+      margin-right:.25rem;
+    }
+    .stats-filters input {
+      padding:.25rem .5rem;
+      border:1px solid #d1d5db;
+      border-radius:.25rem;
+    }
+  </style>
 {% endblock %}
 
-{% block extra_head %}
-  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css">
-  <link rel="stylesheet" href="https://cdn.datatables.net/fixedHeader/3.3.3/css/fixedHeader.dataTables.min.css">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% block content %}
+<main id="clients-main">
+  <div id="clients-wrapper">
+
+    <!-- Clients list pane -->
+    <div id="clients-pane" class="panel">
+      <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center">
+          <i class="bi bi-people-fill text-2xl text-figurella mr-2"></i>
+          <h1 class="text-2xl font-bold text-figurella">Clients</h1>
+        </div>
+        <div>
+          <button id="toggle-pane" class="px-2 py-1 mr-2 bg-gray-200 hover:bg-gray-300 rounded">
+            <i class="bi bi-chevron-left"></i>
+          </button>
+          <button id="refresh-clients" class="px-4 py-2 bg-pink-500 text-white rounded hover:bg-pink-600">
+            Refresh
+          </button>
+        </div>
+      </div>
+
+      <!-- Search box -->
+      <div class="mb-4">
+        <label for="custom-search" class="block text-sm text-gray-700 mb-1">Search:</label>
+        <input id="custom-search" type="text" placeholder="Search clients…"
+               class="w-full px-3 py-2 border rounded focus:ring-figurella"/>
+      </div>
+
+      <!-- Client table -->
+      <div class="overflow-y-auto flex-1">
+        <table id="clients-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Date Created</th>
+              <th>Status</th>
+              <th>Email</th>
+              <th>Phone</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for c in clients %}
+            <tr>
+              <td>{{ c.name }}</td>
+              <td>{{ c.created_at.strftime('%Y-%m-%d') if c.created_at else '' }}</td>
+              <td>{{ c.status }}</td>
+              <td>{{ c.email or '' }}</td>
+              <td>{{ c.phone or '' }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Pull-tab -->
+    <div id="pull-tab"></div>
+
+    <!-- Stats + pie chart panel -->
+    <div id="stats-panel" class="panel">
+      <h2 class="text-lg font-semibold mb-4">Status Breakdown</h2>
+
+      <!-- Date filters moved here -->
+      <div class="stats-filters">
+        <div>
+          <label for="date-from">From:</label>
+          <input id="date-from" type="date"/>
+        </div>
+        <div>
+          <label for="date-to">To:</label>
+          <input id="date-to" type="date"/>
+        </div>
+      </div>
+
+      <canvas id="status-pie" style="flex:1; max-height:300px;"></canvas>
+    </div>
+  </div>
+</main>
 {% endblock %}
 
 {% block scripts %}
   {{ super() }}
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
-  <script src="https://cdn.datatables.net/fixedHeader/3.3.3/js/dataTables.fixedHeader.min.js"></script>
-
   <script>
-    document.addEventListener('DOMContentLoaded', function () {
-      const table = $('#clients-table').DataTable({
-        scrollX: true,
-        paging: false,
-        info: false,
-        ordering: true,
-        fixedHeader: true,
-        dom: 't'
-      });
-
-      document.getElementById('custom-search').addEventListener('keyup', () => {
-        table.search(event.target.value).draw();
-      });
-
-      document.getElementById('refresh-clients').addEventListener('click', function () {
-        fetch("{{ url_for('clients.refresh_clients') }}", { method: 'POST' })
-          .then(() => window.location.reload());
-      });
-
-      const pieChart = new Chart(document.getElementById('statusPieChart').getContext('2d'), {
-        type: 'pie',
-        data: {
-          labels: ['Scheduled', 'No Show', 'Flop', 'Try', 'Expired', 'Current Client'],
-          datasets: [{
-            data: [0, 0, 0, 0, 0, 0],
-            backgroundColor: ['#CC0066', '#999999', '#FF0000', '#fbbf24', '#6b7280', '#10b981']
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: { display: false }
-          }
-        }
-      });
-
-      function updateStatusCounts() {
-        const fromDate = new Date(document.getElementById('from-date').value);
-        const toDate = new Date(document.getElementById('to-date').value);
-
-        let scheduled = 0, noShow = 0, flop = 0, tryCount = 0, expired = 0, current = 0;
-
-        document.querySelectorAll('#clients-table tbody tr').forEach(row => {
-          const dateText = row.children[2]?.textContent.trim();
-          const statusText = row.children[3]?.textContent.trim().toLowerCase();
-          if (!dateText || !statusText) return;
-
-          const rowDate = new Date(dateText);
-          if (fromDate && !isNaN(fromDate) && rowDate < fromDate) return;
-          if (toDate && !isNaN(toDate) && rowDate > toDate) return;
-
-          if (statusText === "scheduled") scheduled++;
-          else if (statusText === "no show") noShow++;
-          else if (statusText === "flop") flop++;
-          else if (statusText === "try") tryCount++;
-          else if (statusText === "expired") expired++;
-          else if (statusText === "current client") current++;
-        });
-
-        document.getElementById('scheduled-count').textContent = scheduled;
-        document.getElementById('noshow-count').textContent = noShow;
-        document.getElementById('flop-count').textContent = flop;
-        document.getElementById('try-count').textContent = tryCount;
-        document.getElementById('expired-count').textContent = expired;
-        document.getElementById('current-count').textContent = current;
-
-        pieChart.data.datasets[0].data = [scheduled, noShow, flop, tryCount, expired, current];
-        pieChart.update();
-      }
-
-      document.getElementById('update-stats').addEventListener('click', updateStatusCounts);
+  $(function(){
+    // 1) Init DataTable
+    const table = $('#clients-table').DataTable({
+      paging: false,
+      info:   false,
+      ordering: true,
+      dom:    't'
     });
+
+    // 2) Date-range filter (inclusive of To date)
+    $.fn.dataTable.ext.search.push((settings, data) => {
+      const d = new Date(data[1] || '');
+      const from = $('#date-from').val() ? new Date($('#date-from').val()) : null;
+      let to = $('#date-to').val() ? new Date($('#date-to').val())   : null;
+      if (to) to.setHours(23,59,59,999);
+      if (from && d < from) return false;
+      if (to   && d > to)   return false;
+      return true;
+    });
+
+    // 3) Build the pie chart
+    const ctx = document.getElementById('status-pie').getContext('2d');
+    const pie = new Chart(ctx, {
+      type: 'pie',
+      data: {
+        labels: [],
+        datasets: [{
+          data: [],
+          backgroundColor: ['#EF4444','#F59E0B','#10B981','#3B82F6','#8B5CF6','#EC4899']
+        }]
+      },
+      options: {
+        plugins:{ legend:{ position:'bottom' } },
+        maintainAspectRatio:false
+      }
+    });
+
+    // 4) Recompute pie on each draw/search
+    function updatePie(){
+      const counts = {};
+      table.rows({ filter: 'applied' }).every(function(){
+        const st = this.data()[2];
+        counts[st] = (counts[st]||0) + 1;
+      });
+      pie.data.labels = Object.keys(counts);
+      pie.data.datasets[0].data = Object.values(counts);
+      pie.update();
+    }
+    table.on('draw.dt search.dt', updatePie);
+
+    // 5) Hook up search & date-pickers
+    $('#custom-search').on('keyup', () => table.search($('#custom-search').val()).draw());
+    $('#date-from, #date-to').on('change', () => table.draw());
+
+    // 6) Initial pie render
+    updatePie();
+
+    // 7) Pane toggle & pull-tab
+    function setIcon(){
+      const $i = $('#toggle-pane i');
+      if ($('#clients-pane').hasClass('collapsed')) {
+        $i.removeClass('bi-chevron-left').addClass('bi-chevron-right');
+      } else {
+        $i.removeClass('bi-chevron-right').addClass('bi-chevron-left');
+      }
+    }
+    $('#toggle-pane, #pull-tab').on('click', () => {
+      $('#clients-pane').toggleClass('collapsed');
+      setIcon();
+    });
+    setIcon();
+
+    // 8) Refresh button
+    $('#refresh-clients').on('click', () =>
+      fetch("{{ url_for('clients.refresh_clients') }}")
+        .then(()=> location.reload())
+    );
+  });
   </script>
 {% endblock %}

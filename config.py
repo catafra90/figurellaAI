@@ -26,3 +26,11 @@ class Config:
 
     # OpenAI API key for GPT-4 integration (must be set in environment)
     OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+
+    # ─── Database ────────────────────────────────────────────────────────────
+    # Use DATABASE_URL env var if set (e.g., postgres://...), otherwise SQLite in instance/
+    SQLALCHEMY_DATABASE_URI = os.getenv(
+        'DATABASE_URL',
+        'sqlite:///' + os.path.join(os.getcwd(), 'instance', 'app.db')
+    )
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
