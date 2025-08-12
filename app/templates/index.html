@@ -1,54 +1,314 @@
-
 {% extends "base.html" %}
 
 {% block content %}
 <div class="container mx-auto p-6">
-  <!-- Dashboard Header -->
-  <h1 class="text-3xl font-bold mb-6">Gym Manager Dashboard</h1>
 
-  <!-- 14-Day Trends Chart -->
-  <div class="mt-8">
-    <h2 class="text-2xl font-semibold mb-4">Last 14 Days Trends</h2>
-    <canvas id="trendChart" class="bg-white rounded-lg shadow p-4"></canvas>
+  <!-- Quick Actions -->
+  <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5">
+
+    <!-- Charts -->
+    <a href="{{ url_for('charts.view_charts') }}"
+       class="group bg-white rounded-2xl shadow hover:shadow-xl transition p-5 text-center ring-1 ring-gray-100 hover:ring-figurella/30">
+      <div class="mx-auto mb-3 h-16 w-16 rounded-2xl grid place-items-center shadow-inner bg-gradient-to-br from-pink-100 to-rose-200">
+        <svg viewBox="0 0 48 48" width="32" height="32" aria-hidden="true">
+          <defs>
+            <linearGradient id="grad-charts-bar1" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#CC0066"/><stop offset="1" stop-color="#FF7AB8"/></linearGradient>
+            <linearGradient id="grad-charts-bar2" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#06B6D4"/><stop offset="1" stop-color="#60A5FA"/></linearGradient>
+            <linearGradient id="grad-charts-bar3" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#F59E0B"/><stop offset="1" stop-color="#F97316"/></linearGradient>
+            <linearGradient id="grad-charts-line" x1="0" y1="1" x2="1" y2="0"><stop stop-color="#7C3AED"/><stop offset="1" stop-color="#10B981"/></linearGradient>
+          </defs>
+          <rect x="8"  y="24" width="7" height="16" rx="2" fill="url(#grad-charts-bar1)"/>
+          <rect x="20" y="16" width="7" height="24" rx="2" fill="url(#grad-charts-bar2)"/>
+          <rect x="32" y="10" width="7" height="30" rx="2" fill="url(#grad-charts-bar3)"/>
+          <path d="M8 30 L23 18 L35 26 L39 20" fill="none" stroke="url(#grad-charts-line)" stroke-width="2.5"/>
+          <circle cx="8"  cy="30" r="2" fill="#7C3AED"/><circle cx="23" cy="18" r="2" fill="#7C3AED"/>
+          <circle cx="35" cy="26" r="2" fill="#7C3AED"/><circle cx="39" cy="20" r="2" fill="#7C3AED"/>
+        </svg>
+      </div>
+      <div class="font-semibold">Charts</div>
+      <div class="text-xs text-gray-500 group-hover:text-gray-600 mt-1">Open client charts</div>
+    </a>
+
+    <!-- Clients -->
+    <a href="{{ url_for('clients.clients') }}"
+       class="group bg-white rounded-2xl shadow hover:shadow-xl transition p-5 text-center ring-1 ring-gray-100 hover:ring-figurella/30">
+      <div class="mx-auto mb-3 h-16 w-16 rounded-2xl grid place-items-center shadow-inner bg-gradient-to-br from-sky-100 to-cyan-200">
+        <svg viewBox="0 0 48 48" width="32" height="32" aria-hidden="true">
+          <defs>
+            <linearGradient id="grad-clients-a" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#0EA5E9"/><stop offset="1" stop-color="#22D3EE"/></linearGradient>
+            <linearGradient id="grad-clients-b" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#6366F1"/><stop offset="1" stop-color="#A78BFA"/></linearGradient>
+          </defs>
+          <circle cx="29" cy="18" r="7" fill="url(#grad-clients-b)"/>
+          <path d="M22 30c1-4 4.5-7 8-7s7 3 8 7v4H22v-4z" fill="url(#grad-clients-b)"/>
+          <circle cx="19" cy="20" r="8" fill="url(#grad-clients-a)"/>
+          <path d="M7 34c1.2-5.5 6-9 12-9s10.8 3.5 12 9v5H7v-5z" fill="url(#grad-clients-a)"/>
+        </svg>
+      </div>
+      <div class="font-semibold">Clients</div>
+      <div class="text-xs text-gray-500 group-hover:text-gray-600 mt-1">View and manage clients</div>
+    </a>
+
+    <!-- Figurella Reports -->
+    <a href="{{ url_for('reports_bp.reports_home') }}"
+       class="group bg-white rounded-2xl shadow hover:shadow-xl transition p-5 text-center ring-1 ring-gray-100 hover:ring-figurella/30">
+      <div class="mx-auto mb-3 h-16 w-16 rounded-2xl grid place-items-center shadow-inner bg-gradient-to-br from-amber-100 to-orange-200">
+        <svg viewBox="0 0 48 48" width="32" height="32" aria-hidden="true">
+          <defs>
+            <linearGradient id="grad-reports" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#F59E0B"/><stop offset="1" stop-color="#F97316"/></linearGradient>
+            <linearGradient id="grad-reports-accent" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#34D399"/><stop offset="1" stop-color="#10B981"/></linearGradient>
+          </defs>
+          <path d="M14 8h16l6 6v22a4 4 0 0 1-4 4H14a4 4 0 0 1-4-4V12a4 4 0 0 1 4-4z" fill="url(#grad-reports)"/>
+          <path d="M30 8v6h6" fill="#fff" fill-opacity=".55"/>
+          <rect x="16" y="20" width="16" height="3" rx="1.5" fill="#fff"/>
+          <rect x="16" y="26" width="16" height="3" rx="1.5" fill="#fff" opacity=".9"/>
+          <rect x="16" y="32" width="10" height="3" rx="1.5" fill="url(#grad-reports-accent)"/>
+        </svg>
+      </div>
+      <div class="font-semibold">Figurella Reports</div>
+      <div class="text-xs text-gray-500 group-hover:text-gray-600 mt-1">Access and review reports</div>
+    </a>
+
+    <!-- Daily Check-in -->
+    <a href="{{ url_for('daily_checkin.report_home') }}"
+       class="group bg-white rounded-2xl shadow hover:shadow-xl transition p-5 text-center ring-1 ring-gray-100 hover:ring-figurella/30">
+      <div class="mx-auto mb-3 h-16 w-16 rounded-2xl grid place-items-center shadow-inner bg-gradient-to-br from-emerald-100 to-teal-200">
+        <svg viewBox="0 0 48 48" width="32" height="32" aria-hidden="true">
+          <defs>
+            <linearGradient id="grad-checkin" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#10B981"/><stop offset="1" stop-color="#34D399"/></linearGradient>
+            <linearGradient id="grad-clip" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#60A5FA"/><stop offset="1" stop-color="#3B82F6"/></linearGradient>
+          </defs>
+          <path d="M14 10h20a3 3 0 0 1 3 3v24a3 3 0 0 1-3 3H14a3 3 0 0 1-3-3V13a3 3 0 0 1 3-3z" fill="url(#grad-checkin)"/>
+          <rect x="20" y="6" width="8" height="6" rx="3" fill="url(#grad-clip)"/>
+          <path d="M19 27l4 4 8-9" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <div class="font-semibold">Daily Check-in</div>
+      <div class="text-xs text-gray-500 group-hover:text-gray-600 mt-1">Submit today's check-in</div>
+    </a>
+
+    <!-- Calendar -->
+    <a href="{{ url_for('calendar.view_calendar') }}"
+       class="group bg-white rounded-2xl shadow hover:shadow-xl transition p-5 text-center ring-1 ring-gray-100 hover:ring-figurella/30">
+      <div class="mx-auto mb-3 h-16 w-16 rounded-2xl grid place-items-center shadow-inner bg-gradient-to-br from-violet-100 to-indigo-200">
+        <svg viewBox="0 0 48 48" width="32" height="32" aria-hidden="true">
+          <defs>
+            <linearGradient id="grad-calendar-body" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#8B5CF6"/><stop offset="1" stop-color="#60A5FA"/></linearGradient>
+            <linearGradient id="grad-calendar-header" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#EC4899"/><stop offset="1" stop-color="#F59E0B"/></linearGradient>
+          </defs>
+          <rect x="8" y="10" width="32" height="28" rx="4" fill="url(#grad-calendar-body)"/>
+          <rect x="8" y="10" width="32" height="8" rx="4" fill="url(#grad-calendar-header)"/>
+          <circle cx="17" cy="8" r="3" fill="#fff"/><circle cx="31" cy="8" r="3" fill="#fff"/>
+          <rect x="14" y="22" width="6" height="6" rx="1.5" fill="#fff" opacity=".95"/>
+          <rect x="24" y="22" width="6" height="6" rx="1.5" fill="#fff" opacity=".95"/>
+          <rect x="14" y="30" width="6" height="6" rx="1.5" fill="#fff" opacity=".95"/>
+          <rect x="24" y="30" width="6" height="6" rx="1.5" fill="#fff" opacity=".95"/>
+        </svg>
+      </div>
+      <div class="font-semibold">Calendar</div>
+      <div class="text-xs text-gray-500 group-hover:text-gray-600 mt-1">View & schedule events</div>
+    </a>
+
+  </div>
+
+  <!-- Notifications (Today) -->
+  <div id="home-notifications" class="mt-8">
+    <div class="flex items-center justify-between">
+      <h2 class="text-lg font-semibold">Notifications</h2>
+      <div id="notif-subtitle" class="text-xs text-gray-500">Today</div>
+    </div>
+    <ul id="notif-list" class="divide-y rounded-xl border bg-white mt-2"></ul>
   </div>
 </div>
 
-<!-- Chart.js CDN -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script>
-  async function loadChart() {
-    try {
-      const res = await fetch('/ai/chart-data');
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const { data } = await res.json();
-      const labels     = data.map(r => r.Date);
-      const salesData  = data.map(r => r.Revenue);
-      const leadsData  = data.map(r => r.Leads);
-      const attendData = data.map(r => r.Attendance);
+<!-- Toast root -->
+<div id="toast-root" class="fixed right-4 bottom-4 space-y-2 z-50 pointer-events-none"></div>
 
-      new Chart(
-        document.getElementById('trendChart').getContext('2d'),
-        {
-          type: 'line',
-          data: {
-            labels,
-            datasets: [
-              { label: 'Sales',      data: salesData,  fill: false, borderWidth: 2 },
-              { label: 'Leads',      data: leadsData,  fill: false, borderWidth: 2 },
-              { label: 'Attendance', data: attendData, fill: false, borderWidth: 2 },
-            ]
-          },
-          options: {
-            responsive: true,
-            scales: { y: { beginAtZero: true } }
-          }
-        }
-      );
+<script>
+(function() {
+  const list = document.getElementById('notif-list');
+  const subtitle = document.getElementById('notif-subtitle');
+  const toastRoot = document.getElementById('toast-root');
+
+  // ===== Local "Done" persistence (works even if backend doesn't save) =====
+  const DONE_STORE_KEY = 'fc_done_occurrences_v1';
+  function loadDoneSet() {
+    try { return new Set(JSON.parse(localStorage.getItem(DONE_STORE_KEY) || '[]')); }
+    catch { return new Set(); }
+  }
+  function saveDoneSet(set) {
+    try { localStorage.setItem(DONE_STORE_KEY, JSON.stringify([...set])); } catch {}
+  }
+  const doneSet = loadDoneSet();
+  function doneKey(id, occISO) { return `${String(id)}|${occISO}`; }
+
+  // ===== Helpers =====
+  function todayRangeISO() {
+    const start = new Date(); start.setHours(0,0,0,0);
+    const end = new Date();   end.setHours(23,59,59,999);
+    return { start: start.toISOString(), end: end.toISOString(), label: start.toLocaleDateString() };
+  }
+  function ensureEmptyState() {
+    if (list.childElementCount === 0) {
+      const li = document.createElement('li');
+      li.className = 'p-4 text-sm text-gray-500';
+      li.textContent = 'No tasks scheduled for today.';
+      list.appendChild(li);
+    }
+  }
+  function timeRangeText(ev) {
+    if (ev.allDay) return 'All day';
+    const s = new Date(ev.start);
+    const e = ev.end ? new Date(ev.end) : null;
+    const fmt = (d) => d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+    return e ? `${fmt(s)} – ${fmt(e)}` : fmt(s);
+  }
+  function toast(title, body) {
+    const el = document.createElement('div');
+    el.className = 'pointer-events-auto bg-gray-900 text-white rounded-xl shadow px-4 py-3 max-w-sm';
+    el.innerHTML = `<div class="font-semibold">⏰ ${title}</div>
+                    <div class="text-sm opacity-80">${body || ''}</div>`;
+    toastRoot.appendChild(el);
+    setTimeout(() => el.remove(), 6000);
+  }
+
+  // ===== API helper: mark done on server if available (recurring-aware) =====
+  async function apiMarkDone(id, occurrenceStart) {
+    try {
+      // Preferred PATCH routes (recurrence aware)
+      const url = occurrenceStart
+        ? `/calendar/api/events/${id}:${encodeURIComponent(occurrenceStart)}`
+        : `/calendar/api/events/${id}`;
+      const res = await fetch(url, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ completed: true, occurrenceStart: occurrenceStart || null })
+      });
+      if (res.ok) return true;
+
+      // Fallback to legacy /complete if your server only has that
+      const res2 = await fetch(`/calendar/api/events/${id}/complete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ completed: true, occurrenceStart: occurrenceStart || null })
+      });
+      return res2.ok;
     } catch (e) {
-      console.error('Chart load error:', e);
+      console.warn('apiMarkDone failed (using local fallback only):', e);
+      return false; // local cache will still keep it hidden
     }
   }
 
-  document.addEventListener('DOMContentLoaded', loadChart);
+  // ===== Render one notification row =====
+  function renderTask(ev) {
+    const li = document.createElement('li');
+    li.className = 'p-3 flex items-start gap-3';
+    li.dataset.eventId = ev.id;
+
+    const whenText = timeRangeText(ev);
+    li.innerHTML = `
+      <div class="shrink-0 mt-1">📅</div>
+      <div class="grow">
+        <div class="font-medium">${ev.title || '(Untitled)'}</div>
+        <div class="text-sm text-gray-600">${whenText}</div>
+        ${ev.extendedProps?.location ? `<div class="text-xs text-gray-500">Location: ${ev.extendedProps.location}</div>` : ''}
+        ${ev.extendedProps?.assignee ? `<div class="text-xs text-gray-500">Assignee: ${ev.extendedProps.assignee}</div>` : ''}
+      </div>
+      <button class="ml-auto inline-flex items-center gap-1 px-2 py-1 rounded-md border text-gray-500 hover:text-green-600 hover:border-green-300 transition"
+              title="Mark complete">
+        <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm3.707-9.707a1 1 0 0 0-1.414-1.414L9 10.172 7.707 8.879a1 1 0 0 0-1.414 1.414l2 2a1 1 0 0 0 1.414 0l4-4Z" clip-rule="evenodd"/>
+        </svg>
+        <span class="text-xs">Done</span>
+      </button>
+    `;
+
+    li.querySelector('button').addEventListener('click', async () => {
+      const occurrenceStart = ev.occurrenceStart || ev.start; // concrete instance
+      const key = doneKey(ev.id, occurrenceStart);
+
+      // 1) Persist locally so it never comes back on this browser
+      doneSet.add(key);
+      saveDoneSet(doneSet);
+
+      // 2) Best-effort persist on server (if endpoints exist)
+      await apiMarkDone(ev.id, occurrenceStart);
+
+      // 3) Update UI immediately
+      li.remove();
+      ensureEmptyState();
+
+      // 4) If calendar is open elsewhere, flip its dot to green and refresh
+      if (window.markCalendarEventDone) window.markCalendarEventDone(ev.id, occurrenceStart);
+      if (window.dispatchEvent) window.dispatchEvent(new Event('calendar:refresh'));
+    });
+
+    list.appendChild(li);
+  }
+
+  // ===== Load today's notifications =====
+  async function loadToday() {
+    const { start, end, label } = todayRangeISO();
+    subtitle.textContent = `Today • ${label}`;
+
+    try {
+      const qs = new URLSearchParams({ start, end });
+      const res = await fetch(`/calendar/api/events?${qs.toString()}`);
+      const data = await res.json();
+
+      // Filter out completed: server-side flags OR local cache
+      const tasks = (data || []).filter(ev => {
+        const ep = ev.extendedProps || {};
+        const occISO = ev.occurrenceStart || ev.start;
+        const serverList = Array.isArray(ep.completedOn) ? ep.completedOn
+                         : Array.isArray(ep.completed_on) ? ep.completed_on
+                         : [];
+        const serverDone = !!ep.completed || (occISO && serverList.indexOf(occISO) !== -1);
+        const localDone  = occISO ? doneSet.has(doneKey(ev.id, occISO)) : false;
+        return !(serverDone || localDone);
+      });
+
+      tasks.sort((a,b) => new Date(a.start) - new Date(b.start));
+
+      list.innerHTML = '';
+      tasks.forEach(renderTask);
+      ensureEmptyState();
+
+      // Optional housekeeping: prune local done keys that are no longer in today's data
+      const todayKeys = new Set(tasks.map(ev => doneKey(ev.id, ev.occurrenceStart || ev.start)));
+      const allTodayCandidates = new Set((data || []).map(ev => doneKey(ev.id, ev.occurrenceStart || ev.start)));
+      let mutated = false;
+      [...doneSet].forEach(k => {
+        // If a key refers to something outside today's window, leave it.
+        // If it refers to today but the event disappeared server-side, keep it (still "done").
+        // No pruning needed unless you want to limit cache size.
+      });
+      if (mutated) saveDoneSet(doneSet);
+    } catch (e) {
+      console.error('Failed to load today tasks', e);
+      list.innerHTML = '';
+      ensureEmptyState();
+    }
+  }
+
+  // ===== Optional: background toasts =====
+  async function pollToasts() {
+    try {
+      const res = await fetch('/calendar/api/alarms?within=60&grace=5&include_events=1&fallback_events=0&limit=25');
+      const items = await res.json();
+      (items || []).forEach(item => {
+        const when = new Date(item.when).toLocaleString();
+        toast(item.title, `${item.kind === 'reminder' ? 'Reminder' : 'Starts soon'} • ${when}`);
+      });
+    } catch (e) {
+      console.error('toast poll error', e);
+    }
+  }
+
+  // Initial load + refresh
+  loadToday();
+  setInterval(loadToday, 60000);
+  setInterval(pollToasts, 30000);
+})();
 </script>
+
 {% endblock %}

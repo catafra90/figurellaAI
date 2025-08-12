@@ -1,13 +1,17 @@
+# app/common/scrape_payments_done.py
+
 import sys
-import os
 import time
-import pandas as pd
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 from io import StringIO
-from playwright.sync_api import sync_playwright
+
+import pandas as pd
 import win32clipboard
+from playwright.sync_api import sync_playwright
+
 from app.common.cleaners import drop_unwanted_rows
+from app.common.utils    import persist_report
 
 LOGIN_URL = "https://newton.hosting.memetic.it/login"
 USERNAME  = "Tutor"
@@ -16,8 +20,8 @@ PASSWORD  = "FiguMass2025$"
 
 def get_date_range(months_back: int = 6, months_forward: int = 6):
     """
-    Return (from_date, to_date) covering `months_back` months ago to `months_forward` months ahead.
-    Format: MM/DD/YYYY
+    Return (from_date, to_date) covering `months_back` months ago to
+    `months_forward` months ahead. Format: MM/DD/YYYY
     """
     today = datetime.today()
     return (
@@ -29,17 +33,19 @@ def get_date_range(months_back: int = 6, months_forward: int = 6):
 def login(page):
     page.goto(LOGIN_URL)
     page.wait_for_load_state("networkidle")
-    page.wait_for_selector("#txtUsername", timeout=10000)
+    page.wait_for_selector("#txtUsername", timeout=10_000)
     page.fill("#txtUsername", USERNAME)
     page.fill("#txtPassword", PASSWORD)
     page.click("#btnAccedi")
-    page.wait_for_selector("text=Reports", timeout=15000)
+    page.wait_for_selector("text=Reports", timeout=15_000)
 
 
 def scrape_payments_done(from_date: str, to_date: str) -> pd.DataFrame:
     """
     Scrape the Payments Done report for the date range and return a cleaned DataFrame.
     """
+    table_html = None
+
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         ctx     = browser.new_context()
@@ -47,14 +53,14 @@ def scrape_payments_done(from_date: str, to_date: str) -> pd.DataFrame:
 
         login(page)
         page.click("text=Reports")
-        page.wait_for_timeout(1000)
-        page.click("text=Payments done", timeout=15000)
-        page.wait_for_timeout(1000)
+        page.wait_for_timeout(1_000)
+        page.click("text=Payments done", timeout=15_000)
+        page.wait_for_timeout(1_000)
 
         page.fill("#ctl00_cphMain_SelectDataDal_txtDataSel", from_date)
         page.fill("#ctl00_cphMain_SelectDataAl_txtDataSel", to_date)
         page.click("text=Do Report")
-        page.wait_for_selector("#ctl00_cphMain_hlyDownloadHTML", timeout=15000)
+        page.wait_for_selector("#ctl00_cphMain_hlyDownloadHTML", timeout=15_000)
 
         href = page.get_attribute("#ctl00_cphMain_hlyDownloadHTML", "href")
         url  = f"https://newton.hosting.memetic.it/assist/{href}" if href else page.url
@@ -64,16 +70,17 @@ def scrape_payments_done(from_date: str, to_date: str) -> pd.DataFrame:
         time.sleep(2)
 
         # select table containing headers 'Expected' and 'Cash In'
-        table_html = None
         for tbl in report_page.locator("table").all():
             html = tbl.evaluate("el => el.outerHTML")
             if 'Expected' in html and 'Cash In' in html:
                 table_html = html
                 break
+
         browser.close()
-        if not table_html:
-            print("❌ Payments Done table not found.")
-            return pd.DataFrame()
+
+    if not table_html:
+        print("❌ Payments Done table not found.")
+        return pd.DataFrame()
 
     # copy via clipboard for encoding safety
     win32clipboard.OpenClipboard()
@@ -116,14 +123,17 @@ def main():
         print("⚠️ No data scraped.")
         return
 
-    # save cleaned output
-    out_dir = "downloads/payments_done"
-    os.makedirs(out_dir, exist_ok=True)
-    safe_from = from_date.replace("/", "-")
-    safe_to   = to_date.replace("/", "-")
-    out_path  = os.path.join(out_dir, f"payments_done_{safe_from}_{safe_to}.xlsx")
-    df.to_excel(out_path, index=False)
-    print(f"✅ Saved cleaned Payments Done report to {out_path}")
+    # persist to DB + history (disable Excel exports once fully DB-driven)
+    section_data = {"Payments Done": df}
+    persist_report(
+        section_data,
+        report_key="payments_done",
+        to_db=True,
+        to_static_excel=False,
+        to_download_excel=False
+    )
+
+    print("✅ Payments Done persisted to database.")
 
 
 if __name__ == "__main__":

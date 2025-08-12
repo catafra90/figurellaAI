@@ -1,36 +1,131 @@
+{# templates/figurella_reports/report_home.html #}
 {% extends "base.html" %}
 
+{% block extra_head %}
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css">
+  <style>
+    html, body { margin:0; padding:0; height:100%; overflow:hidden; }
+    #home-main { position:absolute; top:64px; bottom:44px; left:0; right:0; display:flex; overflow:hidden; }
+
+    /* Left pane (cards) */
+    #home-pane {
+      position:absolute; top:0; bottom:0; left:0;
+      width:48%; transition: transform .3s ease;
+      z-index:1000;
+    }
+    #home-pane.collapsed { transform: translateX(-100%); }
+
+    /* Pull-tab */
+    #pull-tab {
+      position:absolute; top:0; bottom:0; left:0;
+      width:43px; background:#e5e7eb; cursor:pointer;
+      display:none; z-index:1001;
+    }
+    #home-pane.collapsed + #pull-tab { display:block; }
+    #pull-tab::after {
+      content: "Reports";
+      writing-mode: vertical-rl;
+      transform: translate(-50%,-50%) rotate(180deg);
+      position:absolute; top:50%; left:50%;
+      font-weight:bold; color:#ec4899;
+      pointer-events:none;
+    }
+
+    /* Right blank panel */
+    #blank-panel {
+      position:absolute; top:0; bottom:0;
+      left:48%; right:0; padding:1rem;
+      box-sizing:border-box;
+      transition:left .3s ease;
+    }
+    #home-pane.collapsed ~ #pull-tab + #blank-panel {
+      left:43px;
+    }
+
+    /* Panel styling */
+    .panel {
+      background:white;
+      border-radius:.75rem;
+      box-shadow:0 0 16px rgba(0,0,0,0.15);
+      padding:1rem; box-sizing:border-box;
+      display:flex; flex-direction:column;
+      height:100%;
+    }
+
+    /* Cards grid overrides */
+    #cards-grid {
+      display:grid;
+      grid-template-columns:repeat(1,1fr);
+      gap:1.5rem;
+    }
+    @media (min-width: 640px) { /* sm */
+      #cards-grid { grid-template-columns:repeat(2,1fr); }
+    }
+    @media (min-width: 1024px) { /* lg */
+      #cards-grid { grid-template-columns:repeat(3,1fr); }
+    }
+  </style>
+{% endblock %}
+
 {% block content %}
-<div class="p-4">
-  <div class="flex items-center justify-between mb-6">
-    <h1 class="text-2xl font-bold">Figurella Reports</h1>
-    <form method="post" action="{{ url_for('reports_bp.refresh_all_reports') }}">
-      <button type="submit"
-              class="px-4 py-2 bg-figurella text-white rounded-lg shadow hover:bg-pink-700 transition">
-        🔄 Refresh All
-      </button>
-    </form>
+<main id="home-main">
+  <!-- LEFT: cards pane -->
+  <div id="home-pane" class="panel">
+    <div class="flex items-center justify-between mb-6">
+      <h1 class="text-2xl font-bold text-figurella">Figurella Reports</h1>
+      <div class="space-x-2">
+        <button id="toggle-pane" class="px-2 py-1 bg-gray-200 hover:bg-gray-300 rounded">
+          <i class="bi bi-chevron-left"></i>
+        </button>
+        <form method="post" action="{{ url_for('reports_bp.refresh_all_reports') }}">
+          <button type="submit"
+                  class="px-4 py-1 bg-figurella text-white rounded hover:bg-pink-600 transition">
+            🔄 Refresh All
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <div id="cards-grid">
+      {% for c in cards %}
+        <a href="{{ url_for('reports_bp.view_history', report_name=c.label) }}"
+           class="bg-white rounded-xl shadow p-6 flex flex-col items-center hover:shadow-lg transition">
+          <div class="p-4 bg-green-50 rounded-full mb-3">
+            <i class="bi {{ c.icon }} text-2xl text-figurella"></i>
+          </div>
+          <span class="font-semibold">{{ c.label }}</span>
+        </a>
+      {% endfor %}
+    </div>
   </div>
 
-  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-    {% for report_name, history_file in reports.items() %}
-      <div class="bg-white rounded-xl shadow p-6 flex flex-col items-center">
-        <!-- Icon now links to the in-browser history view -->
-        <a href="{{ url_for('reports_bp.view_history', report_name=report_name) }}"
-           class="block mb-3 hover:opacity-80 transition">
-          {% set icon_path = 'icons/' + report_name + '.png' %}
-          <img src="{{ url_for('static', filename=icon_path) }}"
-               alt="{{ report_name }} History"
-               class="h-16" />
-        </a>
-        <span class="font-semibold mt-2">{{ report_name }}</span>
-      </div>
-    {% endfor %}
+  <!-- Pull-tab & blank right panel -->
+  <div id="pull-tab"></div>
+  <div id="blank-panel" class="panel">
+    <!-- intentionally blank -->
   </div>
-</div>
+</main>
 {% endblock %}
 
 {% block scripts %}
   {{ super() }}
-  <!-- no additional scripts needed here -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script>
+    $(function(){
+      // Toggle collapse of left pane
+      function setIcon(){
+        const icon = $('#toggle-pane i');
+        if ($('#home-pane').hasClass('collapsed')) {
+          icon.removeClass('bi-chevron-left').addClass('bi-chevron-right');
+        } else {
+          icon.removeClass('bi-chevron-right').addClass('bi-chevron-left');
+        }
+      }
+      $('#toggle-pane, #pull-tab').on('click', () => {
+        $('#home-pane').toggleClass('collapsed');
+        setIcon();
+      });
+      setIcon();
+    });
+  </script>
 {% endblock %}

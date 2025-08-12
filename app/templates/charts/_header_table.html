@@ -1,112 +1,157 @@
-{# ─── templates/charts/_header_table.html ─── #}
+{# ─── templates/charts/_header_table.html (revised) ─── #}
 
-{# 1️⃣ Load the “profile” sheet and its data rows #}
-{% set prof      = sheets['profile'] %}
-{% set data      = prof.data %}
+{# Safe access #}
+{% set prof = sheets.get('profile') or {'data': []} %}
+{% set data = prof.data or [] %}
+{% set pdata = data %}
 
-{# 2️⃣ Safely pick the first four rows for Goals & Weights #}
-{% set row0      = data[0] if data|length > 0 else {} %}
-{% set row1      = data[1] if data|length > 1 else {} %}
-{% set row2      = data[2] if data|length > 2 else {} %}
-{% set row3      = data[3] if data|length > 3 else {} %}
+{# Pull the first four rows for goals/weights (same as before) #}
+{% set row0 = data[0] if data|length > 0 else {} %}
+{% set row1 = data[1] if data|length > 1 else {} %}
+{% set row2 = data[2] if data|length > 2 else {} %}
+{% set row3 = data[3] if data|length > 3 else {} %}
 
-{# 3️⃣ Map those rows into template vars #}
-{#    – row0: Goals          (stored under column “Value”)      #}
-{% set goals         = row0.get('Value', '')        %}
+{% set goals         = row0.get('Value','') %}
+{% set init_date     = row1.get('Date','') %}
+{% set init_weight   = row1.get('Weight','') %}
+{% set lowest_date   = row2.get('Date','') %}
+{% set lowest_weight = row2.get('Weight','') %}
+{% set target_date   = row3.get('Date','') %}
+{% set target_weight = row3.get('Weight','') %}
 
-{#    – row1: Initial Weight (Date & Weight columns)             #}
-{% set init_date     = row1.get('Date', '')         %}
-{% set init_weight   = row1.get('Weight', '')       %}
-
-{#    – row2: Lowest Weight (Date & Weight columns)              #}
-{% set lowest_date   = row2.get('Date', '')         %}
-{% set lowest_weight = row2.get('Weight', '')       %}
-
-{#    – row3: Target Weight (Date & Weight columns)              #}
-{% set target_date   = row3.get('Date', '')         %}
-{% set target_weight = row3.get('Weight', '')       %}
-
-{# 4️⃣ Build the Frequency array from the row whose Field == “Frequency” #}
-{% set freq_row = (data | selectattr('Field','equalto','Frequency') | list | first) or {} %}
-{% set freq     = [
-  freq_row.get('Jan.', ''), freq_row.get('Feb.', ''), freq_row.get('Mar.', ''),
-  freq_row.get('Apr.', ''),  freq_row.get('May', ''),   freq_row.get('June', ''),
-  freq_row.get('July', ''),  freq_row.get('Aug.', ''),  freq_row.get('Sept.', ''),
-  freq_row.get('Oct.', ''),   freq_row.get('Nov.', ''),  freq_row.get('Dec.', '')
+{# Normalize month keys: first item = canonical key stored in DB (no dot),
+   second item = label that may appear in old data/render ("Jan." etc). #}
+{% set months = [
+  ('Jan','Jan.'), ('Feb','Feb.'), ('Mar','Mar.'), ('Apr','Apr.'),
+  ('May','May'), ('June','June'), ('July','July'),
+  ('Aug','Aug.'), ('Sept','Sept.'), ('Oct','Oct.'), ('Nov','Nov.'), ('Dec','Dec.')
 ] %}
 
-{# 5️⃣ Pull in Session Details rows: Expiration & Last Session #}
-{% set exp_row       = (data | selectattr('Field','equalto','Expiration / Remaining') | list | first) or {} %}
-{% set expiration    = exp_row.get('Value', '') %}
+{# Frequency row is whatever row has Field == 'Frequency' #}
+{% set freq_row = (data | selectattr('Field','equalto','Frequency') | list | first) or {} %}
 
-{% set ls_row        = (data | selectattr('Field','equalto','First Session Date (Current Package)') | list | first) or {} %}
-{% set last_session  = ls_row.get('Value', '') %}
+{# Session details with fallback label for First Session #}
+{% set exp_row = (data | selectattr('Field','equalto','Expiration / Remaining') | list | first) or {} %}
+{% set expiration = exp_row.get('Value','') %}
 
-{# ─── Custom CSS to hide default <details> marker ─── #}
+{# Accept either legacy "First Session Date (Current Package)" or new "First Session Date" #}
+{% set ls_row =
+  (data | selectattr('Field','equalto','First Session Date') | list | first)
+  or
+  (data | selectattr('Field','equalto','First Session Date (Current Package)') | list | first)
+  or {}
+%}
+{% set last_session = ls_row.get('Value','') %}
+
+{# ─── Read existing Nutrition/Focus flags ─── #}
+{% set qf_nutrition = (pdata | selectattr('Field','equalto','Nutrition Flag') | list | first) or {} %}
+{% set qf_focus     = (pdata | selectattr('Field','equalto','Focus Case Flag') | list | first) or {} %}
+{% set nutri_on     = (qf_nutrition.get('Flag', False) and qf_nutrition.get('Flag') != 'No') %}
+{% set focus_on     = (qf_focus.get('Flag', False) and qf_focus.get('Flag') != 'No') %}
+
 <style>
-  details summary                { list-style: none; cursor: pointer; }
-  details summary::-webkit-details-marker { display: none; }
-  details summary::marker        { display: none; }
+  details summary { list-style: none; cursor: pointer; }
+  details summary::-webkit-details-marker, details summary::marker { display: none; }
+
+  /* Tiny flair for the quick-flag buttons */
+  .flag-btn { transition: transform .05s ease, box-shadow .2s ease; }
+  .flag-btn:hover { transform: translateY(-1px); }
+  .flag-btn.on { box-shadow: 0 6px 18px rgba(236,72,153,.35); }
 </style>
 
-{# ─── Markup begins ─── #}
 <div class="space-y-6">
   <details open class="bg-white rounded-lg shadow transition-colors duration-200">
     <summary class="px-6 py-4 text-lg font-semibold bg-pink-100 hover:bg-pink-200">
       Client Profile
     </summary>
+
     <div class="px-6 pb-6 space-y-6 border-t border-gray-200">
 
+      {# ─── NEW: Quick Flags row (small icons) ─── #}
+      <div class="mt-2">
+        <div class="flex items-center gap-3 flex-wrap">
+
+          <!-- Nutrition Flag -->
+          <div class="flag-group inline-flex items-center gap-2">
+            <button
+              type="button"
+              class="flag-btn inline-flex items-center gap-2 px-3 py-1 rounded-full border text-sm
+                     {% if nutri_on %} bg-pink-600 border-pink-700 text-white on {% else %}
+                     bg-gray-100 border-gray-300 text-gray-800 hover:bg-gray-200 {% endif %}">
+              <span class="text-base leading-none">🍎</span>
+              <span class="font-medium">Nutrition</span>
+            </button>
+            <input type="checkbox" name="flag_nutrition" class="sr-only" {% if nutri_on %}checked{% endif %}/>
+          </div>
+
+          <!-- Focus Case Flag -->
+          <div class="flag-group inline-flex items-center gap-2">
+            <button
+              type="button"
+              class="flag-btn inline-flex items-center gap-2 px-3 py-1 rounded-full border text-sm
+                     {% if focus_on %} bg-pink-600 border-pink-700 text-white on {% else %}
+                     bg-gray-100 border-gray-300 text-gray-800 hover:bg-gray-200 {% endif %}">
+              <span class="text-base leading-none">🎯</span>
+              <span class="font-medium">Focus Case</span>
+            </button>
+            <input type="checkbox" name="flag_focus_case" class="sr-only" {% if focus_on %}checked{% endif %}/>
+          </div>
+
+        </div>
+      </div>
+      {# ─── END Quick Flags ─── #}
+
       {# ─── Goals ─── #}
-      <div class="flex items-center space-x-4 mt-4">
+      <div class="flex items-center space-x-4 mt-2">
         <span class="font-medium w-1/4">Goals:</span>
-        <textarea
-          name="goals"
-          class="w-80 h-16 border border-gray-300 rounded px-2 py-4 resize-none"
-        >{{ goals }}</textarea>
+        <textarea name="goals" class="w-80 h-16 border border-gray-300 rounded px-2 py-4 resize-none">{{ goals }}</textarea>
       </div>
 
       {# ─── Weights (Initial / Lowest / Target) ─── #}
       <div class="space-y-4">
         <div class="flex items-center space-x-4">
           <span class="font-medium w-1/4">Initial Weight</span>
-          <input type="date" name="init_date"  value="{{ init_date }}"  class="w-48 border rounded px-2 py-1"/>
-          <input type="text" name="init_weight" value="{{ init_weight }}" class="w-32 border rounded px-2 py-1" placeholder="Weight"/>
+          <input type="date" name="init_date"    value="{{ init_date }}"   class="w-48 border rounded px-2 py-1"/>
+          <input type="text" name="init_weight"  value="{{ init_weight }}" class="w-32 border rounded px-2 py-1" placeholder="Weight"/>
         </div>
         <div class="flex items-center space-x-4">
           <span class="font-medium w-1/4">Lowest Weight</span>
-          <input type="date" name="lowest_date" value="{{ lowest_date }}" class="w-48 border rounded px-2 py-1"/>
+          <input type="date" name="lowest_date"  value="{{ lowest_date }}" class="w-48 border rounded px-2 py-1"/>
           <input type="text" name="lowest_weight" value="{{ lowest_weight }}" class="w-32 border rounded px-2 py-1" placeholder="Weight"/>
         </div>
         <div class="flex items-center space-x-4">
           <span class="font-medium w-1/4">Target Weight</span>
-          <input type="date" name="target_date" value="{{ target_date }}" class="w-48 border rounded px-2 py-1"/>
+          <input type="date" name="target_date"  value="{{ target_date }}" class="w-48 border rounded px-2 py-1"/>
           <input type="text" name="target_weight" value="{{ target_weight }}" class="w-32 border rounded px-2 py-1" placeholder="Weight"/>
         </div>
       </div>
 
-      {# ─── Frequency Table ─── #}
+      {# ─── Frequency Table (labels with dots; keys without dots) ─── #}
       <div class="overflow-x-auto">
-        <table class="min-w-full border-collapse text-sm text-center">
+        <table id="frequency-table" class="min-w-full border-collapse text-sm text-center">
           <caption class="text-lg font-semibold mb-2">Frequency</caption>
           <thead class="bg-gray-100 font-semibold">
             <tr>
-              {% for mon in ['Jan.','Feb.','Mar.','Apr.','May','June','July','Aug.','Sept.','Oct.','Nov.','Dec.'] %}
-                <th class="border px-2 py-1">{{ mon }}</th>
+              {% for short,label in months %}
+                <th class="border px-2 py-1">{{ label }}</th>
               {% endfor %}
             </tr>
           </thead>
           <tbody>
             <tr>
-              {% for v in freq %}
-                <td class="border px-2 py-2" contenteditable="true">{{ v }}</td>
+              {% for short,label in months %}
+                {# read back either normalized ('Sept') or legacy dotted ('Sept.') #}
+                {% set cell_val = freq_row.get(short) or freq_row.get(label) or '' %}
+                <td class="border px-2 py-2"
+                    data-month="{{ short }}"
+                    contenteditable="true">{{ cell_val }}</td>
               {% endfor %}
             </tr>
           </tbody>
         </table>
       </div>
 
-      {# ─── Session Details ─── #}
+      {# Session Details #}
       <div class="space-y-4">
         <div class="flex items-center space-x-4">
           <span class="font-medium w-1/4">Expiration / Remaining</span>
@@ -133,14 +178,7 @@
 </div>
 
 
-
-{# ─── Health / Injuries Sub‑section (within Profile tab) ─── #}
-
-{# 1️⃣ Load your “Profile” sheet data #}
-{% set prof   = sheets['profile'] %}
-{% set pdata  = prof.data %}
-
-{# 2️⃣ For each health field, grab its row dict or fallback to {} #}
+{# ─── Health / Injuries ─── #}
 {% set row_diabetes        = (pdata | selectattr('Field','equalto','Diabetes') | list | first) or {} %}
 {% set row_bp              = (pdata | selectattr('Field','equalto','Blood Pressure Issues') | list | first) or {} %}
 {% set row_vertigo         = (pdata | selectattr('Field','equalto','Dizziness / Vertigo') | list | first) or {} %}
@@ -155,7 +193,6 @@
 {% set row_menopause       = (pdata | selectattr('Field','equalto','Menopause – # of Years') | list | first) or {} %}
 {% set row_blood_work      = (pdata | selectattr('Field','equalto','Blood Work Alterations') | list | first) or {} %}
 
-{# 3️⃣ Extract Comment & Flag for each #}
 {% set comment_diabetes    = row_diabetes.get('Comment','') %}
 {% set flag_diabetes       = row_diabetes.get('Flag', False) %}
 
@@ -438,24 +475,17 @@
 </details>
 
 
-{# ─── Rewards / Deals (within Profile tab) ─── #}
+{# ─── Rewards / Deals ─── #}
 
-{# 1️⃣ Grab your “profile” sheet and its data rows #}
-{% set prof         = sheets['profile'] %}
-{% set pdata        = prof.data %}
-{# 2️⃣ Filter out just the Reward rows #}
+{# Only the actual rows (Field == 'Reward / Deal') render here; we ignore the header row 'Rewards / Deals' #}
 {% set reward_rows  = pdata | selectattr('Field','equalto','Reward / Deal') | list %}
 
 <script>
-// global function to append a blank reward row
 function addRewardRow() {
   const tbody  = document.querySelector('#rewards-table tbody');
   const newRow = document.createElement('tr');
   const idx    = tbody.rows.length;
-
-  // zebra stripe even rows
   if ((idx + 1) % 2 === 0) newRow.classList.add('bg-gray-50');
-
   newRow.innerHTML = `
     <td class="border px-2 py-1 text-center">
       <input type="checkbox" name="used[]" class="form-checkbox h-4 w-4 accent-pink-600"/>
@@ -469,9 +499,8 @@ function addRewardRow() {
 </script>
 
 <style>
-  /* zebra striping for reward rows */
   #rewards-table tbody tr:nth-child(even) {
-    background-color: rgba(243, 244, 246, 1);
+    background-color: rgba(243, 244, 246, 1); /* bg-gray-50 */
   }
 </style>
 
@@ -515,16 +544,11 @@ function addRewardRow() {
                   {% if row.get('Used') and row.get('Used') != 'No' %}checked{% endif %}
                 />
               </td>
-              <td class="border px-2 py-1" contenteditable="true">
-                {{ row.get('RewardDeal','') }}
-              </td>
-              <td class="border px-2 py-1" contenteditable="true">
-                {{ row.get('RewardNotes','') }}
-              </td>
+              <td class="border px-2 py-1" contenteditable="true">{{ row.get('RewardDeal','') }}</td>
+              <td class="border px-2 py-1" contenteditable="true">{{ row.get('RewardNotes','') }}</td>
             </tr>
           {% endfor %}
         {% else %}
-          {# fallback to 4 blank rows #}
           {% for i in range(4) %}
             <tr class="{% if i is even %}bg-gray-50{% endif %}">
               <td class="border px-2 py-1 text-center">
@@ -549,50 +573,29 @@ function addRewardRow() {
 </details>
 
 
-
-
-{# ─── Friends Sub‑section (in your Profile tab) ─── #}
-
-{# 1️⃣ Load your “profile” sheet rows #}
-{% set prof         = sheets['profile'] %}
-{% set pdata        = prof.data %}
-
-{# 2️⃣ Filter only the rows where Field == "Friend" #}
+{# ─── Friends ─── #}
 {% set friend_rows  = pdata | selectattr('Field','equalto','Friend') | list %}
 
 <script>
-// global function available immediately
 function addFriendRow() {
   const table    = document.getElementById('friends-table');
   const tbody    = table.querySelector('tbody');
   const rowCount = tbody.rows.length;
   const newRow   = document.createElement('tr');
-
-  // zebra‑striping
-  if ((rowCount + 1) % 2 === 0) {
-    newRow.classList.add('bg-gray-50');
-  }
-
-  // build cells via innerHTML
+  if ((rowCount + 1) % 2 === 0) newRow.classList.add('bg-gray-50');
   newRow.innerHTML = `
     <td class="border px-2 py-1 text-center">
-      <input
-        type="checkbox"
-        name="friend-selected[]"
-        class="form-checkbox h-4 w-4 accent-pink-600"
-      />
+      <input type="checkbox" name="friend-selected[]" class="form-checkbox h-4 w-4 accent-pink-600"/>
     </td>
     <td class="border px-2 py-1" contenteditable="true">&nbsp;</td>
     <td class="border px-2 py-1" contenteditable="true">&nbsp;</td>
   `;
-
   tbody.appendChild(newRow);
   newRow.scrollIntoView({ block: 'nearest' });
 }
 </script>
 
 <style>
-  /* Zebra striping */
   #friends-table tbody tr:nth-child(even) {
     background-color: rgba(243, 244, 246, 1); /* bg-gray-50 */
   }
@@ -601,11 +604,7 @@ function addFriendRow() {
 <template id="friend-row-template">
   <tr>
     <td class="border px-2 py-1 text-center">
-      <input
-        type="checkbox"
-        name="friend-selected[]"
-        class="form-checkbox h-4 w-4 accent-pink-600"
-      />
+      <input type="checkbox" name="friend-selected[]" class="form-checkbox h-4 w-4 accent-pink-600"/>
     </td>
     <td class="border px-2 py-1" contenteditable="true">&nbsp;</td>
     <td class="border px-2 py-1" contenteditable="true">&nbsp;</td>
@@ -617,10 +616,7 @@ function addFriendRow() {
     Friends
   </summary>
   <div class="px-6 pb-6 border-t border-gray-200">
-    <table
-      id="friends-table"
-      class="table-auto w-full border-collapse text-sm"
-    >
+    <table id="friends-table" class="table-auto w-full border-collapse text-sm">
       <colgroup>
         <col style="width:1%; white-space:nowrap;" />
         <col />
@@ -634,7 +630,6 @@ function addFriendRow() {
         </tr>
       </thead>
       <tbody>
-        {# 3️⃣ If you have saved friends in Excel, render them #}
         {% if friend_rows %}
           {% for row in friend_rows %}
             <tr class="{% if loop.index0 is even %}bg-gray-50{% endif %}">
@@ -646,24 +641,15 @@ function addFriendRow() {
                   {% if row.get('Select') and row.get('Select') != 'No' %}checked{% endif %}
                 />
               </td>
-              <td class="border px-2 py-1" contenteditable="true">
-                {{ row.get('FriendName','') }}
-              </td>
-              <td class="border px-2 py-1" contenteditable="true">
-                {{ row.get('FriendNotes','') }}
-              </td>
+              <td class="border px-2 py-1" contenteditable="true">{{ row.get('FriendName','') }}</td>
+              <td class="border px-2 py-1" contenteditable="true">{{ row.get('FriendNotes','') }}</td>
             </tr>
           {% endfor %}
         {% else %}
-          {# 4️⃣ Fallback: show 4 empty rows #}
           {% for i in range(4) %}
             <tr class="{% if i is even %}bg-gray-50{% endif %}">
               <td class="border px-2 py-1 text-center">
-                <input
-                  type="checkbox"
-                  name="friend-selected[]"
-                  class="form-checkbox h-4 w-4 accent-pink-600"
-                />
+                <input type="checkbox" name="friend-selected[]" class="form-checkbox h-4 w-4 accent-pink-600"/>
               </td>
               <td class="border px-2 py-1" contenteditable="true">&nbsp;</td>
               <td class="border px-2 py-1" contenteditable="true">&nbsp;</td>
@@ -682,3 +668,139 @@ function addFriendRow() {
     </button>
   </div>
 </details>
+
+<script>
+/* ------------------------------------------------------------------
+   Quick Flag buttons ↔ checkboxes (scoped, minimal, autosave-friendly)
+------------------------------------------------------------------- */
+(function () {
+  const scope = document.currentScript.closest('.space-y-6') || document;
+  scope.querySelectorAll('.flag-group').forEach(group=>{
+    const btn = group.querySelector('.flag-btn');
+    const cb  = group.querySelector('input[type="checkbox"]');
+    if (!btn || !cb) return;
+
+    function sync(){
+      btn.classList.toggle('on', cb.checked);
+      btn.classList.toggle('bg-pink-600', cb.checked);
+      btn.classList.toggle('border-pink-700', cb.checked);
+      btn.classList.toggle('text-white', cb.checked);
+      btn.classList.toggle('bg-gray-100', !cb.checked);
+      btn.classList.toggle('border-gray-300', !cb.checked);
+      btn.classList.toggle('text-gray-800', !cb.checked);
+    }
+    sync();
+
+    btn.addEventListener('click', ()=>{
+      cb.checked = !cb.checked;
+      sync();
+      // notify any outside listeners and autosave
+      cb.dispatchEvent(new Event('change', { bubbles:true }));
+      btn.closest('.chart-card')?.__saveDebounced?.();
+    });
+  });
+})();
+
+/* ------------------------------------------------------------------
+   Collector for the Profile sheet (kept for compatibility)
+   Adds Nutrition/Focus flags so other callers (if any) persist them.
+------------------------------------------------------------------- */
+(function () {
+  function txt(el) {
+    const v = (el && (el.value ?? el.textContent)) || '';
+    return String(v).replace(/\u00a0/g, ' ').trim();
+  }
+  function yesNo(checked) { return checked ? 'Yes' : 'No'; }
+
+  window.collectProfile = function collectProfile() {
+    const rows = [];
+
+    // Goals
+    const goals = txt(document.querySelector('textarea[name="goals"]'));
+    rows.push({ Field: 'Goals', Value: goals });
+
+    // Weights
+    rows.push({
+      Field:  'Initial Weight',
+      Date:   txt(document.querySelector('input[name="init_date"]')),
+      Weight: txt(document.querySelector('input[name="init_weight"]'))
+    });
+    rows.push({
+      Field:  'Lowest Weight',
+      Date:   txt(document.querySelector('input[name="lowest_date"]')),
+      Weight: txt(document.querySelector('input[name="lowest_weight"]'))
+    });
+    rows.push({
+      Field:  'Target Weight',
+      Date:   txt(document.querySelector('input[name="target_date"]')),
+      Weight: txt(document.querySelector('input[name="target_weight"]'))
+    });
+
+    // NEW: Quick Flags
+    rows.push({ Field: 'Nutrition Flag',  Flag: yesNo(!!document.querySelector('input[name="flag_nutrition"]')?.checked) });
+    rows.push({ Field: 'Focus Case Flag', Flag: yesNo(!!document.querySelector('input[name="flag_focus_case"]')?.checked) });
+
+    // Frequency (normalized month keys)
+    const freq = { Field: 'Frequency' };
+    document.querySelectorAll('#frequency-table td[data-month]')
+      .forEach(td => { freq[td.dataset.month] = txt(td); });
+    rows.push(freq);
+
+    // Session details
+    rows.push({ Field: 'Expiration / Remaining', Value: txt(document.querySelector('input[name="expiration"]')) });
+    rows.push({ Field: 'First Session Date',     Value: txt(document.querySelector('input[name="last_session"]')) });
+
+    // Health / Injuries
+    function pushHealth(field, flagName, commentName) {
+      const flagEl = document.querySelector(`input[name="${flagName}"]`);
+      const comEl  = commentName ? document.querySelector(`input[name="${commentName}"]`) : null;
+      const Flag   = yesNo(!!(flagEl && flagEl.checked));
+      const Comment = comEl ? txt(comEl) : '';
+      if (Flag === 'Yes' || Comment) rows.push({ Field: field, Flag, Comment });
+      else rows.push({ Field: field, Flag });
+    }
+
+    pushHealth('Diabetes', 'flag_diabetes', 'comment_diabetes');
+    pushHealth('Blood Pressure Issues', 'flag_bp');
+    pushHealth('Dizziness / Vertigo', 'flag_vertigo');
+    pushHealth('Thyroid Imbalances', 'flag_thyroid');
+    pushHealth('Heart Disease', 'flag_heart', 'comment_heart');
+    pushHealth('Back / Neck Issues', 'flag_spine', 'comment_spine');
+    pushHealth('Hips Issues', 'flag_hips', 'comment_hips');
+    pushHealth('Legs Issues', 'flag_legs', 'comment_legs');
+    pushHealth('Arms Issues', 'flag_arms', 'comment_arms');
+    pushHealth('Vascular Pathologies', 'flag_vascular', 'comment_vascular');
+    pushHealth('Irregular Menstrual Period / Hormonal Issues', 'flag_irregular_period');
+    pushHealth('Menopause – # of Years', 'flag_menopause_years', 'comment_menopause_years');
+    pushHealth('Blood Work Alterations', 'flag_blood_work');
+
+    // Rewards / Deals
+    const rrows = [];
+    document.querySelectorAll('#rewards-table tbody tr').forEach(tr => {
+      const used   = yesNo(!!tr.querySelector('input[type="checkbox"]')?.checked);
+      const cells  = tr.querySelectorAll('td');
+      const reward = txt(cells[1]);
+      const notes  = txt(cells[2]);
+      if (used === 'Yes' || reward || notes) {
+        rrows.push({ Field: 'Reward / Deal', Used: used, RewardDeal: reward, RewardNotes: notes });
+      }
+    });
+    rows.push(...rrows);
+
+    // Friends
+    const frows = [];
+    document.querySelectorAll('#friends-table tbody tr').forEach(tr => {
+      const sel   = yesNo(!!tr.querySelector('input[type="checkbox"]')?.checked);
+      const cells = tr.querySelectorAll('td');
+      const name  = txt(cells[1]);
+      const notes = txt(cells[2]);
+      if (sel === 'Yes' || name || notes) {
+        frows.push({ Field: 'Friend', Select: sel, FriendName: name, FriendNotes: notes });
+      }
+    });
+    rows.push(...frows);
+
+    return rows;
+  };
+})();
+</script>

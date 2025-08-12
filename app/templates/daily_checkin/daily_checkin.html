@@ -1,90 +1,122 @@
 {% extends "base.html" %}
 
 {% block content %}
-<form method="POST" action="{{ url_for('daily_checkin.submit_report') }}">
-  <div class="mt-6 space-y-6">
+<div class="h-screen flex flex-col bg-gray-50">
 
-    <!-- Header with History Icon -->
-    <div class="flex justify-between items-center mb-4">
-      <h2 class="text-2xl font-bold figurella-pink">Daily Check-in</h2>
-      <a href="{{ url_for('daily_checkin.report_history') }}" class="text-gray-500 hover:text-figurella" title="View History">
-        <i class="bi bi-clock-history text-2xl"></i>
-      </a>
-    </div>
-
-    <!-- Sales Section -->
-    <div class="bg-white rounded-2xl shadow p-6">
-      <h3 class="text-xl font-semibold mb-4">💰 Sales</h3>
-      <div id="sales-section"></div>
-      <button type="button" class="bg-figurella text-white px-4 py-2 rounded mt-2" onclick="addSaleRow()">+ Add Sale</button>
-    </div>
-
-    <!-- Leads Section -->
-    <div class="bg-white rounded-2xl shadow p-6">
-      <h3 class="text-xl font-semibold mb-4">📝 Leads</h3>
-      <div id="leads-section"></div>
-      <button type="button" class="bg-figurella text-white px-4 py-2 rounded mt-2" onclick="addLeadRow()">+ Add Lead</button>
-    </div>
-
-    <!-- Consultations Section -->
-    <div class="bg-white rounded-2xl shadow p-6">
-      <h3 class="text-xl font-semibold mb-4">📅 Consultations</h3>
-      <div id="consultations-section"></div>
-      <button type="button" class="bg-figurella text-white px-4 py-2 rounded mt-2" onclick="addConsultationRow()">+ Add Consultation</button>
-    </div>
-
-    <!-- Opportunities Section -->
-    <div class="bg-white rounded-2xl shadow p-6">
-      <h3 class="text-xl font-semibold mb-4">💡 Opportunities</h3>
-      <div id="opportunities-section"></div>
-      <button type="button" class="bg-figurella text-white px-4 py-2 rounded mt-2" onclick="addOpportunityRow()">+ Add Opportunity</button>
-    </div>
-
-    <!-- Attendances Section (no add button) -->
-    <div class="bg-white rounded-2xl shadow p-6">
-      <h3 class="text-xl font-semibold mb-4">🧍 Attendances</h3>
-      <div id="attendances-section"></div>
-    </div>
-
-    <!-- Submit Button -->
-    <div class="flex justify-end">
-      <button type="submit" class="bg-figurella text-white px-6 py-2 rounded-full shadow hover:bg-pink-700 transition">
-        Submit Report
-      </button>
-    </div>
+  <!-- Header (always visible) -->
+  <div class="flex-shrink-0 flex justify-between items-center px-4 py-3 bg-white shadow">
+    <h2 class="text-2xl font-bold figurella-pink">Daily Check-in</h2>
+    <a href="{{ url_for('daily_checkin.report_history') }}"
+       class="text-gray-500 hover:text-figurella"
+       title="View History">
+      <i class="bi bi-clock-history text-2xl"></i>
+    </a>
   </div>
-</form>
+
+  <!-- Scrollable content with form inside -->
+  <div class="flex-1 overflow-y-auto p-4">
+    <form id="daily-form" method="POST" action="{{ url_for('daily_checkin.submit_report') }}" class="space-y-6">
+
+      <!-- Sales Section -->
+      <div class="bg-white rounded-2xl shadow p-6">
+        <h3 class="text-xl font-semibold mb-4">💰 Sales</h3>
+        <div id="sales-section"></div>
+        <button type="button"
+                class="bg-figurella text-white px-4 py-2 rounded mt-2"
+                onclick="addSaleRow()">
+          + Add Sale
+        </button>
+      </div>
+
+      <!-- Leads Section -->
+      <div class="bg-white rounded-2xl shadow p-6">
+        <h3 class="text-xl font-semibold mb-4">📝 Leads</h3>
+        <div id="leads-section"></div>
+        <button type="button"
+                class="bg-figurella text-white px-4 py-2 rounded mt-2"
+                onclick="addLeadRow()">
+          + Add Lead
+        </button>
+      </div>
+
+      <!-- Consultations Section -->
+      <div class="bg-white rounded-2xl shadow p-6">
+        <h3 class="text-xl font-semibold mb-4">📅 Consultations</h3>
+        <div id="consultations-section"></div>
+        <button type="button"
+                class="bg-figurella text-white px-4 py-2 rounded mt-2"
+                onclick="addConsultationRow()">
+          + Add Consultation
+        </button>
+      </div>
+
+      <!-- Opportunities Section -->
+      <div class="bg-white rounded-2xl shadow p-6">
+        <h3 class="text-xl font-semibold mb-4">💡 Opportunities</h3>
+        <div id="opportunities-section"></div>
+        <button type="button"
+                class="bg-figurella text-white px-4 py-2 rounded mt-2"
+                onclick="addOpportunityRow()">
+          + Add Opportunity
+        </button>
+      </div>
+
+      <!-- Attendances Section -->
+      <div class="bg-white rounded-2xl shadow p-6">
+        <h3 class="text-xl font-semibold mb-4">🧍 Attendances</h3>
+        <div id="attendances-section"></div>
+      </div>
+
+      <!-- Extra bottom padding so last inputs can scroll above footer -->
+      <div class="h-24"></div>
+    </form>
+  </div>
+
+  <!-- Sticky Submit Bar -->
+  <div class="sticky bottom-0 bg-white shadow-inner p-4 flex justify-end z-10">
+    <button type="submit"
+            form="daily-form"
+            class="bg-figurella text-white px-6 py-2 rounded-full shadow hover:bg-pink-700 transition">
+      Submit Report
+    </button>
+  </div>
+</div>
 
 <script>
-function templateRow(fields) {
-  return '<div class="grid grid-cols-' + fields.length + ' gap-2 mb-2">' +
-    fields.map(f => '<input name="' + f + '[]" class="border p-2 rounded w-full" placeholder="' + f.replace(/_/g, ' ') + '">').join('') +
+  function templateRow(fields) {
+    return '<div class="grid grid-cols-' + fields.length + ' gap-2 mb-2">' +
+      fields.map(f =>
+        '<input name="'+f+'[]" ' +
+               'class="border p-2 rounded w-full" ' +
+               'placeholder="'+f.replace(/_/g,' ')+'">').join('') +
     '</div>';
-}
-
-function addSaleRow() {
-  document.getElementById('sales-section').innerHTML += templateRow(['client_name', 'package_sold', 'revenue']);
-}
-function addLeadRow() {
-  document.getElementById('leads-section').innerHTML += templateRow(['lead_name', 'lead_date', 'lead_source']);
-}
-function addConsultationRow() {
-  document.getElementById('consultations-section').innerHTML += templateRow(['consult_client', 'consult_outcome', 'consult_source']);
-}
-function addOpportunityRow() {
-  document.getElementById('opportunities-section').innerHTML += templateRow(['opp_name', 'opp_provider', 'opp_description']);
-}
-function addAttendanceRow() {
-  document.getElementById('attendances-section').innerHTML += templateRow(['att_attended', 'att_no_show']);
-}
-
-// Load 1 row per section by default
-window.onload = function () {
-  addSaleRow();
-  addLeadRow();
-  addConsultationRow();
-  addOpportunityRow();
-  addAttendanceRow();
-};
+  }
+  function addSaleRow() {
+    document.getElementById('sales-section')
+            .insertAdjacentHTML('beforeend', templateRow(['client_name','package_sold','revenue']));
+  }
+  function addLeadRow() {
+    document.getElementById('leads-section')
+            .insertAdjacentHTML('beforeend', templateRow(['lead_name','lead_date','lead_source']));
+  }
+  function addConsultationRow() {
+    document.getElementById('consultations-section')
+            .insertAdjacentHTML('beforeend', templateRow(['consult_client','consult_outcome','consult_source']));
+  }
+  function addOpportunityRow() {
+    document.getElementById('opportunities-section')
+            .insertAdjacentHTML('beforeend', templateRow(['opp_name','opp_provider','opp_description']));
+  }
+  function addAttendanceRow() {
+    document.getElementById('attendances-section')
+            .insertAdjacentHTML('beforeend', templateRow(['att_attended','att_no_show']));
+  }
+  window.onload = function(){
+    addSaleRow();
+    addLeadRow();
+    addConsultationRow();
+    addOpportunityRow();
+    addAttendanceRow();
+  };
 </script>
 {% endblock %}

@@ -1,0 +1,578 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="p-4 space-y-3">
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <h1 class="text-2xl font-bold">Calendar</h1>
+
+    <div class="flex flex-wrap items-center gap-2">
+      <input id="fc-search" type="text" placeholder="Search title/desc/location"
+             class="border border-gray-300 rounded-lg px-3 py-1.5 w-64" />
+      <select id="fc-assignee" class="border border-gray-300 rounded-lg px-3 py-1.5">
+        <option value="__all__">All assignees</option>
+      </select>
+      <button id="fc-new"
+              class="px-3 py-1.5 rounded-lg shadow bg-figurella text-white hover:opacity-90"
+              type="button">＋ New Event</button>
+    </div>
+  </div>
+
+  <div id="fc-error" class="hidden bg-red-100 text-red-800 p-3 rounded"></div>
+
+  <!-- Scroll wrapper for month/year -->
+  <div id="calendar-wrap" class="bg-white rounded-xl shadow overflow-auto" style="height:72vh">
+    <div id="calendar"></div>
+  </div>
+</div>
+
+<!-- Event Modal -->
+<div id="event-modal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-40">
+  <div class="bg-white w-full max-w-2xl rounded-2xl shadow-lg overflow-hidden">
+    <div class="px-5 py-3 border-b flex items-center justify-between bg-gray-50">
+      <h2 id="modal-heading" class="text-lg font-semibold">Event</h2>
+      <button id="modal-close" class="text-gray-500 hover:text-gray-800 text-xl" aria-label="Close">✕</button>
+    </div>
+
+    <div class="p-5 space-y-4">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <label class="block">
+          <span class="text-sm font-medium">Title</span>
+          <input id="modal-title" type="text" class="w-full border rounded-lg px-3 py-2" />
+        </label>
+
+        <label class="inline-flex items-center gap-2 mt-6 md:mt-0">
+          <input id="modal-allDay" type="checkbox" class="h-4 w-4">
+          <span class="text-sm">All day</span>
+        </label>
+
+        <label class="block">
+          <span class="text-sm font-medium">Start</span>
+          <input id="modal-start" type="datetime-local" class="w-full border rounded-lg px-3 py-2" />
+        </label>
+
+        <label class="block">
+          <span class="text-sm font-medium">End</span>
+          <input id="modal-end" type="datetime-local" class="w-full border rounded-lg px-3 py-2" />
+        </label>
+
+        <label class="block">
+          <span class="text-sm font-medium">Location</span>
+          <input id="modal-location" type="text" class="w-full border rounded-lg px-3 py-2" />
+        </label>
+
+        <label class="block">
+          <span class="text-sm font-medium">Assignee</span>
+          <input id="modal-assignee" type="text" class="w-full border rounded-lg px-3 py-2" />
+        </label>
+      </div>
+
+      <label class="block">
+        <span class="text-sm font-medium">Description</span>
+        <textarea id="modal-desc" rows="3" class="w-full border rounded-lg px-3 py-2"></textarea>
+      </label>
+
+      <!-- Repeat / Recurrence -->
+      <div class="border rounded-lg">
+        <div class="px-4 py-2 border-b bg-gray-50 font-medium">Repeat</div>
+        <div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+          <label class="block">
+            <span class="text-sm font-medium">Frequency</span>
+            <select id="modal-repeat" class="w-full border rounded-lg px-3 py-2">
+              <option value="none">Does not repeat</option>
+              <option value="DAILY">Daily</option>
+              <option value="WEEKLY">Weekly</option>
+              <option value="MONTHLY">Monthly</option>
+            </select>
+          </label>
+
+          <label class="block">
+            <span class="text-sm font-medium">Interval</span>
+            <input id="modal-interval" type="number" min="1" value="1" class="w-full border rounded-lg px-3 py-2" />
+            <div class="text-xs text-gray-500 mt-1">Every <span id="interval-unit">1</span> unit(s)</div>
+          </label>
+
+          <div id="repeat-weekly" class="col-span-2 hidden">
+            <div class="text-sm font-medium mb-2">Repeat on</div>
+            <div class="grid grid-cols-7 gap-2 text-center">
+              <label class="block border rounded-lg py-2"><input type="checkbox" class="wd" value="0"> Mon</label>
+              <label class="block border rounded-lg py-2"><input type="checkbox" class="wd" value="1"> Tue</label>
+              <label class="block border rounded-lg py-2"><input type="checkbox" class="wd" value="2"> Wed</label>
+              <label class="block border rounded-lg py-2"><input type="checkbox" class="wd" value="3"> Thu</label>
+              <label class="block border rounded-lg py-2"><input type="checkbox" class="wd" value="4"> Fri</label>
+              <label class="block border rounded-lg py-2"><input type="checkbox" class="wd" value="5"> Sat</label>
+              <label class="block border rounded-lg py-2"><input type="checkbox" class="wd" value="6"> Sun</label>
+            </div>
+          </div>
+
+          <div id="repeat-monthly" class="col-span-2 hidden">
+            <label class="block">
+              <span class="text-sm font-medium">Day of month</span>
+              <input id="modal-monthday" type="number" min="1" max="31" class="w-full border rounded-lg px-3 py-2" />
+            </label>
+          </div>
+
+          <label class="block col-span-2">
+            <span class="text-sm font-medium">Repeat until (optional)</span>
+            <input id="modal-until" type="datetime-local" class="w-full border rounded-lg px-3 py-2" />
+          </label>
+        </div>
+      </div>
+
+      <div id="occurrence-actions" class="hidden border rounded-lg">
+        <div class="px-4 py-2 border-b bg-gray-50 font-medium">Occurrence</div>
+        <div class="p-4">
+          <button id="btn-skip-occurrence" class="px-3 py-1.5 rounded-lg border">Skip this occurrence</button>
+          <span class="text-xs text-gray-500 ml-2">Hides only this instance</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="px-5 py-3 border-t flex items-center justify-between bg-gray-50">
+      <button id="modal-delete" class="px-3 py-1.5 rounded-lg border text-red-600 hidden">Delete</button>
+      <div class="flex items-center gap-2">
+        <button id="modal-cancel" class="px-3 py-1.5 rounded-lg border">Cancel</button>
+        <button id="modal-save" class="px-3 py-1.5 rounded-lg bg-figurella text-white">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.css">
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js" defer></script>
+
+<style>
+  /* one small dot we control everywhere */
+  .fc-status-dot{ width:8px; height:8px; border-radius:9999px; display:inline-block; margin-right:6px; flex:0 0 auto; }
+  .fc .fc-event-main{ display:flex; align-items:center; gap:6px; }
+  .fc .fc-timegrid-event .fc-status-dot{ position:absolute; top:4px; left:4px; margin-right:0; }
+
+  /* make done events slightly muted (remove if you dislike) */
+  .fc .fc-daygrid-block-event.fc-is-done .fc-event-main,
+  .fc .fc-timegrid-event.fc-is-done .fc-event-main { background: transparent !important; }
+  .fc .fc-daygrid-block-event.fc-is-done,
+  .fc .fc-timegrid-event.fc-is-done { border: 1px solid #e5e7eb !important; }
+</style>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const err = document.getElementById("fc-error");
+  const showError = (msg) => { err.textContent = msg; err.classList.remove("hidden"); };
+
+  try {
+    if (!window.FullCalendar) { showError("FullCalendar failed to load."); return; }
+
+    const calendarEl = document.getElementById("calendar");
+    const searchEl   = document.getElementById("fc-search");
+    const assigneeEl = document.getElementById("fc-assignee");
+    const newBtn     = document.getElementById("fc-new");
+
+    // Modal refs (guarded)
+    const eventModalEl = document.getElementById("event-modal");
+    const modalClose   = document.getElementById("modal-close");
+    const modalCancel  = document.getElementById("modal-cancel");
+    const modalSave    = document.getElementById("modal-save");
+    const modalDelete  = document.getElementById("modal-delete");
+    const mTitle = document.getElementById("modal-title");
+    const mAllDay = document.getElementById("modal-allDay");
+    const mStart = document.getElementById("modal-start");
+    const mEnd   = document.getElementById("modal-end");
+    const mDesc  = document.getElementById("modal-desc");
+    const mLoc   = document.getElementById("modal-location");
+    const mAssignee = document.getElementById("modal-assignee");
+
+    const mRepeat = document.getElementById("modal-repeat");
+    const mInterval = document.getElementById("modal-interval");
+    const mIntervalUnit = document.getElementById("interval-unit");
+    const wrapWeekly = document.getElementById("repeat-weekly");
+    const wrapMonthly = document.getElementById("repeat-monthly");
+    const mMonthDay = document.getElementById("modal-monthday");
+    const mUntil    = document.getElementById("modal-until");
+    const weeklyBoxes = Array.from(document.querySelectorAll(".wd"));
+
+    // ------- local "Done" cache (for instant feedback) -------
+    const DONE_STORE_KEY = 'fc_done_occurrences_v1';
+    const loadDoneSet = () => { try { return new Set(JSON.parse(localStorage.getItem(DONE_STORE_KEY)||'[]')); } catch { return new Set(); } };
+    const saveDoneSet = (s) => { try { localStorage.setItem(DONE_STORE_KEY, JSON.stringify([...s])); } catch {} };
+    const doneSet = loadDoneSet();
+    const doneKey = (id, token) => String(id) + '|' + token;  // id can be '42' or '42:iso'
+    const markLocalDone = (id, token) => { if(!token) return; doneSet.add(doneKey(id, token)); saveDoneSet(doneSet); };
+    const isLocalDone   = (id, token) => { if(!token) return false; return doneSet.has(doneKey(id, token)); };
+
+    const state = { search:"", assignee:"__all__", colorMap:{}, current:null, occurrenceStart:null };
+
+    const pad = (n) => String(n).padStart(2,"0");
+    function toLocalInputValue(d){
+      if(!d) return "";
+      const dt = new Date(d);
+      return dt.getFullYear()+"-"+pad(dt.getMonth()+1)+"-"+pad(dt.getDate())+"T"+pad(dt.getHours())+":"+pad(dt.getMinutes());
+    }
+    const fromLocalInputValue = (v) => v ? new Date(v) : null;
+    const isoOrNull = (d) => d ? new Date(d).toISOString() : null;
+
+    function colorForAssignee(a){
+      const palette=["#ef476f","#ffd166","#06d6a0","#118ab2","#073b4c","#c084fc","#a3e635","#f59e0b","#f43f5e","#22c55e"];
+      const key=(a||"unassigned").trim().toLowerCase();
+      if(!state.colorMap[key]) state.colorMap[key]=palette[Object.keys(state.colorMap).length % palette.length];
+      return state.colorMap[key];
+    }
+    function passesFilters(ev){
+      const q=state.search.trim().toLowerCase();
+      const selected=state.assignee;
+      const ep=ev.extendedProps||{};
+      const ass=(ep.assignee||"").toLowerCase();
+      if(selected!=="__all__" && ass!==selected.toLowerCase()) return false;
+      if(!q) return true;
+      const hay=[ev.title||"",ep.description||"",ep.location||"",ep.assignee||""].join(" ").toLowerCase();
+      return hay.indexOf(q)>=0;
+    }
+    function updateAssigneeOptionsFrom(events){
+      const set={}; events.forEach(e => { const a=(e.extendedProps&&e.extendedProps.assignee)||""; if(a.trim()) set[a.trim()]=true; });
+      const opts=Object.keys(set).sort();
+      const cur=assigneeEl.value;
+      let html='<option value="__all__">All assignees</option>';
+      for(const o of opts) html += `<option value="${o}">${o}</option>`;
+      assigneeEl.innerHTML=html;
+      if(opts.includes(cur) || cur==="__all__") assigneeEl.value=cur;
+    }
+
+    // === core: compute if an event occurrence is done (server + local) ===
+    function isOccurrenceDone(event) {
+      const ep = event.extendedProps || {};
+      const start = event.start ? new Date(event.start) : null;
+      const occISO = start ? start.toISOString() : null;
+      const occDay = occISO ? occISO.slice(0,10) : null;
+
+      // server list (accept both keys, normalize +00:00 vs Z)
+      const rawList = Array.isArray(ep.completedOn) ? ep.completedOn
+                   : Array.isArray(ep.completed_on) ? ep.completed_on : [];
+      const normalized = rawList.map(s => {
+        try { return new Date(s).toISOString(); } catch { return String(s); }
+      });
+
+      const serverExact = occISO ? normalized.includes(occISO) : false;
+      const serverDay   = occDay ? normalized.some(s => typeof s === 'string' && s.slice(0,10) === occDay) : false;
+      const serverDone  = !!ep.completed || serverExact || serverDay;
+
+      // local cache (keyed by the id we render and ISO/day)
+      const idKey = String(event.id);
+      const localDone = isLocalDone(idKey, occISO) || isLocalDone(idKey, occDay);
+
+      return serverDone || localDone;
+    }
+
+    // Build the calendar
+    const calendar = new FullCalendar.Calendar(calendarEl, {
+      initialView: "dayGridMonth",
+      headerToolbar: { left: "prev,next today", center: "title", right: "multiMonthYear,dayGridMonth,timeGridWeek,timeGridDay,listWeek" },
+
+      // sizing
+      height: "auto",
+      handleWindowResize: true,
+      scrollTime: "08:00:00",
+      slotMinTime: "05:00:00",
+      slotMaxTime: "22:00:00",
+
+      weekNumbers: true,
+      navLinks: true,
+      selectable: true,
+      editable: true,
+      nowIndicator: true,
+      dayMaxEventRows: true,
+      stickyHeaderDates: true,
+
+      viewDidMount: (ctx)=> setHeightForView(ctx.view.type),
+      datesSet:     (ctx)=> setHeightForView(ctx.view.type),
+
+      // MONTH / YEAR: we fully control the content (dot + time + title)
+      eventContent: function(arg){
+        const t = arg.view.type;
+        if (t !== 'dayGridMonth' && t !== 'multiMonthYear') return true; // use default for others
+
+        const done = isOccurrenceDone(arg.event);
+        const dot = document.createElement('span');
+        dot.className = 'fc-status-dot';
+        dot.style.backgroundColor = done ? '#22c55e' : '#ef4444';
+
+        const wrap = document.createElement('div');
+        wrap.className = 'flex items-center gap-1';
+        wrap.appendChild(dot);
+
+        if (arg.timeText) {
+          const tt = document.createElement('span');
+          tt.className = 'fc-event-time';
+          tt.textContent = arg.timeText;
+          wrap.appendChild(tt);
+        }
+
+        const title = document.createElement('span');
+        title.className = 'fc-event-title';
+        title.textContent = arg.event.title || '(Untitled)';
+        if (done) { title.style.opacity = '0.7'; title.style.textDecoration = 'line-through'; }
+        wrap.appendChild(title);
+
+        return { domNodes: [wrap] };
+      },
+
+      // WEEK / DAY: tweak appearance and inject our dot if needed
+      eventDidMount: function(info){
+        const ep = info.event.extendedProps || {};
+        const loc=ep.location ? " @ "+ep.location : "";
+        const desc=ep.description ? "\n"+ep.description : "";
+        info.el.title=(info.event.title||"")+loc+desc;
+
+        const done = isOccurrenceDone(info.event);
+        const main = info.el.querySelector(".fc-event-main") || info.el;
+
+        // add our dot (timeGrid & all-day)
+        const old = info.el.querySelector(".fc-status-dot"); if (old) old.remove();
+        const dot = document.createElement("span");
+        dot.className = "fc-status-dot";
+        dot.style.backgroundColor = done ? '#22c55e' : '#ef4444';
+        main.prepend(dot);
+
+        // style when done
+        if (done) {
+          info.el.classList.add('fc-is-done'); info.el.classList.remove('fc-is-pending');
+          info.el.style.opacity="0.7"; info.el.style.textDecoration="line-through";
+        } else {
+          info.el.classList.remove('fc-is-done'); info.el.classList.add('fc-is-pending');
+          info.el.style.opacity=""; info.el.style.textDecoration="";
+        }
+      },
+
+      events: function(info, success, failure){
+        const qs=new URLSearchParams({ start:info.startStr, end:info.endStr });
+        fetch("/calendar/api/events?"+qs).then(r=>r.json()).then(function(data){
+          updateAssigneeOptionsFrom(data);
+          const filtered=data.filter(passesFilters);
+          for(const ev of filtered){
+            const ep=ev.extendedProps||{};
+            ev.color=colorForAssignee(ep.assignee);
+          }
+          success(filtered);
+        }).catch(function(e){ console.error(e); failure(e); showError("Failed to load events."); });
+      },
+
+      select: function(info){
+        openEventModal({
+          id:null, title:"", description:"", location:"", assignee:"",
+          start: info.start, end: info.end, allDay: info.allDay, rrule:null, completed:false
+        }, null);
+        calendar.unselect();
+      },
+
+      eventDrop: handleMoveOrResize,
+      eventResize: handleMoveOrResize,
+
+      eventClick: function(info){
+        const ev=info.event;
+        fetch("/calendar/api/events/"+ev.id).then(r=>r.json()).then(function(detail){
+          openEventModal({
+            id:Number(detail.id),
+            title:detail.title||"",
+            description:detail.description||"",
+            location:detail.location||"",
+            assignee:detail.assignee||"",
+            start:detail.start, end:detail.end, allDay:detail.allDay,
+            rrule:detail.rrule||null, exdates:detail.exdates||[],
+            completed: !!detail.completed
+          }, detail.occurrence_start||null);
+        });
+      }
+    });
+
+    calendar.render();
+    window.addEventListener("load", ()=> setTimeout(()=> calendar.updateSize(), 50));
+    window.addEventListener("resize", ()=> calendar.updateSize());
+
+    function setHeightForView(viewType){
+      if (viewType === "timeGridWeek" || viewType === "timeGridDay") {
+        calendar.setOption("height", 680);
+      } else {
+        calendar.setOption("height", "auto"); // wrapper scroll handles month/year
+      }
+    }
+
+    async function handleMoveOrResize(info){
+      try{
+        const payload={ start: info.event.start?info.event.start.toISOString():null,
+                        end:   info.event.end?info.event.end.toISOString():null,
+                        allDay: !!info.event.allDay };
+        await fetch("/calendar/api/events/"+info.event.id, {
+          method:"PATCH", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload)
+        });
+      }catch(e){ console.error(e); showError("Failed to update event."); }
+    }
+
+    // Repeat UI helpers
+    function setRepeatUI(freq){
+      wrapWeekly?.classList.toggle("hidden", freq!=="WEEKLY");
+      wrapMonthly?.classList.toggle("hidden", freq!=="MONTHLY");
+      if (mIntervalUnit) mIntervalUnit.textContent = mInterval?.value || "1";
+    }
+    mRepeat?.addEventListener("change", ()=> setRepeatUI(mRepeat.value));
+    mInterval?.addEventListener("input", ()=> { if (mIntervalUnit) mIntervalUnit.textContent = mInterval.value||"1"; });
+
+    // Modal open/close/save/delete
+    function openEventModal(ev, occurrenceISO){
+      state.current=ev||null; state.occurrenceStart=occurrenceISO;
+      if (!eventModalEl) return;
+
+      document.getElementById("modal-heading").textContent=ev.id ? "Edit Event" : "New Event";
+      mTitle.value=ev.title||""; mAllDay.checked=!!ev.allDay;
+      mStart.value=toLocalInputValue(ev.start||new Date());
+      mEnd.value=toLocalInputValue(ev.end||null);
+      mDesc.value=ev.description||""; mLoc.value=ev.location||""; mAssignee.value=ev.assignee||"";
+
+      const rr=ev.rrule||null;
+      if(!rr){
+        if (mRepeat) mRepeat.value="none";
+        if (mInterval) mInterval.value="1";
+        if (mIntervalUnit) mIntervalUnit.textContent="1";
+        weeklyBoxes.forEach(b=>b.checked=false);
+        if (mMonthDay) mMonthDay.value="";
+        if (mUntil) mUntil.value="";
+      }else{
+        if (mRepeat)   mRepeat.value=rr.freq||"none";
+        if (mInterval) mInterval.value=rr.interval||1;
+        if (mIntervalUnit) mIntervalUnit.textContent=mInterval.value;
+        weeklyBoxes.forEach(b=> b.checked=(rr.byweekday||[]).includes(Number(b.value)));
+        if (mMonthDay) mMonthDay.value=(Array.isArray(rr.bymonthday)? rr.bymonthday[0] : rr.bymonthday) || "";
+        if (mUntil)    mUntil.value=rr.until ? toLocalInputValue(rr.until) : "";
+      }
+      setRepeatUI(mRepeat?.value || "none");
+
+      modalDelete?.classList.toggle("hidden", !ev.id);
+      document.getElementById("occurrence-actions")?.classList.toggle("hidden", !occurrenceISO);
+
+      eventModalEl.classList.remove("hidden"); eventModalEl.classList.add("flex");
+    }
+    function closeEventModal(){
+      if (!eventModalEl) return;
+      eventModalEl.classList.add("hidden"); eventModalEl.classList.remove("flex");
+      state.current=null; state.occurrenceStart=null;
+    }
+
+    modalClose?.addEventListener("click", closeEventModal);
+    modalCancel?.addEventListener("click", closeEventModal);
+    eventModalEl?.addEventListener("click", (e)=> { if(e.target===eventModalEl) closeEventModal(); });
+
+    document.getElementById("btn-skip-occurrence")?.addEventListener("click", async function(){
+      if(!state.current || !state.current.id || !state.occurrenceStart) return;
+      try{
+        await fetch("/calendar/api/events/"+state.current.id+":"+encodeURIComponent(state.occurrenceStart), {
+          method:"PATCH", headers:{"Content-Type":"application/json"},
+          body: JSON.stringify({ skipOccurrence:true, occurrenceStart: state.occurrenceStart })
+        });
+        closeEventModal(); calendar.refetchEvents();
+      }catch(e){ console.error(e); showError("Failed to skip occurrence."); }
+    });
+
+    modalSave?.addEventListener("click", async function(){
+      let s = fromLocalInputValue(mStart.value);
+      let e = fromLocalInputValue(mEnd.value);
+      if (s && e && e < s) {
+        if (mAllDay.checked) { mEnd.value = ""; e = null; }
+        else { e = new Date(s.getTime() + 30*60000); mEnd.value = toLocalInputValue(e); }
+      }
+
+      let rr=null, freq=mRepeat?.value || "none";
+      if(freq!=="none"){
+        rr={ freq:freq, interval:Number(mInterval?.value||1) };
+        if(freq==="WEEKLY"){
+          const days=weeklyBoxes.filter(b=>b.checked).map(b=>Number(b.value));
+          if(days.length) rr.byweekday=days;
+        }
+        if(freq==="MONTHLY"){
+          const md=Number(mMonthDay?.value||0);
+          if(md>=1 && md<=31) rr.bymonthday=md;
+        }
+        const untilVal=mUntil?.value;
+        if(untilVal) rr.until=new Date(untilVal).toISOString();
+      }
+
+      const payload={
+        title: mTitle.value || "(Untitled)",
+        description: mDesc.value || "",
+        location: mLoc.value || "",
+        assignee: mAssignee.value || "",
+        allDay: !!mAllDay.checked,
+        start: isoOrNull(fromLocalInputValue(mStart.value)),
+        end:   isoOrNull(fromLocalInputValue(mEnd.value)),
+        rrule: rr,
+        completed: !!(state.current && state.current.completed)
+      };
+
+      try{
+        if(state.current && state.current.id){
+          await fetch("/calendar/api/events/"+state.current.id, {
+            method:"PATCH", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload)
+          });
+        }else{
+          const res=await fetch("/calendar/api/events", {
+            method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload)
+          });
+          const j=await res.json().catch(()=>({})); state.current.id=j.id||null;
+        }
+        closeEventModal(); calendar.refetchEvents();
+      }catch(e){ console.error(e); showError("Failed to save event."); }
+    });
+
+    modalDelete?.addEventListener("click", async function(){
+      if(!state.current) return;
+      if(state.occurrenceStart){
+        if(!confirm("Delete only this occurrence? (OK = this one, Cancel = whole series)")){
+          await fetch("/calendar/api/events/"+state.current.id, { method:"DELETE" });
+        }else{
+          await fetch("/calendar/api/events/"+state.current.id+":"+encodeURIComponent(state.occurrenceStart), { method:"DELETE" });
+        }
+      }else{
+        if(!confirm("Delete this event (entire series if recurring)?")) return;
+        await fetch("/calendar/api/events/"+state.current.id, { method:"DELETE" });
+      }
+      closeEventModal(); calendar.refetchEvents();
+    });
+
+    // Filters + New
+    searchEl.addEventListener("input", e=>{ state.search=e.target.value||""; calendar.refetchEvents(); });
+    assigneeEl.addEventListener("change", e=>{ state.assignee=e.target.value||"__all__"; calendar.refetchEvents(); });
+    newBtn.addEventListener("click", function(){
+      const now=new Date(), later=new Date(now.getTime()+60*60*1000);
+      openEventModal({ id:null, title:"", description:"", location:"", assignee:"", start: now, end: later, allDay:false, rrule:null, completed:false }, null);
+    });
+
+    // hook for Home "Done"
+    async function markEventCompleted(id, occurrenceStart){
+      try{
+        if (occurrenceStart) {
+          const iso = new Date(occurrenceStart).toISOString();
+          const day = iso.slice(0,10);
+          markLocalDone(id, iso); markLocalDone(id, day);
+        }
+        const url = occurrenceStart
+          ? `/calendar/api/events/${id}:${encodeURIComponent(occurrenceStart)}`
+          : `/calendar/api/events/${id}`;
+        const res = await fetch(url, {
+          method:"PATCH",
+          headers:{ "Content-Type":"application/json" },
+          body: JSON.stringify({ completed:true, occurrenceStart: occurrenceStart || null })
+        });
+        if (!res.ok) {
+          await fetch(`/calendar/api/events/${id}/complete`, {
+            method:"POST",
+            headers:{ "Content-Type":"application/json" },
+            body: JSON.stringify({ completed:true, occurrenceStart: occurrenceStart || null })
+          });
+        }
+        calendar.refetchEvents();
+      }catch(e){ console.error(e); showError("Failed to mark event as done."); }
+    }
+    window.markCalendarEventDone = function(id, occurrenceStart){ markEventCompleted(id, occurrenceStart||null); };
+    window.addEventListener("calendar:refresh", ()=> calendar.refetchEvents());
+
+  } catch (e) {
+    console.error(e);
+    showError(String(e));
+  }
+});
+</script>
+{% endblock %}

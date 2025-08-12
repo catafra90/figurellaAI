@@ -1,45 +1,177 @@
+{# templates/figurella_reports/history_view.html #}
 {% extends "base.html" %}
 
+{% block extra_head %}
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css">
+  <style>
+    html, body { margin:0; padding:0; height:100%; overflow:hidden; }
+    #history-main { position:absolute; top:64px; bottom:44px; left:0; right:0; display:flex; overflow:hidden; }
+
+    /* History pane */
+    #history-pane {
+      position:absolute; top:0; bottom:0; left:0;
+      width:48%; transition: transform .3s ease;
+      z-index:1000;
+    }
+    #history-pane.collapsed { transform: translateX(-100%); }
+
+    /* Pull-tab */
+    #pull-tab {
+      position:absolute; top:0; bottom:0; left:0;
+      width:43px; background:#e5e7eb; cursor:pointer;
+      display:none; z-index:1001;
+    }
+    #history-pane.collapsed + #pull-tab { display:block; }
+    #pull-tab::after {
+      content: "{{ report_name }}";
+      writing-mode: vertical-rl;
+      transform: translate(-50%,-50%) rotate(180deg);
+      position:absolute; top:50%; left:50%;
+      font-weight:bold; color:#ec4899;
+      pointer-events:none;
+    }
+
+    /* Detail panel */
+    #detail-panel {
+      position:absolute; top:0; bottom:0;
+      left:48%; right:0; padding:1rem;
+      box-sizing:border-box;
+      display:flex; flex-direction:column;
+      transition:left .3s ease;
+    }
+    #history-pane.collapsed ~ #pull-tab + #detail-panel {
+      left:43px;
+    }
+
+    /* Panel base styling */
+    .panel {
+      background:white;
+      border-radius:.75rem;
+      box-shadow:0 0 16px rgba(0,0,0,0.15);
+      padding:1rem; box-sizing:border-box;
+      display:flex; flex-direction:column;
+      height:100%;
+    }
+
+    /* Table styling */
+    #history-table {
+      width:100%; border-collapse:collapse; flex:1;
+    }
+    #history-table th,
+    #history-table td {
+      padding:.5rem; border-bottom:1px solid #e5e7eb;
+      white-space:nowrap; text-align:left;
+    }
+    #history-table thead th {
+      background:#f9fafb;
+      position:sticky; top:0;
+      z-index:10;
+    }
+
+    /* Search box */
+    #custom-search {
+      width:100%; padding:.5rem;
+      border:1px solid #d1d5db; border-radius:.25rem;
+      margin-bottom:1rem;
+    }
+  </style>
+{% endblock %}
+
 {% block content %}
-<div class="p-4">
-  <h2 class="text-2xl font-bold mb-4">{{ report_name }} History</h2>
+<main id="history-main">
+  <div id="history-pane" class="panel">
 
-  <div class="overflow-auto bg-white rounded-xl shadow">
-    {{ table_html|safe }}
+    <!-- Toolbar -->
+    <div class="flex items-center justify-between mb-4">
+      <div class="flex items-center">
+        <i class="bi bi-table text-2xl text-figurella mr-2"></i>
+        <h1 class="text-2xl font-bold text-figurella">
+          {{ report_name }} History
+        </h1>
+      </div>
+      <div class="space-x-2">
+        <!-- Back to Reports -->
+        <a href="{{ url_for('reports_bp.reports_home') }}"
+           class="px-3 py-1 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 transition">
+          ← Back to Reports
+        </a>
+        <!-- Toggle pane -->
+        <button id="toggle-pane"
+                class="px-2 py-1 bg-gray-200 hover:bg-gray-300 rounded">
+          <i class="bi bi-chevron-left"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Global Search -->
+    <input id="custom-search" type="text" placeholder="Search history…" />
+
+    <!-- DataTable -->
+    <div class="overflow-y-auto flex-1">
+      <table id="history-table">
+        <thead>
+          <tr>
+            {% for col in columns %}
+              <th>{{ col }}</th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in data %}
+            <tr>
+              {% for cell in row %}
+                <td>{{ cell }}</td>
+              {% endfor %}
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </div>
 
-  <div class="mt-6">
-    <a href="{{ url_for('reports_bp.reports_home') }}"
-       class="inline-block px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 transition">
-       ← Back to Reports
-    </a>
+  <div id="pull-tab"></div>
+  <div id="detail-panel" class="panel">
+    <!-- empty detail panel -->
   </div>
-</div>
+</main>
 {% endblock %}
 
 {% block scripts %}
   {{ super() }}
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
   <script>
     $(function(){
-      $('#history-table')
-        .addClass('display')   // DataTables styling hook
-        .DataTable({
-          paging:       true,
-          pageLength:   25,
-          lengthChange: false,
-          ordering:     true,
-          info:         false,
-          autoWidth:    false,
-          dom:          '<"flex justify-between items-center mb-2"<"text-sm">f>rt<"mt-2"p>',
-          language: {
-            search: ""    // Remove default "Search:" label
-          }
-        })
-        // move the auto-generated search box into the top-right
-        .container()
-        .find('div.dataTables_filter input')
-        .addClass('px-3 py-2 border rounded shadow-sm focus:outline-none focus:ring-2 focus:ring-figurella')
-        .attr('placeholder','Type to search…');
+      // Init DataTable
+      const table = $('#history-table').DataTable({
+        paging:    false,
+        info:      false,
+        ordering:  true,
+        dom:       't'
+      });
+
+      // Global search
+      $('#custom-search').on('keyup', () =>
+        table.search($('#custom-search').val()).draw()
+      );
+
+      // Pane toggle + pull-tab
+      function setIcon(){
+        const icon = $('#toggle-pane i');
+        if ($('#history-pane').hasClass('collapsed')) {
+          icon.removeClass('bi-chevron-left').addClass('bi-chevron-right');
+        } else {
+          icon.removeClass('bi-chevron-right').addClass('bi-chevron-left');
+        }
+      }
+      $('#toggle-pane, #pull-tab').on('click', () => {
+        $('#history-pane').toggleClass('collapsed');
+        setIcon();
+      });
+      setIcon();
+
+      // Refresh
+      $('#refresh-history').on('click', () => location.reload());
     });
   </script>
 {% endblock %}

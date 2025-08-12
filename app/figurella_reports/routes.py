@@ -1,6 +1,5 @@
-# app/figurella_reports/routes.py
-
 import os
+import json
 import pandas as pd
 from flask import (
     Blueprint, render_template, send_file,
@@ -8,8 +7,11 @@ from flask import (
 )
 from datetime import datetime
 from app.common.cleaners import drop_unwanted_rows
+from app.common.utils import save_report
+from build_history import main as build_all_history
+from app.models import Report, ReportHistory
 
-# entry‐points for your scrapers
+# Import scraper functions
 from app.common.scrape_agenda import main as scrape_agenda
 from app.common.scrape_contracts import main as scrape_contracts
 from app.common.scrape_customer_acquisitions import main as scrape_customer_acquisition
@@ -20,143 +22,187 @@ from app.common.scrape_payments_due import main as scrape_payments_due
 from app.common.scrape_pip import main as scrape_pip
 from app.common.scrape_subscriptions import main as scrape_subscriptions
 
-# entry‐point for your history builder
-from build_history import main as build_all_history
-
 reports_bp = Blueprint(
     'reports_bp', __name__,
     url_prefix='/figurella-reports',
-    template_folder='templates'
+    template_folder='templates/figurella_reports'
 )
 
-REPORTS = {
-    "Agenda":               "history_agenda.xlsx",
-    "Contracts":            "history_contracts.xlsx",
-    "Customer Acquisition": "history_customer_acquisition.xlsx",
-    "IBF":                  "history_ibf.xlsx",
-    "Last Session":         "history_last_session.xlsx",
-    "Payments Done":        "history_payments_done.xlsx",
-    "Payments Due":         "history_payments_due.xlsx",
-    "PIP":                  "history_pip.xlsx",
-    "Subscriptions":        "history_subscriptions.xlsx",
+# Dashboard cards
+REPORT_CARDS = [
+    {"key": "agenda",               "label": "Agenda",               "icon": "bi-calendar"},
+    {"key": "contracts",            "label": "Contracts",            "icon": "bi-pen"},
+    {"key": "customer_acquisition", "label": "Customer Acquisition", "icon": "bi-people"},
+    {"key": "ibf",                  "label": "IBF",                  "icon": "bi-percent"},
+    {"key": "last_session",         "label": "Last Session",         "icon": "bi-calendar-check"},
+    {"key": "payments_done",        "label": "Payments Done",        "icon": "bi-check-circle"},
+    {"key": "payments_due",         "label": "Payments Due",         "icon": "bi-calendar-day"},
+    {"key": "pip",                  "label": "PIP",                  "icon": "bi-bank"},
+    {"key": "subscriptions",        "label": "Subscriptions",        "icon": "bi-calendar-event"},
+]
+
+# Map labels to scraper functions
+SCRAPERS = {
+    "Agenda":               {"fn": scrape_agenda,               "key": "agenda"},
+    "Contracts":            {"fn": scrape_contracts,            "key": "contracts"},
+    "Customer Acquisition": {"fn": scrape_customer_acquisition, "key": "customer_acquisition"},
+    "IBF":                  {"fn": scrape_ibf,                  "key": "ibf"},
+    "Last Session":         {"fn": scrape_last_session,         "key": "last_session"},
+    "Payments Done":        {"fn": scrape_payments_done,        "key": "payments_done"},
+    "Payments Due":         {"fn": scrape_payments_due,         "key": "payments_due"},
+    "PIP":                  {"fn": scrape_pip,                  "key": "pip"},
+    "Subscriptions":        {"fn": scrape_subscriptions,        "key": "subscriptions"},
 }
 
-SCRAPERS = {
-    "Agenda":               scrape_agenda,
-    "Contracts":            scrape_contracts,
-    "Customer Acquisition": scrape_customer_acquisition,
-    "IBF":                  scrape_ibf,
-    "Last Session":         scrape_last_session,
-    "Payments Done":        scrape_payments_done,
-    "Payments Due":         scrape_payments_due,
-    "PIP":                  scrape_pip,
-    "Subscriptions":        scrape_subscriptions,
-}
+# Legacy history filenames
+HISTORY_FILES = {c['label']: f"history_{c['key']}.xlsx" for c in REPORT_CARDS}
 
 @reports_bp.app_context_processor
 def inject_now():
     return {'now': datetime.utcnow}
 
-@reports_bp.route("/reports")
+@reports_bp.route('/reports')
 def reports_home():
     return render_template(
-        "figurella_reports/reports_home.html",
-        reports=REPORTS
+        'figurella_reports/reports_home.html',
+        cards=REPORT_CARDS
     )
 
-@reports_bp.route("/reports/<report_name>/history/view")
+@reports_bp.route('/reports/<report_name>/history/view')
 def view_history(report_name):
-    hist_file = REPORTS.get(report_name)
-    if not hist_file:
-        flash(f"Unknown report: {report_name}", "danger")
+    key = report_name.lower().replace(' ', '_')
+    rpt = Report.query.filter_by(key=key).first()
+
+    # Gather raw records
+    if rpt and isinstance(rpt.data, list):
+        records = rpt.data
+    else:
+        entries = (
+            ReportHistory
+            .query
+            .filter_by(report_id=rpt.id)
+            .order_by(ReportHistory.id.asc())
+            .all()
+        )
+        records = []
+        for h in entries:
+            raw = h.data
+            obj = json.loads(raw) if isinstance(raw, str) else raw
+            if isinstance(obj, list):
+                records.extend(obj)
+            else:
+                records.append(obj)
+
+    if not records:
+        flash(f"No history found for '{report_name}'", 'warning')
         return redirect(url_for('reports_bp.reports_home'))
 
-    # Build absolute path to the .xlsx
-    project_root = os.path.abspath(os.path.join(current_app.root_path, os.pardir))
-    full_path    = os.path.join(project_root, hist_file)
-    if not os.path.exists(full_path):
-        flash(f"No history file for '{report_name}'.", "danger")
-        return redirect(url_for('reports_bp.reports_home'))
+    # Normalize into DataFrame
+    df = pd.json_normalize(records)
 
-    # 1) Load Excel into DataFrame
-    try:
-        df = pd.read_excel(full_path)
-    except Exception as e:
-        flash(f"Error reading history: {e}", "danger")
-        return redirect(url_for('reports_bp.reports_home'))
+    # Drop unwanted columns
+    df.drop(columns=['Email', 'Phone'], errors='ignore', inplace=True)
+    if '_sheet' in df.columns:
+        df.drop(columns=['_sheet'], inplace=True)
 
-    # 2) Drop contact columns globally
-    df = df.drop(columns=["Email", "Phone"], errors='ignore')
-
-    # 3) Shared cleanup (e.g. stray “Busy” rows)
+    # Clean up blank header rows
     try:
         df = drop_unwanted_rows(df)
     except Exception:
         pass
 
-    # 4) IBF‐specific: drop the first junk column and the very first row
-    if report_name == "IBF":
-        # the first column ('0') is just noise, drop it
-        df = df.drop(df.columns[0], axis=1)
-        # the top row is an exception message, drop it too
+    # Report‐specific tweaks
+    if report_name == 'IBF':
         df = df.iloc[1:].reset_index(drop=True)
+    if report_name == 'Contracts' and 'Name' in df.columns:
+        df = df[df['Name'].str.lower() != 'name']
 
-    # 5) Contracts‐specific: drop any repeated header rows
-    #    i.e. where the “Name” column literally reads “Name”
-    if report_name == "Contracts" and "Name" in df.columns:
-        df = df[df["Name"].astype(str).str.lower() != "name"].reset_index(drop=True)
-
-    # 6) Render exactly what’s in the DataFrame
-    table_html = df.to_html(
-        classes="min-w-full table-auto",
-        table_id="history-table",
-        index=False,
-        border=0
-    )
+    # 1) Column names
+    columns = df.columns.tolist()
+    # 2) Row data (fill NaN with empty string)
+    data = df.fillna('').values.tolist()
 
     return render_template(
-        "figurella_reports/history_view.html",
+        'figurella_reports/history_view.html',
         report_name=report_name,
-        table_html=table_html
+        columns=columns,
+        data=data
     )
 
-@reports_bp.route("/reports/<report_name>/history/download")
+
+
+@reports_bp.route('/reports/<report_name>/history/download')
 def download_history(report_name):
-    hist_file = REPORTS.get(report_name)
+    hist_file = HISTORY_FILES.get(report_name)
     if not hist_file:
-        flash(f"Unknown report: {report_name}", "danger")
+        flash(f"Unknown report: {report_name}", 'danger')
         return redirect(url_for('reports_bp.reports_home'))
-
     project_root = os.path.abspath(os.path.join(current_app.root_path, os.pardir))
-    full_path    = os.path.join(project_root, hist_file)
+    full_path = os.path.join(project_root, hist_file)
     if not os.path.exists(full_path):
-        flash(f"No history file for '{report_name}'.", "danger")
+        flash(f"No history file for '{report_name}'", 'danger')
         return redirect(url_for('reports_bp.reports_home'))
+    return send_file(full_path, as_attachment=True,
+                     download_name=f"{report_name.replace(' ', '_')}_history.xlsx")
 
-    return send_file(
-        full_path,
-        as_attachment=True,
-        download_name=f"{report_name.replace(' ', '_')}_history.xlsx"
-    )
-
-@reports_bp.route("/reports/refresh_all", methods=["POST"])
+@reports_bp.route('/reports/refresh_all', methods=['POST'])
 def refresh_all_reports():
     errors = []
-    # 1) Re‐run each scraper
-    for name, scraper in SCRAPERS.items():
+    total_rows = 0
+
+    for card in REPORT_CARDS:
+        label = card['label']
+        key   = card['key']
+        scraper_fn = SCRAPERS[label]['fn']
+
+        # 1) Run the scraper
         try:
-            scraper()
+            result = scraper_fn()
         except Exception as e:
-            errors.append(f"{name} scraper failed: {e}")
-    # 2) Rebuild every history_*.xlsx
+            msg = f"{label!r} scraper failed: {e}"
+            current_app.logger.error(msg)
+            errors.append(msg)
+            continue
+
+        # 2) Normalize into a dict of DataFrames
+        if result is None:
+            msg = f"{label!r} scraper returned None, skipping."
+            current_app.logger.warning(msg)
+            errors.append(msg)
+            continue
+        if isinstance(result, pd.DataFrame):
+            section_data = { label: result }
+        elif isinstance(result, dict):
+            section_data = result
+        else:
+            msg = f"{label!r} returned unexpected type {type(result)}"
+            current_app.logger.error(msg)
+            errors.append(msg)
+            continue
+
+        # 3) Persist
+        try:
+            save_report(section_data, key)
+            rows = sum(len(df) for df in section_data.values())
+            total_rows += rows
+            current_app.logger.debug(f"[DEBUG] scraped & persisted {rows} rows for {label!r}")
+        except Exception as e:
+            msg = f"{label!r} save_report error: {e}"
+            current_app.logger.error(msg)
+            errors.append(msg)
+
+    # 4) Rebuild your merged history
     try:
         build_all_history()
     except Exception as e:
-        errors.append(f"History rebuild failed: {e}")
+        msg = f"History rebuild failed: {e}"
+        current_app.logger.error(msg)
+        errors.append(msg)
 
+    # 5) Flash outcome
     if errors:
-        flash("Some operations failed:\n" + "\n".join(errors), "warning")
+        flash("Some operations failed:\n" + "\n".join(errors), 'warning')
     else:
-        flash("All reports scraped and histories rebuilt successfully!", "success")
+        flash(f"All reports scraped + saved! Total rows: {total_rows}", 'success')
 
     return redirect(url_for('reports_bp.reports_home'))

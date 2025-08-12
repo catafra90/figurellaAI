@@ -1,98 +1,130 @@
 {# templates/charts/_measures_table.html #}
 {% set measures = ['Chest','Torso','Waist','Abdo.','Hips','Thighs','Knees','Calves','Arms'] %}
 
-<!-- translucent Figurella‑pink zebra striping -->
+{# pull saved measures if any #}
+{% set m_sheet = sheets['measures'] if sheets and sheets.get('measures') else None %}
+{% set m_data  = m_sheet.data if m_sheet and m_sheet.data else [] %}
+
+{# helper: safe value #}
+{% macro v(d, k, default='') -%}
+  {%- if d is mapping and (k in d) -%}{{ d[k] }}{%- else -%}{{ default }}{%- endif -%}
+{%- endmacro %}
+
+{# prefetch grid rows defensively #}
+{% set r_DATE   = (m_data | selectattr('Field','equalto','DATE')   | list | first) or {} %}
+{% set r_FA     = (m_data | selectattr('Field','equalto','FA')     | list | first) or {} %}
+{% set r_Freq   = (m_data | selectattr('Field','equalto','Freq.')  | list | first) or {} %}
+{% set r_STEP   = (m_data | selectattr('Field','equalto','STEP')   | list | first) or {} %}
+{% set r_NC     = (m_data | selectattr('Field','equalto','NC')     | list | first) or {} %}
+{% set r_Weight = (m_data | selectattr('Field','equalto','Weight') | list | first) or {} %}
+{% set r_Notes  = (m_data | selectattr('Field','equalto','Notes')  | list | first) or {} %}
+{% set r_Reps   = (m_data | selectattr('Field','equalto','Reps')   | list | first) or {} %}
+
 <style>
-  .zebra-pink tbody tr:nth-child(even) {
-    background-color: rgba(204, 0, 102, 0.1);
-  }
-  /* make the header stick at top when scrolling horizontally */
-  .sticky-header th {
-    position: sticky;
-    top: 0;
-    background: #f9fafb;
-    z-index: 10;
-  }
+  .zebra-pink tbody tr:nth-child(even){ background-color: rgba(204,0,102,.1); }
+  .sticky-header th{ position: sticky; top: 0; background: #f9fafb; z-index: 10; }
+  td.no-edit{ cursor: default; user-select: text; }
+  td[contenteditable="true"]{ cursor: text; }
+  td[contenteditable="false"]{ cursor: default; }
 </style>
 
-<div class="flex flex-col gap-8 overflow-x-auto">
+<div id="measures" class="flex flex-col gap-8">
 
-  <!-- ===== Workout Session Grid (1–20) ===== -->
-  <table class="min-w-full border-collapse border text-sm zebra-pink mb-6">
+  {# =========================
+     Workout Session Grid (1–20)
+     ========================= #}
+  <table data-grid="1" class="min-w-full border-collapse border text-sm zebra-pink mb-6">
     <thead class="bg-gray-100 text-center text-xs font-semibold uppercase sticky-header">
       <tr>
         <th class="border px-2 py-1">#</th>
         {% for i in range(1,21) %}
-        <th class="border px-2 py-1{% if i in [10,20] %} border-l-2 border-gray-300{% endif %}">{{ i }}</th>
+          <th class="border px-2 py-1{% if i in [10,20] %} border-l-2 border-gray-300{% endif %}">{{ i }}</th>
         {% endfor %}
       </tr>
     </thead>
     <tbody>
-      {% set rows = ['DATE','FA','Freq.','Reps','STEP','NC','Weight','Notes'] %}
-      {% for row in rows %}
-      <tr class="text-left">
-        <th class="border px-2 py-1 text-xs font-medium">{{ row }}</th>
-        {% if row == 'Notes' %}
-          <td colspan="20" class="border px-2 py-1" contenteditable="true">&nbsp;</td>
-        {% else %}
-          {% for _ in range(20) %}
-          <td class="border px-2 py-1" contenteditable="true">&nbsp;</td>
-          {% endfor %}
-        {% endif %}
+      {% macro grid_row(label, row, editable=true) -%}
+        <tr class="text-left">
+          <th class="border px-2 py-1 text-xs font-medium">{{ label }}</th>
+          {% if label == 'Notes' %}
+            <td colspan="20" class="border px-2 py-1" contenteditable="true">{{ v(row,'1') }}</td>
+          {% else %}
+            {% for i in range(1,21) %}
+              {% set key = i|string %}
+              <td class="border px-2 py-1{% if not editable %} no-edit{% endif %}"
+                  {% if editable %}contenteditable="true"{% else %}contenteditable="false"{% endif %}>
+                {{ v(row, key) }}
+              </td>
+            {% endfor %}
+          {% endif %}
+        </tr>
+      {%- endmacro %}
+
+      {{ grid_row('DATE',   r_DATE,   true)  }}
+      {{ grid_row('FA',     r_FA,     true) }}
+      {{ grid_row('Freq.',  r_Freq,   true)  }}
+      {{ grid_row('Reps',   r_Reps,   true)  }}
+      {{ grid_row('STEP',   r_STEP,   true)  }}
+      {{ grid_row('NC',     r_NC,     true)  }}
+      {{ grid_row('Weight', r_Weight, true)  }}
+      {{ grid_row('Notes',  r_Notes,  true)  }}
+    </tbody>
+  </table>
+
+  {# =========================
+     Initial Measures (M0)
+     ========================= #}
+  {% set m0_hdr = (m_data | selectattr('Field','equalto','M0:__hdr__') | list | first) or {} %}
+  <table data-meas="M0" class="min-w-[240px] border-collapse border text-sm zebra-pink">
+    <thead class="bg-gray-100 text-center text-xs font-semibold uppercase sticky-header">
+      <tr>
+        <th colspan="2" class="border px-2 py-1">H.<br>INITIAL M.</th>
+        <th class="border px-2 py-1">FA</th>
+        <th class="border px-2 py-1">DATE</th>
+        <th class="border px-2 py-1">LB</th>
+        <th colspan="2" class="border px-2 py-1">H</th>
+        <th class="border px-2 py-1"></th>
       </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="border px-2 py-1" data-col="L1"   contenteditable="true">{{ v(m0_hdr,'L1') }}</td>
+        <td class="border px-2 py-1" data-col="L2"   contenteditable="true">{{ v(m0_hdr,'L2') }}</td>
+        <td class="border px-2 py-1 no-edit"         contenteditable="false">&nbsp;</td>
+        <td class="border px-2 py-1" data-col="DATE" contenteditable="true">{{ v(m0_hdr,'DATE') }}</td>
+        <td class="border px-2 py-1" data-col="LB"   contenteditable="true">{{ v(m0_hdr,'LB') }}</td>
+        <td class="border px-2 py-1" data-col="H1"   contenteditable="true">{{ v(m0_hdr,'H1') }}</td>
+        <td class="border px-2 py-1" data-col="H2"   contenteditable="true">{{ v(m0_hdr,'H2') }}</td>
+        <td class="border px-2 py-1" data-col="TAG"  contenteditable="true">{{ v(m0_hdr,'TAG') }}</td>
+      </tr>
+
+      {% for m in measures %}
+        {% set r0 = (m_data | selectattr('Field','equalto','M0:' ~ m) | list | first) or {} %}
+        {% set default_tag = 'LOST' if m == 'Calves' else ('TOT' if m == 'Arms' else '') %}
+        <tr data-fa="{{ m }}">
+          <td class="border px-2 py-1" data-col="L1"   contenteditable="true">{{ v(r0,'L1') }}</td>
+          <td class="border px-2 py-1" data-col="L2"   contenteditable="true">{{ v(r0,'L2') }}</td>
+          <td class="border px-2 py-1 no-edit"         contenteditable="false">{{ m }}</td>
+          <td class="border px-2 py-1" data-col="DATE" contenteditable="true">{{ v(r0,'DATE') }}</td>
+          <td class="border px-2 py-1" data-col="LB"   contenteditable="true">{{ v(r0,'LB') }}</td>
+          <td class="border px-2 py-1" data-col="H1"   contenteditable="true">{{ v(r0,'H1') }}</td>
+          <td class="border px-2 py-1" data-col="H2"   contenteditable="true">{{ v(r0,'H2') }}</td>
+          <td class="border px-2 py-1 text-xs text-center font-semibold uppercase no-edit"
+              data-col="TAG" contenteditable="false">
+            {{ v(r0,'TAG', default_tag) }}
+          </td>
+        </tr>
       {% endfor %}
     </tbody>
   </table>
 
-  <!-- ===== Existing Measures Display ===== -->
-  <div class="flex flex-col md:flex-row gap-6">
-
-    <!-- First Table -->
-    <table class="min-w-[240px] border-collapse border text-sm zebra-pink">
-      <thead class="bg-gray-100 text-center text-xs font-semibold uppercase">
-        <tr>
-          <th colspan="2" class="border px-2 py-1">H.<br>INITIAL M.</th>
-          <th class="border px-2 py-1">FA</th>
-          <th class="border px-2 py-1">DATE</th>
-          <th class="border px-2 py-1">LB</th>
-          <th colspan="2" class="border px-2 py-1">H</th>
-          <th class="border px-2 py-1"></th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td colspan="2" class="border px-2 py-1" contenteditable="true">&nbsp;</td>
-          <td class="border px-2 py-1" contenteditable="true">&nbsp;</td>
-          <td class="border px-2 py-1" contenteditable="true">&nbsp;</td>
-          <td class="border px-2 py-1" contenteditable="true">&nbsp;</td>
-          <td colspan="2" class="border px-2 py-1" contenteditable="true">&nbsp;</td>
-          <td class="border px-2 py-1" contenteditable="true">&nbsp;</td>
-        </tr>
-        {% for m in measures %}
-        {% set idx = loop.index0 %}
-        <tr>
-          {% if idx >= 5 %}
-            <td class="border px-2 py-1" contenteditable="true">&nbsp;</td>
-            <td class="border px-2 py-1" contenteditable="true">&nbsp;</td>
-          {% else %}
-            <td colspan="2" class="border px-2 py-1" contenteditable="true">&nbsp;</td>
-          {% endif %}
-          <td class="border px-2 py-1">{{ m }}</td>
-          <td class="border px-2 py-1" contenteditable="true">&nbsp;</td>
-          <td class="border px-2 py-1" contenteditable="true">&nbsp;</td>
-          <td colspan="2" class="border px-2 py-1" contenteditable="true">&nbsp;</td>
-          <td class="border px-2 py-1 text-xs text-center font-semibold uppercase">
-            {% if m == 'Calves' %}LOST{% elif m == 'Arms' %}TOT{% else %}&nbsp;{% endif %}
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-
-    <!-- Second & Third Tables -->
-    {% for t in [2, 3] %}
-    <table class="min-w-[220px] border-collapse border text-sm zebra-pink">
-      <thead class="bg-gray-100 text-center text-xs font-semibold uppercase">
+  {# =========================
+     Follow-up Measures (M2, M3)
+     ========================= #}
+  {% for KEY in ['M2','M3'] %}
+    {% set hdr = (m_data | selectattr('Field','equalto', KEY ~ ':__hdr__') | list | first) or {} %}
+    <table data-meas="{{ KEY }}" class="min-w-[220px] border-collapse border text-sm zebra-pink">
+      <thead class="bg-gray-100 text-center text-xs font-semibold uppercase sticky-header">
         <tr>
           <th class="border px-2 py-1">FA</th>
           <th class="border px-2 py-1">DATE</th>
@@ -102,24 +134,167 @@
       </thead>
       <tbody>
         <tr>
-          <td class="border px-2 py-1" contenteditable="true">&nbsp;</td>
-          <td class="border px-2 py-1" contenteditable="true">&nbsp;</td>
-          <td class="border px-2 py-1" contenteditable="true">&nbsp;</td>
-          <td class="border px-2 py-1" contenteditable="true">&nbsp;</td>
+          <td class="border px-2 py-1 no-edit"         contenteditable="false">&nbsp;</td>
+          <td class="border px-2 py-1" data-col="DATE" contenteditable="true">{{ v(hdr,'DATE') }}</td>
+          <td class="border px-2 py-1" data-col="LB"   contenteditable="true">{{ v(hdr,'LB') }}</td>
+          <td class="border px-2 py-1" data-col="TAG"  contenteditable="true">{{ v(hdr,'TAG') }}</td>
         </tr>
+
         {% for m in measures %}
-        <tr>
-          <td class="border px-2 py-1">{{ m }}</td>
-          <td class="border px-2 py-1" contenteditable="true">&nbsp;</td>
-          <td class="border px-2 py-1" contenteditable="true">&nbsp;</td>
-          <td class="border px-2 py-1 text-xs text-center font-semibold uppercase">
-            {% if m == 'Calves' %}LOST{% elif m == 'Arms' %}TOT{% endif %}
-          </td>
-        </tr>
+          {% set rx = (m_data | selectattr('Field','equalto', KEY ~ ':' ~ m) | list | first) or {} %}
+          {% set default_tag = 'LOST' if m == 'Calves' else ('TOT' if m == 'Arms' else '') %}
+          <tr data-fa="{{ m }}">
+            <td class="border px-2 py-1 no-edit"         contenteditable="false">{{ m }}</td>
+            <td class="border px-2 py-1" data-col="DATE" contenteditable="true">{{ v(rx,'DATE') }}</td>
+            <td class="border px-2 py-1" data-col="LB"   contenteditable="true">{{ v(rx,'LB') }}</td>
+            <td class="border px-2 py-1 text-xs text-center font-semibold uppercase no-edit"
+                data-col="TAG" contenteditable="false">
+              {{ v(rx,'TAG', default_tag) }}
+            </td>
+          </tr>
         {% endfor %}
       </tbody>
     </table>
-    {% endfor %}
-
-  </div>
+  {% endfor %}
 </div>
+
+<script>
+(function(){
+  const onReady = (fn) => {
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fn);
+    else fn();
+  };
+
+  onReady(() => {
+    const scope = document.getElementById('measures') || document;
+
+    // 1) Keep "no-edit" cells locked (also if someone toggles contenteditable)
+    const lockNoEdit = () => {
+      scope.querySelectorAll('table[data-meas] td.no-edit').forEach(td => {
+        td.setAttribute('contenteditable', 'false');
+      });
+    };
+    lockNoEdit();
+    const lockObs = new MutationObserver(muts => {
+      muts.forEach(m => {
+        if (m.type === 'attributes' && m.target.classList.contains('no-edit')) {
+          m.target.setAttribute('contenteditable', 'false');
+        }
+      });
+    });
+    scope.querySelectorAll('table[data-meas] td.no-edit').forEach(td => {
+      lockObs.observe(td, { attributes: true, attributeFilter: ['contenteditable'] });
+    });
+
+    // 2) Serialization of M0/M2/M3
+    function readRow(row) {
+      const obj = {};
+      row.querySelectorAll('td[data-col]').forEach(td => {
+        const k = td.getAttribute('data-col');
+        obj[k] = (td.textContent || '').trim();
+      });
+      return obj;
+    }
+    function serializeMeasuresTables() {
+      const records = [];
+      scope.querySelectorAll('table[data-meas]').forEach(table => {
+        const key = table.getAttribute('data-meas'); // "M0" | "M2" | "M3"
+        const rows = table.querySelectorAll('tbody > tr');
+        if (!rows.length) return;
+
+        // Header row
+        const hdr = readRow(rows[0]);
+        hdr.Field = `${key}:__hdr__`;
+        records.push(hdr);
+
+        // Body rows
+        for (let i = 1; i < rows.length; i++) {
+          const tr = rows[i];
+          const fa = tr.getAttribute('data-fa');
+          if (!fa) continue;
+          const rec = readRow(tr);
+          rec.Field = `${key}:${fa}`;
+          records.push(rec);
+        }
+      });
+      return records;
+    }
+
+    // 3) Debounced save
+    function debounce(fn, delay) {
+      let t = null;
+      return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), delay); };
+    }
+
+    function showSaving(isSaving, msg='Saving…') {
+      let badge = document.getElementById('measures-saving-badge');
+      if (!badge) {
+        badge = document.createElement('div');
+        badge.id = 'measures-saving-badge';
+        badge.style.cssText = 'position:fixed;bottom:14px;right:14px;padding:6px 10px;border:1px solid #ddd;border-radius:8px;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.08);font-size:12px;opacity:0;transition:opacity .15s;z-index:9999';
+        document.body.appendChild(badge);
+      }
+      badge.textContent = msg;
+      badge.style.opacity = isSaving ? '1' : '0';
+    }
+
+    async function doSave() {
+      const payload = { section: 'measures', data: serializeMeasuresTables() };
+      console.log('[MEASURES] payload →', payload);
+
+      const headers = { 'Content-Type': 'application/json' };
+      const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+      if (csrf) headers['X-CSRFToken'] = csrf;
+
+      showSaving(true, 'Saving…');
+      try {
+        const resp = await fetch("{{ url_for('charts.save_client_chart', client=client) }}", {
+          method: 'POST',
+          headers,
+          credentials: 'same-origin',
+          body: JSON.stringify(payload)
+        });
+        const text = await resp.text();
+        console.log('[MEASURES] server status:', resp.status, 'body:', text);
+        if (!resp.ok) {
+          showSaving(true, 'Save failed');
+          setTimeout(() => showSaving(false), 1400);
+          return;
+        }
+        showSaving(true, 'Saved ✓');
+        setTimeout(() => showSaving(false), 700);
+      } catch (e) {
+        console.error('[MEASURES] Autosave error:', e);
+        showSaving(true, 'Save error');
+        setTimeout(() => showSaving(false), 1600);
+      }
+    }
+    const saveDebounced = debounce(doSave, 800);
+
+    // 4) Event delegation so we never miss edits
+    function isEditableDataCell(node) {
+      const td = node?.closest?.('td');
+      if (!td) return false;
+      if (td.getAttribute('contenteditable') !== 'true') return false;
+      if (!td.closest('table[data-meas]')) return false;
+      return true;
+    }
+    scope.addEventListener('input',  e => { if (isEditableDataCell(e.target)) saveDebounced(); });
+    scope.addEventListener('paste',  e => { if (isEditableDataCell(e.target)) setTimeout(saveDebounced, 0); });
+    scope.addEventListener('blur',   e => { if (isEditableDataCell(e.target)) saveDebounced(); }, true);
+
+    // Debug info & manual button
+    const cellsCount = scope.querySelectorAll('table[data-meas] td[contenteditable="true"]').length;
+    console.log('[MEASURES] editable cells detected:', cellsCount);
+    if (!document.getElementById('save-measures-now')) {
+      const btn = document.createElement('button');
+      btn.id = 'save-measures-now';
+      btn.type = 'button';
+      btn.textContent = 'Save measures now (debug)';
+      btn.style.cssText = 'position:fixed;bottom:14px;left:14px;padding:6px 10px;border:1px solid #ddd;border-radius:8px;background:#fff;z-index:9999';
+      btn.addEventListener('click', doSave);
+      document.body.appendChild(btn);
+    }
+  });
+})();
+</script>

@@ -24,242 +24,65 @@
   {% block extra_head %}{% endblock %}
 
   <style>
-    html, body {
-      height: 100%;
-      overflow: hidden;
-      overflow-y: auto;     /* allow vertical page scroll */
-    }
+    html, body { height: 100%; overflow: hidden; overflow-y: auto; }
+
+    /* ---- Command Palette must be above EVERYTHING ---- */
+    #cmdk { z-index: 2147483647 !important; }           /* max-ish z-index */
+    #cmdk .cmdk-panel { position: relative; z-index: 1; }
+    body.cmdk-open { overflow: hidden; touch-action: none; }
 
     .modal-window {
-      position: absolute;
-      background: white;
-      border: 1px solid #ddd;
-      border-radius: .5rem;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      width: 600px;
-      height: 500px;
-      top: 100px;
-      left: 100px;
-      z-index: 1000;
-      touch-action: none;
-      user-select: none;
+      position: absolute; background: white; border: 1px solid #ddd; border-radius: .5rem;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15); overflow: hidden; display: flex; flex-direction: column;
+      width: 600px; height: 500px; top: 100px; left: 100px; z-index: 1000; touch-action: none; user-select: none;
     }
-
     .modal-header {
-      background: #f3f4f6;
-      padding: 1rem;
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      flex-direction: column;
-      gap: 0.5rem;
-      position: relative;
+      background: #f3f4f6; padding: 1rem; display: flex; justify-content: space-between;
+      align-items: flex-start; flex-direction: column; gap: .5rem; position: relative;
     }
-
-    .modal-header h2 {
-      font-weight: 600;
-    }
-
-    .modal-controls {
-      position: absolute;
-      top: 0.5rem;
-      right: 0.5rem;
-      display: flex;
-      gap: 0.25rem;
-    }
-
+    .modal-header h2 { font-weight: 600; }
+    .modal-controls { position: absolute; top: .5rem; right: .5rem; display: flex; gap: .25rem; }
     .modal-controls button {
-      background: #e5e7eb;
-      border-radius: 0.375rem;
-      padding: 0.25rem 0.5rem;
-      font-weight: bold;
-      font-size: 1rem;
-      color: #1f2937;
-      transition: background 0.2s;
+      background: #e5e7eb; border-radius: .375rem; padding: .25rem .5rem; font-weight: bold;
+      font-size: 1rem; color: #1f2937; transition: background .2s;
     }
-
-    .modal-controls button:hover {
-      background: #d1d5db;
-    }
-
-    .modal-body {
-      flex: 1;
-      overflow-y: auto;
-      overflow-x: hidden;
-      padding: 1rem;
-      overscroll-behavior: contain;
-      -webkit-overflow-scrolling: touch;
-      user-select: text;
-    }
-
-    .modal-resizer {
-      position: absolute;
-      right: 0;
-      bottom: 0;
-      width: 28px;
-      height: 28px;
-      cursor: se-resize;
-      z-index: 20;
-      background: white;
-    }
-
+    .modal-controls button:hover { background: #d1d5db; }
+    .modal-body { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 1rem; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; user-select: text; }
+    .modal-resizer { position: absolute; right: 0; bottom: 0; width: 28px; height: 28px; cursor: se-resize; z-index: 20; background: white; }
     .modal-resizer::after {
-      content: '';
-      display: block;
-      width: 16px;
-      height: 16px;
+      content: ''; display: block; width: 16px; height: 16px;
       background-image: url('data:image/svg+xml,%3Csvg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"%3E%3Cpath d="M1 15L15 1M5 15L15 5M9 15L15 9" stroke="%23999" stroke-width="1.5"/%3E%3C/svg%3E');
-      background-repeat: no-repeat;
-      background-position: center;
-      opacity: 0.5;
+      background-repeat: no-repeat; background-position: center; opacity: .5;
     }
-
-    .scale-target {
-      transition: transform 0.1s ease;
-      transform-origin: 0 0;
-      display: inline-block;
-    }
-
-    .sidebar {
-      transition: transform 0.3s ease;
-    }
-
-    .sidebar-collapsed {
-      transform: translateX(-100%);
-    }
-
-    .sidebar-expanded {
-      transform: translateX(0);
-    }
-
-    #sidebarToggle {
-      transition: left 0.3s ease;
-    }
-
-    
   </style>
 </head>
 
 <body class="font-sans text-gray-900 h-full flex flex-col overflow-hidden">
 
- <!-- Sidebar -->
-<div id="sidebar" class="fixed top-0 left-0 h-full w-64 bg-gray-800 border-r z-50 sidebar sidebar-collapsed shadow-lg">
-  <div class="p-4 font-bold text-figurella text-lg border-b border-gray-700">Menu</div>
-  <ul class="flex flex-col gap-2 p-4 text-white">
-    <li><a href="{{ url_for('home.index') }}" class="block py-2 px-3 rounded hover:bg-gray-700 {% if active_page=='home' %}bg-gray-700{% endif %}"><i class="bi bi-house-door"></i> Home</a></li>
-    <li><a href="{{ url_for('daily_checkin.report_home') }}" class="block py-2 px-3 rounded hover:bg-gray-700 {% if active_page=='report' %}bg-gray-700{% endif %}"><i class="bi bi-journal-text"></i> Daily Check-in</a></li>
-    <li><a href="{{ url_for('clients.clients') }}" class="block py-2 px-3 rounded hover:bg-gray-700 {% if active_page=='clients' %}bg-gray-700{% endif %}"><i class="bi bi-people"></i> Clients</a></li>
-    <li><a href="{{ url_for('reports_bp.reports_home') }}" class="block py-2 px-3 rounded hover:bg-gray-700 {% if active_page=='reports' %}bg-gray-700{% endif %}"><i class="bi bi-file-earmark-text"></i> Reports</a></li>
-    <li><a href="{{ url_for('charts.view_charts') }}" class="block py-2 px-3 rounded hover:bg-gray-700 {% if active_page=='charts' %}bg-gray-700{% endif %}"><i class="bi bi-bar-chart-line"></i> Charts</a></li>
-  </ul>
-</div>
+  <!-- Header (click/tap logo opens Command Palette immediately) -->
+  <header class="bg-gray-800 fixed top-0 left-0 w-full z-40 h-16 flex items-center justify-center shadow">
+    <img id="figurella-logo"
+         src="{{ url_for('static', filename='images/figurella-logo.png') }}"
+         alt="Figurella Logo"
+         class="h-10 select-none"
+         draggable="false">
+  </header>
 
-<!-- Sidebar Toggle Button -->
-<button id="sidebarToggle" onclick="toggleSidebar()" class="fixed top-2 left-3 z-50 bg-gray-800 border p-2 rounded shadow-lg text-xl text-white">
-  <i class="bi bi-list"></i>
-</button>
-
-<header class="bg-gray-800 fixed top-0 left-0 w-full z-40 h-16 flex items-center justify-center shadow">
-  <img src="{{ url_for('static', filename='images/figurella-logo.png') }}" alt="Figurella Logo" class="h-10">
-</header>
-
-
-  <!-- ✅ Light gray background applied here -->
-  
-
+  <!-- Main -->
   <main class="flex-1 pt-20 pb-14 overflow-hidden bg-gray-200">
-
     {% block content %}{% endblock %}
   </main>
 
+  <!-- Bottom nav (Home only) -->
   <nav class="fixed bottom-0 w-full h-11 bg-gray-800 text-white shadow flex justify-around text-xs z-40">
-  <a href="{{ url_for('home.index') }}" class="flex-1 flex items-center justify-center border-t-4 border-transparent hover:border-figurella {% if active_page=='home' %}border-figurella{% endif %}">
-    <i class="bi bi-house-door text-lg"></i>
-  </a>
-  <a href="{{ url_for('daily_checkin.report_home') }}" class="flex-1 flex items-center justify-center border-t-4 border-transparent hover:border-figurella {% if active_page=='report' %}border-figurella{% endif %}">
-    <i class="bi bi-journal-text text-lg"></i>
-  </a>
-  <a href="{{ url_for('clients.clients') }}" class="flex-1 flex items-center justify-center border-t-4 border-transparent hover:border-figurella {% if active_page=='clients' %}border-figurella{% endif %}">
-    <i class="bi bi-people text-lg"></i>
-  </a>
-  <a href="{{ url_for('reports_bp.reports_home') }}" class="flex-1 flex items-center justify-center border-t-4 border-transparent hover:border-figurella {% if active_page=='reports' %}border-figurella{% endif %}">
-    <i class="bi bi-file-earmark-text text-lg"></i>
-  </a>
-  <a href="{{ url_for('charts.view_charts') }}" class="flex-1 flex items-center justify-center border-t-4 border-transparent hover:border-figurella {% if active_page=='charts' %}border-figurella{% endif %}">
-    <i class="bi bi-bar-chart-line text-lg"></i>
-  </a>
-</nav>
-
-  <button id="micButton" class="fixed bottom-20 right-6 w-14 h-14 bg-red-600 text-white rounded-full shadow-lg flex items-center justify-center z-50">
-    <i class="bi bi-mic text-2xl"></i>
-  </button>
+    <a href="{{ url_for('home.index') }}" class="flex-1 flex items-center justify-center border-t-4 border-transparent hover:border-figurella {% if active_page=='home' %}border-figurella{% endif %}">
+      <i class="bi bi-house-door text-lg"></i>
+    </a>
+  </nav>
 
   {% block scripts %}
   <script>
-    function toggleSidebar() {
-      const sidebar = document.getElementById('sidebar');
-      const toggleBtn = document.getElementById('sidebarToggle');
-      sidebar.classList.toggle('sidebar-expanded');
-      sidebar.classList.toggle('sidebar-collapsed');
-
-      if (sidebar.classList.contains('sidebar-expanded')) {
-        toggleBtn.style.left = '270px';
-      } else {
-        toggleBtn.style.left = '16px';
-      }
-    }
-
-    function initClientChartZoom(container) {
-      const wrapper = container.querySelector('.scale-target');
-      let scale = 1;
-      let lastDistance = null;
-
-      container.addEventListener('touchstart', (e) => {
-        if (e.touches.length === 2) {
-          const [a, b] = e.touches;
-          lastDistance = getDistance(a, b);
-          const rect = wrapper.getBoundingClientRect();
-          const cx = (a.clientX + b.clientX) / 2 - rect.left;
-          const cy = (a.clientY + b.clientY) / 2 - rect.top;
-          wrapper.style.transformOrigin = `${cx}px ${cy}px`;
-        }
-      });
-
-      container.addEventListener('touchmove', (e) => {
-        if (e.touches.length === 2 && lastDistance) {
-          e.preventDefault();
-          const [a, b] = e.touches;
-          const dist = getDistance(a, b);
-          scale += (dist - lastDistance) * 0.005;
-          scale = Math.max(0.4, Math.min(3, scale));
-          wrapper.style.transform = `scale(${scale})`;
-          lastDistance = dist;
-        }
-      });
-
-      container.addEventListener('touchend', () => lastDistance = null);
-
-      function getDistance(t1, t2) {
-        const dx = t2.clientX - t1.clientX;
-        const dy = t2.clientY - t1.clientY;
-        return Math.sqrt(dx * dx + dy * dy);
-      }
-
-      const zoomIn = container.querySelector('.zoom-in');
-      const zoomOut = container.querySelector('.zoom-out');
-      if (zoomIn) zoomIn.addEventListener('click', () => {
-        scale = Math.min(3, scale + 0.1);
-        wrapper.style.transform = `scale(${scale})`;
-      });
-      if (zoomOut) zoomOut.addEventListener('click', () => {
-        scale = Math.max(0.4, scale - 0.1);
-        wrapper.style.transform = `scale(${scale})`;
-      });
-    }
-
+    // Helper for draggable/resizable modals (if you use them elsewhere).
     function makeInteractive(modal) {
       let offsetX = 0, offsetY = 0;
       interact(modal)
@@ -294,14 +117,186 @@
   </script>
   {% endblock %}
 
-<!-- EDITABLE TABLE POPUP MODAL -->
-<div id="table-modal" class="fixed inset-0 hidden items-center justify-center bg-black bg-opacity-50 z-50">
-  <div class="relative bg-white rounded-lg p-6 max-w-4xl max-h-[80vh] overflow-auto">
-    <button id="table-modal-close" class="absolute top-2 right-2 text-gray-600 hover:text-gray-800 text-2xl leading-none">&times;</button>
-    <div id="table-modal-content"></div>
+  <!-- Editable table popup modal -->
+  <div id="table-modal" class="fixed inset-0 hidden items-center justify-center bg-black bg-opacity-50 z-50">
+    <div class="relative bg-white rounded-lg p-6 max-w-4xl max-h-[80vh] overflow-auto">
+      <button id="table-modal-close" class="absolute top-2 right-2 text-gray-600 hover:text-gray-800 text-2xl leading-none">&times;</button>
+      <div id="table-modal-content"></div>
+    </div>
   </div>
-</div>
 
+  <!-- Command Palette (always-on-top overlay) -->
+  <div id="cmdk"
+       class="fixed inset-0 hidden items-start justify-center pt-24 bg-black/40"
+       role="dialog" aria-modal="true">
+    <div class="cmdk-panel w-full max-w-xl mx-4 bg-white rounded-xl shadow-xl overflow-hidden">
+      <input id="cmdk-input" placeholder="Type to jump… (↑/↓ to navigate, Enter to open)"
+             class="w-full px-4 py-3 text-lg outline-none border-b"
+             autocomplete="off" />
+      <ul id="cmdk-list" class="max-h-80 overflow-auto divide-y"></ul>
+      <div id="cmdk-empty" class="hidden px-4 py-3 text-gray-500">No matches</div>
+    </div>
+  </div>
+
+  <script>
+  (function(){
+    // ---- Items (labels + routes) ----
+    const CMDK_ITEMS = [
+      { label: 'Home',               href: "{{ url_for('home.index') }}" },
+      { label: 'Daily Check-in',     href: "{{ url_for('daily_checkin.report_home') }}" },
+      { label: 'Clients',            href: "{{ url_for('clients.clients') }}" },
+      { label: 'Figurella Reports',  href: "{{ url_for('reports_bp.reports_home') }}" },
+      { label: 'Charts',             href: "{{ url_for('charts.view_charts') }}" }
+    ];
+
+    const modal = document.getElementById('cmdk');
+    const input = document.getElementById('cmdk-input');
+    const list  = document.getElementById('cmdk-list');
+    const empty = document.getElementById('cmdk-empty');
+    const logo  = document.getElementById('figurella-logo');
+
+    let results = [];
+    let activeIndex = 0;
+
+    function openPalette() {
+      modal.classList.remove('hidden'); modal.classList.add('flex');
+      document.body.classList.add('cmdk-open');
+      input.value = ''; render('');
+      input.focus();
+    }
+    function closePalette() {
+      modal.classList.remove('flex'); modal.classList.add('hidden');
+      document.body.classList.remove('cmdk-open');
+    }
+
+    // ---- Fuzzy matching (lightweight) ----
+    function fuzzyMatch(str, query) {
+      const s = str.toLowerCase();
+      const q = query.toLowerCase().trim();
+      if (q.length === 0) return { score: 0, indices: [] };
+      let score = 0, last = -1, streak = 0;
+      const idxs = [];
+      for (let qi = 0; qi < q.length; qi++) {
+        const ch = q[qi];
+        const pos = s.indexOf(ch, last + 1);
+        if (pos === -1) return null;
+        idxs.push(pos);
+
+        score += 1;
+        if (pos === last + 1) { streak += 1; score += 1 + streak * 0.5; }
+        else { streak = 0; }
+        if (pos === 0 || /\s|[_-]/.test(s[pos - 1])) score += 1.25;
+
+        last = pos;
+      }
+      score -= Math.max(0, s.length - q.length) * 0.02;
+      return { score, indices: idxs };
+    }
+
+    function highlightLabel(label, indices) {
+      if (!indices || !indices.length) return escapeHtml(label);
+      let out = '', last = 0;
+      for (let i = 0; i < indices.length; i++) {
+        const idx = indices[i];
+        if (idx > last) out += escapeHtml(label.slice(last, idx));
+        out += '<span class="text-figurella font-semibold">' + escapeHtml(label[idx]) + '</span>';
+        last = idx + 1;
+      }
+      out += escapeHtml(label.slice(last));
+      return out;
+    }
+
+    function escapeHtml(s) {
+      return s.replace(/[&<>"']/g, (c) => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[c]));
+    }
+
+    function render(query) {
+      const scored = [];
+      for (const item of CMDK_ITEMS) {
+        const m = fuzzyMatch(item.label, query);
+        if (m) scored.push({ ...item, score: m.score, indices: m.indices });
+      }
+      scored.sort((a,b) => b.score - a.score || a.label.localeCompare(b.label));
+      results = scored;
+
+      list.innerHTML = '';
+      if (results.length === 0) {
+        empty.classList.remove('hidden');
+        activeIndex = -1;
+      } else {
+        empty.classList.add('hidden');
+        results.forEach((r, i) => {
+          const li = document.createElement('li');
+          li.className = 'px-4 py-3 hover:bg-gray-50 cursor-pointer';
+          li.dataset.href = r.href;
+          li.dataset.index = i;
+          li.innerHTML = highlightLabel(r.label, r.indices);
+          li.addEventListener('click', () => { window.location = r.href; });
+          li.addEventListener('mousemove', () => setActive(i));
+          list.appendChild(li);
+        });
+        activeIndex = 0;
+        updateActive();
+      }
+    }
+
+    function updateActive() {
+      [...list.children].forEach((li, i) => {
+        li.classList.toggle('bg-gray-100', i === activeIndex);
+      });
+    }
+
+    function setActive(i) {
+      if (i < 0 || i >= results.length) return;
+      activeIndex = i;
+      updateActive();
+    }
+
+    // ---- Keyboard handling (open/close + navigate) ----
+    window.addEventListener('keydown', (e) => {
+      const k = e.key.toLowerCase();
+      if ((e.ctrlKey || e.metaKey) && k === 'k') { e.preventDefault(); openPalette(); }
+      if (!modal.classList.contains('hidden') && e.key === 'Escape') closePalette();
+    });
+
+    input.addEventListener('keydown', (e) => {
+      if (results.length === 0) return;
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        const next = (activeIndex + 1) % results.length;
+        setActive(next); ensureVisible(next);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        const prev = (activeIndex - 1 + results.length) % results.length;
+        setActive(prev); ensureVisible(prev);
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (activeIndex >= 0) window.location = results[activeIndex].href;
+      }
+    });
+
+    function ensureVisible(i) {
+      const li = list.children[i];
+      if (!li) return;
+      const rect = li.getBoundingClientRect();
+      const parent = list.getBoundingClientRect();
+      if (rect.top < parent.top) li.scrollIntoView({ block: 'nearest' });
+      if (rect.bottom > parent.bottom) li.scrollIntoView({ block: 'nearest' });
+    }
+
+    // ---- Open palette instantly on logo click/tap ----
+    logo.addEventListener('touchstart', (e) => { e.preventDefault(); openPalette(); }, { passive: false });
+    logo.addEventListener('click', (e) => { e.preventDefault(); openPalette(); });
+
+    // Close on backdrop click
+    modal.addEventListener('click', (e) => { if (e.target === modal) closePalette(); });
+
+    // Prevent image drag
+    logo.addEventListener('dragstart', (e) => e.preventDefault());
+  })();
+  </script>
 
 </body>
 </html>

@@ -15,6 +15,15 @@ def service_worker():
     js_folder = os.path.join(app.root_path, 'static', 'js')
     return send_from_directory(js_folder, 'service-worker.js')
 
+# ─── Download route for Excel reports ──────────────────────────────
+@app.route('/download/<path:filename>')
+def download_file(filename):
+    """
+    Serve the generated Excel files from app/download/.
+    """
+    download_dir = os.path.join(app.root_path, 'download')
+    return send_from_directory(download_dir, filename, as_attachment=True)
+
 # ─── Fallback index route ──────────────────────────────────────────
 @app.route('/')
 def index():
