@@ -73,17 +73,51 @@
   @keyframes headerFlash { 0%{background:#f59e0b;} 100%{background:#1f2937;} }
   .chart-header.flash { animation: headerFlash .8s ease; }
 
-  /* Small spacing for flags next to names */
   .client-flags { margin-left:.25rem; }
   .client-flags > span { margin-left:.1rem; }
 
-  /* Hide scrollbars for smoother scale container */
   .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
   .hide-scrollbar::-webkit-scrollbar { display: none; }
 
-  /* Visual state for Nutrition / Focus pills inside chart */
   .flag-group .flag-btn.btn-on { background:#ec4899 !important; color:#ffffff !important; box-shadow:0 6px 16px rgba(236,72,153,.35) !important; }
   .flag-group .flag-btn.btn-off { background:#e5e7eb !important; color:#111827 !important; box-shadow:none !important; }
+
+  /* ---------------- Sticky toolbar under tabs (Rev1) ---------------- */
+  /* JS wraps the first two control rows in .rev1-toolbar-wrap */
+  #workout-rev1 .rev1-toolbar-wrap{
+    position: sticky; top: 0; z-index: 25;
+    display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap;
+    background:#fff; padding:.25rem 0; border-bottom:1px solid #eee;
+  }
+  /* Make the table header stick below the toolbar height */
+  #workout-rev1 .sticky-header thead th{ position:sticky; top: var(--wr1-stick-top, 0px); background:#f9fafb; z-index:10; }
+
+  /* ---------------- Drag handles & fluent drag visuals ---------------- */
+  /* We set first TD to relative via JS; keep grip invisible */
+  .row-grip{ position:absolute; inset:0; opacity:0; cursor:grab; user-select:none; }
+  .row-grip:active{ cursor:grabbing; }
+
+  /* Lift effect on the dragged row */
+  #workout-rev1 table tbody tr,
+  #gk-rev1-section table tbody tr{
+    transition: transform .08s ease, box-shadow .12s ease;
+    will-change: transform;
+  }
+  #workout-rev1 table tbody tr.dragging,
+  #gk-rev1-section table tbody tr.dragging{
+    position: relative; z-index: 50;
+    transform: scale(1.01);
+    box-shadow: 0 12px 24px rgba(0,0,0,.16);
+    background:#fff;
+  }
+  #workout-rev1 table tbody tr.dragging td,
+  #gk-rev1-section table tbody tr.dragging td{ background:#fff !important; }
+
+  /* Drop hint lines */
+  #workout-rev1 table tbody tr.drag-over-top,
+  #gk-rev1-section table tbody tr.drag-over-top{ box-shadow: inset 0 2px 0 #cc0066; }
+  #workout-rev1 table tbody tr.drag-over-bottom,
+  #gk-rev1-section table tbody tr.drag-over-bottom{ box-shadow: inset 0 -2px 0 #cc0066; }
 </style>
 {% endblock %}
 
@@ -151,112 +185,98 @@
 
 {% block scripts %}
 <script>
-document.addEventListener('DOMContentLoaded', () => {
-  const DEBUG = false;
+document.addEventListener('DOMContentLoaded', function(){
+  var DEBUG = false;
 
-  /* ---------------------------------------
-   * Globals
-   * ------------------------------------- */
-  const chartPanel  = document.getElementById('chart-panel');
-  const clientPanel = document.getElementById('client-panel');
-  const divider     = document.querySelector('.sidebar-divider');
-  const searchInput = document.getElementById('clientSearch');
-  const onlyCurrent = document.getElementById('onlyCurrent');
-  const COLLAPSE_THRESHOLD = 60;
+  /* GK defaults */
+  var GK_DEFAULTS = {
+    TO1: ["1/2 KICK BACK", "KICK BACK", "SIDE DIAG KICKS"],
+    TO2: ["1/2 KICKS ON BENCH", "BALLERINA", "INNER FORWARD"],
+    TO3: ["1/2 TRIANGLES ON B", "SQUAT BENCH TOUCH", "DIAGONAL INNER B."],
+    TO4: ["1/2 CIRCLES BENCH", "SUPER MARIO LUNGES", "INNER CIRCLES FWD"],
+    TO5: ["1/2 OPEN CLOSE (B)", "ALTERNATE SQUATS", "SIDE DIAGONAL KICKS B"]
+  };
 
-  const openCards = new Map(); // normalizedName -> card
-  const normKey   = s => (s || '').trim().toLowerCase();
+  var chartPanel  = document.getElementById('chart-panel');
+  var clientPanel = document.getElementById('client-panel');
+  var divider     = document.querySelector('.sidebar-divider');
+  var searchInput = document.getElementById('clientSearch');
+  var onlyCurrent = document.getElementById('onlyCurrent');
+  var COLLAPSE_THRESHOLD = 60;
+
+  var openCards = new Map();
+  var normKey   = function(s){ return (s || '').trim().toLowerCase(); };
 
   /* --- Persistence (open charts + active tab) --- */
-  const STORAGE_KEY = 'fig:charts:open-v1';
+  var STORAGE_KEY = 'fig:charts:open-v1';
   function saveOpenState() {
     try {
-      const state = Array.from(chartPanel.querySelectorAll('.chart-card')).map(card => {
-        const name = card.dataset.client;
-        const tabs = card.querySelectorAll('.tab-btn');
-        let active = 0;
-        tabs.forEach((b,i)=>{ if (b.classList.contains('active')) active = i; });
-        return { name, activeTab: active };
+      var cards = chartPanel.querySelectorAll('.chart-card');
+      var state = [];
+      cards.forEach(function(card){
+        var name = card.dataset.client || '';
+        var tabs = card.querySelectorAll('.tab-btn');
+        var active = 0;
+        tabs.forEach(function(b,i){ if (b.classList.contains('active')) active = i; });
+        state.push({ name: name, activeTab: active });
       });
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    } catch(e) { /* ignore */ }
+    } catch(e) {}
   }
   async function restoreOpenState() {
-    let state = [];
+    var state = [];
     try { state = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]') || []; } catch(e) {}
-    for (const item of state) {
-      try { await addCard(item.name, { initialTab: item.activeTab }); } catch(e) {}
+    for (var i=0;i<state.length;i++){
+      try { await addCard(state[i].name, { initialTab: state[i].activeTab }); } catch(e) {}
     }
   }
   window.addEventListener('pagehide', saveOpenState);
   window.addEventListener('beforeunload', saveOpenState);
 
-  /* Update flags beside a name in the sidebar */
-  function setSidebarFlagsByName(clientName, flags){
-    const cells = document.querySelectorAll('#client-panel td.client-name');
-    let cell = null;
-    for (const c of cells) {
-      if ((c.dataset.name || '').trim() === clientName) { cell = c; break; }
-    }
-    if (!cell) return;
-    let flagsEl = cell.querySelector('.client-flags');
-    if (!flagsEl) {
-      flagsEl = document.createElement('span');
-      flagsEl.className = 'client-flags';
-      cell.appendChild(flagsEl);
-    }
-    const { nutrition=false, focus=false } = flags || {};
-    flagsEl.innerHTML = '';
-    if (nutrition) flagsEl.insertAdjacentHTML('beforeend','<span title="Nutrition">🍎</span>');
-    if (focus)     flagsEl.insertAdjacentHTML('beforeend','<span title="Focus Case">🎯</span>');
-  }
-
-  /* ---------------------------------------
-   * Sidebar filter
-   * ------------------------------------- */
+  /* Sidebar filter */
   function applyFilters() {
-    const q    = (searchInput.value || '').toLowerCase();
-    const only = !!(onlyCurrent && onlyCurrent.checked);
-    document.querySelectorAll('#client-panel tbody tr').forEach(tr => {
-      const nameCell = tr.querySelector('td.client-name');
-      const nameText = (nameCell?.dataset.name || '').toLowerCase();
-      const status   = (tr.dataset.status || '').toLowerCase();
-      let show = true;
-      if (q)    show = nameText.includes(q);
+    var q    = (searchInput.value || '').toLowerCase();
+    var only = !!(onlyCurrent && onlyCurrent.checked);
+    document.querySelectorAll('#client-panel tbody tr').forEach(function(tr){
+      var nameCell = tr.querySelector('td.client-name');
+      var nameText = ((nameCell && nameCell.dataset.name) || '').toLowerCase();
+      var status   = (tr.dataset.status || '').toLowerCase();
+      var show = true;
+      if (q)    show = nameText.indexOf(q) !== -1;
       if (only) show = show && (status === 'current client');
       tr.style.display = show ? '' : 'none';
     });
   }
   searchInput.addEventListener('input', applyFilters);
-  onlyCurrent?.addEventListener('change', applyFilters);
+  onlyCurrent && onlyCurrent.addEventListener('change', applyFilters);
   applyFilters();
 
-  /* ---------------------------------------
-   * Sidebar resize/collapse
-   * ------------------------------------- */
-  divider.addEventListener('mousedown', startDrag);
-  divider.addEventListener('touchstart', startDrag);
+  /* Sidebar resize/collapse */
   function startDrag(e){
     e.preventDefault(); document.body.style.cursor = 'ew-resize';
-    const startX = e.touches ? e.touches[0].clientX : e.clientX;
-    const startW = clientPanel.getBoundingClientRect().width;
+    var startX = e.touches ? e.touches[0].clientX : e.clientX;
+    var startW = clientPanel.getBoundingClientRect().width;
     function onMove(ev){
-      const x = ev.touches ? ev.touches[0].clientX : ev.clientX;
-      const newW = Math.max(0, startW + (x - startX));
-      clientPanel.style.width = `${newW}px`;
-      const offset = newW < COLLAPSE_THRESHOLD
-        ? COLLAPSE_THRESHOLD
-        : (clientPanel.classList.remove('collapsed'), newW);
-      if (newW < COLLAPSE_THRESHOLD) clientPanel.classList.add('collapsed');
-      divider.style.left    = `${offset}px`;
-      document.getElementById('chart-panel').style.left = `${offset}px`;
+      var x = ev.touches ? ev.touches[0].clientX : ev.clientX;
+      var newW = Math.max(0, startW + (x - startX));
+      clientPanel.style.width = newW + 'px';
+      var offset;
+      if (newW < COLLAPSE_THRESHOLD){
+        clientPanel.classList.add('collapsed');
+        offset = COLLAPSE_THRESHOLD;
+      } else {
+        clientPanel.classList.remove('collapsed');
+        offset = newW;
+      }
+      divider.style.left    = offset + 'px';
+      document.getElementById('chart-panel').style.left = offset + 'px';
     }
     function onUp(){
       document.body.style.cursor = '';
       if (clientPanel.classList.contains('collapsed')){
-        clientPanel.style.width = `${COLLAPSE_THRESHOLD}px`;
-        divider.style.left      = `${COLLAPSE_THRESHOLD}px`;
-        document.getElementById('chart-panel').style.left = `${COLLAPSE_THRESHOLD}px`;
+        clientPanel.style.width = COLLAPSE_THRESHOLD + 'px';
+        divider.style.left      = COLLAPSE_THRESHOLD + 'px';
+        document.getElementById('chart-panel').style.left = COLLAPSE_THRESHOLD + 'px';
       }
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('touchmove', onMove);
@@ -268,25 +288,23 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('mouseup',    onUp);
     window.addEventListener('touchend',   onUp);
   }
+  divider.addEventListener('mousedown', startDrag);
+  divider.addEventListener('touchstart', startDrag);
 
-  /* ---------------------------------------
-   * Draggable divider between cards
-   * ------------------------------------- */
+  /* Card splitters */
   function makeDraggable(div, leftEl, rightEl){
-    div.addEventListener('mousedown', startColDrag);
-    div.addEventListener('touchstart', startColDrag);
     function startColDrag(e){
       e.preventDefault(); document.body.style.cursor = 'col-resize';
-      const startX = e.touches ? e.touches[0].clientX : e.clientX;
-      const leftW  = leftEl.getBoundingClientRect().width;
-      const rightW = rightEl.getBoundingClientRect().width;
+      var startX = e.touches ? e.touches[0].clientX : e.clientX;
+      var leftW  = leftEl.getBoundingClientRect().width;
+      var rightW = rightEl.getBoundingClientRect().width;
       function onMove(ev){
-        const x = ev.touches ? ev.touches[0].clientX : ev.clientX;
-        const dx = x - startX;
-        const newL = leftW + dx, newR = rightW - dx;
+        var x = ev.touches ? ev.touches[0].clientX : ev.clientX;
+        var dx = x - startX;
+        var newL = leftW + dx, newR = rightW - dx;
         if (newL < 100 || newR < 100) return;
-        leftEl.style.flex  = `0 0 ${newL}px`;
-        rightEl.style.flex = `0 0 ${newR}px`;
+        leftEl.style.flex  = '0 0 ' + newL + 'px';
+        rightEl.style.flex = '0 0 ' + newR + 'px';
       }
       function onUp(){
         document.body.style.cursor = '';
@@ -300,18 +318,22 @@ document.addEventListener('DOMContentLoaded', () => {
       window.addEventListener('mouseup',    onUp);
       window.addEventListener('touchend',   onUp);
     }
+    div.addEventListener('mousedown', startColDrag);
+    div.addEventListener('touchstart', startColDrag);
   }
   function updateCardWidths(){
-    const cards = chartPanel.querySelectorAll('.chart-card');
+    var cards = chartPanel.querySelectorAll('.chart-card');
     if (!cards.length) return;
-    const gap = 1;
-    cards.forEach(c => c.style.flex = `0 0 calc((100% - ${gap*(cards.length-1)}rem)/${cards.length})`);
+    var gap = 1;
+    cards.forEach(function(c){
+      c.style.flex = '0 0 calc((100% - ' + (gap*(cards.length-1)) + 'rem)/' + cards.length + ')';
+    });
   }
   function rebuildCards(){
-    chartPanel.querySelectorAll('.card-divider').forEach(d => d.remove());
-    const cards = Array.from(chartPanel.querySelectorAll('.chart-card'));
-    for (let i=0;i<cards.length-1;i++){
-      const div = document.createElement('div');
+    chartPanel.querySelectorAll('.card-divider').forEach(function(d){ d.remove(); });
+    var cards = Array.from(chartPanel.querySelectorAll('.chart-card'));
+    for (var i=0;i<cards.length-1;i++){
+      var div = document.createElement('div');
       div.className = 'card-divider';
       div.innerHTML = '<i class="bi bi-grip-vertical"></i>';
       cards[i].after(div);
@@ -320,104 +342,188 @@ document.addEventListener('DOMContentLoaded', () => {
     updateCardWidths();
   }
 
-  /* ---------------------------------------
-   * Debounce helper (with flush/cancel)
-   * ------------------------------------- */
+  /* Debounce helper */
   function debounceSmart(fn, ms){
-    let t=null, last=null, inFlight=null;
-    const run = () => {
-      inFlight = Promise.resolve().then(()=>fn(...(last||[]))).finally(()=>inFlight=null);
-      last = null;
-      return inFlight;
-    };
-    const w = (...args)=>{ last=args; clearTimeout(t); t=setTimeout(run, ms); };
-    w.flush  = ()=>{ clearTimeout(t); t=null; return inFlight || (last ? run() : Promise.resolve()); };
-    w.cancel = ()=>{ clearTimeout(t); t=null; last=null; };
+    var t=null, last=null, inFlight=null;
+    function run(){
+      inFlight = Promise.resolve().then(function(){ return fn.apply(null, last || []); }).finally(function(){ inFlight=null; });
+      last = null; return inFlight;
+    }
+    var w = function(){ last = Array.prototype.slice.call(arguments); clearTimeout(t); t=setTimeout(run, ms); };
+    w.flush  = function(){ clearTimeout(t); t=null; return inFlight || (last ? run() : Promise.resolve()); };
+    w.cancel = function(){ clearTimeout(t); t=null; last=null; };
     return w;
   }
 
-  /* ---------------------------------------
-   * Collectors
-   * ------------------------------------- */
+  /* Helpers for collectors */
+  function text(el){ return (el && el.textContent || '').trim(); }
+
+  /* ------- Collectors (scoped to the card) ------- */
   function collectMeasuresFromCard(card){
-    const out=[]; const tables=[...card.querySelectorAll('#measures table')]; if(!tables.length) return out;
-    const grid=tables[0];
-    grid.querySelectorAll('tbody tr').forEach(tr=>{
-      const field=(tr.querySelector('th')?.textContent||'').trim(); if(!field) return;
-      const tds=[...tr.querySelectorAll('td')]; const row={Field:field};
-      if(field==='Notes'){ row['1']=(tds[0]?.textContent||'').trim(); for(let i=2;i<=20;i++) row[String(i)]=''; }
-      else { for(let i=1;i<=20;i++) row[String(i)]=(tds[i-1]?.textContent||'').trim(); }
+    var out=[]; var tables=Array.from(card.querySelectorAll('#measures table')); if(!tables.length) return out;
+
+    // 1) 1–20 grid
+    var grid=tables[0];
+    grid.querySelectorAll('tbody tr').forEach(function(tr){
+      var th = tr.querySelector('th');
+      var field = (th && th.textContent || '').trim(); if(!field) return;
+      var tds=Array.from(tr.querySelectorAll('td')); var row={Field:field};
+      if(field==='Notes'){ row['1']=(tds[0] && tds[0].textContent || '').trim(); for(var i=2;i<=20;i++) row[String(i)]=''; }
+      else { for(var j=1;j<=20;j++) row[String(j)]=(tds[j-1] && tds[j-1].textContent || '').trim(); }
       out.push(row);
     });
-    tables.slice(1).forEach(tbl=>{
-      const heads=[...tbl.querySelectorAll('thead th')].map(th=>th.textContent.trim());
-      tbl.querySelectorAll('tbody tr').forEach(tr=>{
-        const row={}; const th=tr.querySelector('th'); if(th) row.Field=th.textContent.trim();
-        const tds=[...tr.querySelectorAll('td')];
-        heads.forEach((h,i)=>{ const key=h||`Col${i+1}`; row[key]=(tds[i]?.textContent||'').trim(); });
-        out.push(row);
+
+    // 2) Lower measure tables (M0, M2, M3) — **scoped to this card**
+    card.querySelectorAll('#measures table[data-meas]').forEach(function(tbl){
+      var key  = tbl.dataset.meas;
+      var rows = Array.from(tbl.querySelectorAll('tbody tr')); if (!rows.length) return;
+
+      var hdr = rows[0];
+      if (key === 'M0') {
+        out.push({
+          Field: key + ':__hdr__',
+          L1:   text(hdr.querySelector('[data-col="L1"]')),
+          L2:   text(hdr.querySelector('[data-col="L2"]')),
+          DATE: text(hdr.querySelector('[data-col="DATE"]')),
+          LB:   text(hdr.querySelector('[data-col="LB"]')),
+          H1:   text(hdr.querySelector('[data-col="H1"]')),
+          H2:   text(hdr.querySelector('[data-col="H2"]')),
+          TAG:  text(hdr.querySelector('[data-col="TAG"]'))
+        });
+      } else {
+        out.push({
+          Field: key + ':__hdr__',
+          DATE: text(hdr.querySelector('[data-col="DATE"]')),
+          LB:   text(hdr.querySelector('[data-col="LB"]')),
+          TAG:  text(hdr.querySelector('[data-col="TAG"]'))
+        });
+      }
+
+      rows.slice(1).forEach(function(tr){
+        var fa = tr.dataset.fa || text(tr.querySelector('td.no-edit')) || '';
+        if (!fa) return;
+
+        if (key === 'M0') {
+          out.push({
+            Field: key + ':' + fa,
+            L1:   text(tr.querySelector('[data-col="L1"]')),
+            L2:   text(tr.querySelector('[data-col="L2"]')),
+            DATE: text(tr.querySelector('[data-col="DATE"]')),
+            LB:   text(tr.querySelector('[data-col="LB"]')),
+            H1:   text(tr.querySelector('[data-col="H1"]')),
+            H2:   text(tr.querySelector('[data-col="H2"]')),
+            TAG:  text(tr.querySelector('[data-col="TAG"]'))
+          });
+        } else {
+          out.push({
+            Field: key + ':' + fa,
+            DATE: text(tr.querySelector('[data-col="DATE"]')),
+            LB:   text(tr.querySelector('[data-col="LB"]')),
+            TAG:  text(tr.querySelector('[data-col="TAG"]'))
+          });
+        }
       });
     });
+
     return out;
   }
+
   function collectWorkoutFromCard(card){
-    const pane=card.querySelector('#workout'); if(!pane) return [];
-    const KG=pane.querySelector('#workout-kg')?.value.trim()||'';
-    const Tools=pane.querySelector('#workout-tools')?.value.trim()||'';
-    const Stretching=pane.querySelector('#stretching')?.value.trim()||'';
-    const ringsTbl=[...pane.querySelectorAll('table')].find(t=>t.querySelector('thead th:nth-child(2)')?.textContent.trim()==='Workout');
-    const ringHdrs=ringsTbl?[...ringsTbl.querySelectorAll('thead th')].map(th=>th.textContent.trim()):['#','Workout','Rings','Notes'];
-    const ringRows=ringsTbl?[...ringsTbl.querySelectorAll('tbody tr')].map(tr=>{
-      const tds=[...tr.querySelectorAll('td')]; const o={};
-      ringHdrs.forEach((h,i)=>{ const td=tds[i], inp=td?.querySelector('input'); o[h]=(inp?inp.value:td?.textContent||'').trim(); });
-      return o;
-    }):[];
-    const goldTbl=pane.querySelector('#goldorack-table');
-    const goldRows=goldTbl?[...goldTbl.querySelectorAll('tbody tr')].map(tr=>{
-      const [labelCell,valCell]=tr.querySelectorAll('td'); const inp=valCell?.querySelector('input');
-      return { Goldorack:(labelCell?.textContent||'').trim()||'GK', Value:(inp?inp.value:valCell?.textContent||'').trim() };
-    }):[];
-    const data=[{KG,Tools,Stretching}];
-    ringRows.forEach(r=>data.push({KG:'',Tools:'',Stretching:'',...r}));
-    if(goldRows.length){ const blanks=ringHdrs.reduce((o,h)=>(o[h]='',o),{}); goldRows.forEach(r=>data.push({KG:'',Tools:'',Stretching:'',...blanks,...r})); }
+    var pane=card.querySelector('#workout'); if(!pane) return [];
+    var KG=pane.querySelector('#workout-kg') && pane.querySelector('#workout-kg').value.trim() || '';
+    var Tools=pane.querySelector('#workout-tools') && pane.querySelector('#workout-tools').value.trim() || '';
+    var Stretching=pane.querySelector('#stretching') && pane.querySelector('#stretching').value.trim() || '';
+
+    var workouts = Array.from(pane.querySelectorAll('.workout-workout')).map(function(i){ return i.value.trim(); });
+    var rings    = Array.from(pane.querySelectorAll('.workout-rings')).map(function(i){ return i.value.trim(); });
+    var notes    = Array.from(pane.querySelectorAll('.workout-notes')).map(function(i){ return i.value.trim(); });
+    var gk       = Array.from(pane.querySelectorAll('.workout-gk')).map(function(i){ return i.value.trim(); });
+
+    var data=[{KG:KG,Tools:Tools,Stretching:Stretching}];
+    var n=Math.max(workouts.length,rings.length,notes.length,17);
+    for(var i=0;i<n;i++){
+      data.push({ Workout: workouts[i]||'', Rings: rings[i]||'', Notes: notes[i]||'' });
+    }
+    for(var j=0;j<Math.max(4,gk.length);j++){
+      data.push({ Goldorack:'GK', Value:gk[j]||'' });
+    }
     return data;
   }
+
+  function collectWorkoutRev1FromCard(card){
+    var pane=card.querySelector('#workout-rev1'); if(!pane) return [];
+    var KG    = pane.querySelector('#workout-rev1-kg') && pane.querySelector('#workout-rev1-kg').value.trim() || '';
+    var Tools = pane.querySelector('#workout-rev1-tools') && pane.querySelector('#workout-rev1-tools').value.trim() || '';
+    var ProgramType = pane.querySelector('#workout-rev1-type') && pane.querySelector('#workout-rev1-type').value || '';
+
+    var workouts = Array.from(pane.querySelectorAll('.rev1-workout')).map(function(i){ return i.value.trim(); });
+    var rings    = Array.from(pane.querySelectorAll('.rev1-rings')).map(function(i){ return i.value.trim(); });
+    var notes    = Array.from(pane.querySelectorAll('.rev1-notes')).map(function(i){ return i.value.trim(); });
+
+    var data = [];
+    data.push({ KG:KG, Tools:Tools, ProgramType:ProgramType, Stretching:'' });
+
+    var n = Math.max(16, workouts.length, rings.length, notes.length);
+    for (var i=0;i<n;i++){
+      data.push({ Workout: workouts[i] || '', Rings: rings[i] || '', Notes: notes[i] || '' });
+    }
+
+    var gkRows = Array.from(pane.querySelectorAll('#gk-rev1-section tbody tr'));
+    gkRows.forEach(function(tr){
+      var inputs = tr.querySelectorAll('input');
+      if (!inputs || inputs.length < 3) return;
+      var gw = (inputs[0].value || '').trim();
+      var gr = (inputs[1].value || '').trim();
+      var gn = (inputs[2].value || '').trim();
+      if (gw || gr || gn){
+        data.push({ Workout: gw, Rings: gr, Notes: gn, GK: true });
+      }
+    });
+
+    return data;
+  }
+
   function collectNutritionFromCard(card){
-    const rows=[]; card.querySelectorAll('#nutrition-rows .nutrition-row').forEach(el=>{
-      const Date=el.querySelector('.nutrition-date')?.value.trim()||'';
-      const Type=el.querySelector('.nutrition-type')?.value.trim()||'';
-      const Notes=el.querySelector('.nutrition-notes')?.value.trim()||'';
-      if(Date||Type||Notes) rows.push({Date,Type,Notes});
+    var rows=[]; card.querySelectorAll('#nutrition-rows .nutrition-row').forEach(function(el){
+      var Date = el.querySelector('.nutrition-date') && el.querySelector('.nutrition-date').value.trim() || '';
+      var Type = el.querySelector('.nutrition-type') && el.querySelector('.nutrition-type').value.trim() || '';
+      var Notes= el.querySelector('.nutrition-notes') && el.querySelector('.nutrition-notes').value.trim() || '';
+      if(Date||Type||Notes) rows.push({Date:Date,Type:Type,Notes:Notes});
     }); return rows;
   }
+
   function collectCommunicationFromCard(card){
-    const rows=[]; card.querySelectorAll('#comm-rows .comm-row').forEach(el=>{
-      const Date=el.querySelector('.comm-date')?.value.trim()||'';
-      const Type=el.querySelector('.comm-type')?.value.trim()||'';
-      const Notes=el.querySelector('.comm-notes')?.value.trim()||'';
-      if(Date||Type||Notes) rows.push({Date,Type,Notes});
+    var rows=[]; card.querySelectorAll('#comm-rows .comm-row').forEach(function(el){
+      var Date = el.querySelector('.comm-date') && el.querySelector('.comm-date').value.trim() || '';
+      var Type = el.querySelector('.comm-type') && el.querySelector('.comm-type').value.trim() || '';
+      var Notes= el.querySelector('.comm-notes') && el.querySelector('.comm-notes').value.trim() || '';
+      if(Date||Type||Notes) rows.push({Date:Date,Type:Type,Notes:Notes});
     }); return rows;
   }
+
   function collectProfileFromCard(card){
-    const pane=card.querySelector('#profile'); if(!pane) return {columns:[],data:[]};
-    const months=['Jan','Feb','Mar','Apr','May','June','July','Aug','Sept','Oct','Nov','Dec'];
-    const goals=pane.querySelector('textarea[name="goals"]')?.value.trim()||'';
-    const initDate=pane.querySelector('input[name="init_date"]')?.value.trim()||'';
-    const initWeight=pane.querySelector('input[name="init_weight"]')?.value.trim()||'';
-    const lowestDate=pane.querySelector('input[name="lowest_date"]')?.value.trim()||'';
-    const lowestWeight=pane.querySelector('input[name="lowest_weight"]')?.value.trim()||'';
-    const targetDate=pane.querySelector('input[name="target_date"]')?.value.trim()||'';
-    const targetWeight=pane.querySelector('input[name="target_weight"]')?.value.trim()||'';
+    var pane=card.querySelector('#profile'); if(!pane) return {columns:[],data:[]};
+    var months=['Jan','Feb','Mar','Apr','May','June','July','Aug','Sept','Oct','Nov','Dec'];
+    var goals=pane.querySelector('textarea[name="goals"]') && pane.querySelector('textarea[name="goals"]').value.trim() || '';
+    var initDate=pane.querySelector('input[name="init_date"]') && pane.querySelector('input[name="init_date"]').value.trim() || '';
+    var initWeight=pane.querySelector('input[name="init_weight"]') && pane.querySelector('input[name="init_weight"]').value.trim() || '';
+    var lowestDate=pane.querySelector('input[name="lowest_date"]') && pane.querySelector('input[name="lowest_date"]').value.trim() || '';
+    var lowestWeight=pane.querySelector('input[name="lowest_weight"]') && pane.querySelector('input[name="lowest_weight"]').value.trim() || '';
+    var targetDate=pane.querySelector('input[name="target_date"]') && pane.querySelector('input[name="target_date"]').value.trim() || '';
+    var targetWeight=pane.querySelector('input[name="target_weight"]') && pane.querySelector('input[name="target_weight"]').value.trim() || '';
 
-    const nutriFlag = pane.querySelector('input[name="flag_nutrition"]')?.checked ? 'Yes' : 'No';
-    const focusFlag = pane.querySelector('input[name="flag_focus_case"]')?.checked ? 'Yes' : 'No';
+    var nutriFlag = pane.querySelector('input[name="flag_nutrition"]') && pane.querySelector('input[name="flag_nutrition"]').checked ? 'Yes' : 'No';
+    var focusFlag = pane.querySelector('input[name="flag_focus_case"]') && pane.querySelector('input[name="flag_focus_case"]').checked ? 'Yes' : 'No';
 
-    let freq={}; const freqRow=pane.querySelector('caption + thead ~ tbody tr');
-    if(freqRow){ const tds=[...freqRow.querySelectorAll('td')]; months.forEach((m,i)=>freq[m]=(tds[i]?.textContent||'').trim()); }
-    const expiration=pane.querySelector('input[name="expiration"]')?.value.trim()||'';
-    const firstSession=pane.querySelector('input[name="last_session"]')?.value.trim()||'';
+    var freq={}; var freqRow=pane.querySelector('caption + thead ~ tbody tr');
+    if(freqRow){
+      var tds=Array.from(freqRow.querySelectorAll('td'));
+      months.forEach(function(m,i){ freq[m]=(tds[i] && tds[i].textContent || '').trim(); });
+    }
+    var expiration=pane.querySelector('input[name="expiration"]') && pane.querySelector('input[name="expiration"]').value.trim() || '';
+    var firstSession=pane.querySelector('input[name="last_session"]') && pane.querySelector('input[name="last_session"]').value.trim() || '';
 
-    const profileRows=[
+    var profileRows=[
       {Field:'Goals',Value:goals},
       {Field:'Initial Weight',Date:initDate,Weight:initWeight},
       {Field:'Lowest Weight',Date:lowestDate,Weight:lowestWeight},
@@ -428,10 +534,11 @@ document.addEventListener('DOMContentLoaded', () => {
       {Field:'First Session Date',Value:firstSession}
     ];
 
-    const blanks=Array(Math.max(0, 9-(1+profileRows.length+1))).fill({});
-    const monthHdr=months.reduce((o,m)=>(o[m]=m,o),{Field:''});
-    const freqRowObj=Object.assign({Field:'Frequency'},freq);
-    const healthFields=[
+    var blanks=Array(Math.max(0, 9-(1+profileRows.length+1))).fill({});
+    var monthHdr=months.reduce(function(o,m){ o[m]=m; return o; },{Field:''});
+    var freqRowObj=(function(){ var o={Field:'Frequency'}; for(var k in freq){ o[k]=freq[k]; } return o; })();
+
+    var healthFields=[
       {key:'diabetes',label:'Diabetes'},
       {key:'bp',label:'Blood Pressure Issues'},
       {key:'vertigo',label:'Dizziness / Vertigo'},
@@ -446,145 +553,98 @@ document.addEventListener('DOMContentLoaded', () => {
       {key:'menopause_years',label:'Menopause – # of Years'},
       {key:'blood_work',label:'Blood Work Alterations'}
     ];
-    const healthRows = healthFields.map(f=>({
-      Field:f.label,
-      Flag: pane.querySelector(`input[name="flag_${f.key}"]`)?.checked?'Yes':'No',
-      Comment: pane.querySelector(`input[name="comment_${f.key}"]`)?.value?.trim()||''
-    }));
-    const rewardRows=[...pane.querySelectorAll('#rewards-table tbody tr')].map(tr=>{
-      const used=tr.querySelector('input[name="used[]"]')?.checked?'Yes':'No';
-      const [,deal,notes]=[...tr.querySelectorAll('td')];
-      return {Field:'Reward / Deal',Used:used,RewardDeal:(deal?.textContent||'').trim(),RewardNotes:(notes?.textContent||'').trim()};
+    var healthRows = healthFields.map(function(f){
+      var flagEl = pane.querySelector('input[name="flag_'+f.key+'"]');
+      var commentEl = pane.querySelector('input[name="comment_'+f.key+'"]');
+      return {
+        Field:f.label,
+        Flag: flagEl && flagEl.checked ? 'Yes':'No',
+        Comment: commentEl && commentEl.value ? commentEl.value.trim() : ''
+      };
     });
-    const friendRows=[...pane.querySelectorAll('#friends-table tbody tr')].map(tr=>{
-      const sel=tr.querySelector('input[name="friend-selected[]"]')?.checked?'Yes':'No';
-      const [,name,notes]=[...tr.querySelectorAll('td')];
-      return {Field:'Friend',Select:sel,FriendName:(name?.textContent||'').trim(),FriendNotes:(notes?.textContent||'').trim()};
+    var rewardRows=Array.from(pane.querySelectorAll('#rewards-table tbody tr')).map(function(tr){
+      var used=(tr.querySelector('input[name="used[]"]') && tr.querySelector('input[name="used[]"]').checked) ? 'Yes':'No';
+      var tds=Array.from(tr.querySelectorAll('td'));
+      return {Field:'Reward / Deal',Used:used,RewardDeal:(tds[1] && tds[1].textContent || '').trim(),RewardNotes:(tds[2] && tds[2].textContent || '').trim()};
     });
-    const columns=['Field','Value','Flag','Comment','Date','Weight',...months,'Used','RewardDeal','RewardNotes','Select','FriendName','FriendNotes'];
-    return {columns, data:[...profileRows,...blanks,monthHdr,freqRowObj,...healthRows,{}, {Field:'Rewards / Deals'}, ...rewardRows, {}, {Field:'Friends'}, ...friendRows]};
+    var friendRows=Array.from(pane.querySelectorAll('#friends-table tbody tr')).map(function(tr){
+      var sel=(tr.querySelector('input[name="friend-selected[]"]') && tr.querySelector('input[name="friend-selected[]"]').checked) ? 'Yes':'No';
+      var tds=Array.from(tr.querySelectorAll('td'));
+      return {Field:'Friend',Select:sel,FriendName:(tds[1] && tds[1].textContent || '').trim(),FriendNotes:(tds[2] && tds[2].textContent || '').trim()};
+    });
+    var columns=['Field','Value','Flag','Comment','Date','Weight'].concat(months).concat(['Used','RewardDeal','RewardNotes','Select','FriendName','FriendNotes']);
+    return {columns:columns, data:[].concat(profileRows, blanks, monthHdr, freqRowObj, healthRows, {}, {Field:'Rewards / Deals'}, rewardRows, {}, {Field:'Friends'}, friendRows)};
   }
 
-  /* ---------------------------------------
-   * Autosave wiring — event delegation + pill visuals
-   * ------------------------------------- */
+  /* Autosave wiring */
   function wireAutosaveForCard(card, clientName){
-    const saveCore = async ()=>{
-      const sheets = {
+    async function saveCore(){
+      var sheets = {
         profile:       collectProfileFromCard(card) || {columns:[],data:[]},
         measures:      { data: collectMeasuresFromCard(card) || [] },
         workout:       { data: collectWorkoutFromCard(card)  || [] },
+        workout_rev1:  { data: collectWorkoutRev1FromCard(card) || [] },
         nutrition:     { columns:['Date','Type','Notes'], data: collectNutritionFromCard(card) || [] },
-        communication: { columns:['Date','Type','Notes'], data: collectCommunicationFromCard(card) || [] },
+        communication: { columns:['Date','Type','Notes'], data: collectCommunicationFromCard(card) || [] }
       };
-      if (DEBUG) console.debug('[save ▶]', clientName);
-      const res = await fetch(`/charts/client/${encodeURIComponent(clientName)}/save`, {
-        method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ sheets })
+      if (DEBUG) console.debug('[save ▶]', clientName, sheets);
+      var res = await fetch('/charts/client/'+encodeURIComponent(clientName)+'/save', {
+        method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ sheets:sheets })
       });
-      const j = await res.json().catch(()=>({}));
-      if (!res.ok || j.status!=='success') throw new Error(j.message||`HTTP ${res.status}`);
+      var j = await res.json().catch(function(){ return {}; });
+      if (!res.ok || j.status!=='success') throw new Error(j.message||('HTTP '+res.status));
       if (DEBUG) console.debug('[save ✓]', clientName);
-    };
+    }
 
-    const deb = debounceSmart(saveCore, 700);
+    var deb = debounceSmart(saveCore, 700);
     card.__saveDebounced = deb;
-    const maybeSave = ()=> deb();
+    var maybeSave = function(){ deb(); };
 
-    /* --- pill helpers --- */
-    function checkboxFor(btn){
-      let name = btn.dataset.flag;
-      if (!name){
-        const txt = (btn.textContent || '').toLowerCase();
-        if (txt.includes('nutrition')) name = 'flag_nutrition';
-        else if (txt.includes('focus')) name = 'flag_focus_case';
-      }
-      return name ? card.querySelector(`input[name="${name}"]`) : null;
-    }
-    function renderPills(){
-      card.querySelectorAll('.flag-group .flag-btn').forEach(btn=>{
-        const chk = checkboxFor(btn);
-        const on = !!chk?.checked;
-        btn.setAttribute('aria-pressed', on ? 'true' : 'false');
-        btn.classList.toggle('btn-on',  on);
-        btn.classList.toggle('btn-off', !on);
-      });
-    }
-    function syncSidebar(){
-      const nutri = !!card.querySelector('input[name="flag_nutrition"]')?.checked;
-      const focus = !!card.querySelector('input[name="flag_focus_case"]')?.checked;
-      setSidebarFlagsByName(clientName, { nutrition:nutri, focus:focus });
-    }
-
-    // Delegated inputs → autosave
-    const delegatedHandler = (e)=>{
-      const el = e.target;
+    var delegatedHandler = function(e){
+      var el = e.target;
       if (!(el instanceof HTMLElement)) return;
-      if (el.matches('input, textarea, [contenteditable="true"]')) maybeSave();
+      if (el.matches('input, textarea, [contenteditable="true"], select')) maybeSave();
     };
-    card.addEventListener('input', delegatedHandler, true);
+    card.addEventListener('input',  delegatedHandler, true);
     card.addEventListener('change', delegatedHandler, true);
-    card.addEventListener('blur', delegatedHandler, true);
+    card.addEventListener('blur',   delegatedHandler, true);
     card.__delegatedHandler = delegatedHandler;
 
-    // Delegated pill click
-    card.addEventListener('click', (e)=>{
-      const btn = e.target.closest('.flag-group .flag-btn');
-      if (!btn) return;
-      e.preventDefault();
-      const chk = checkboxFor(btn);
-      if (chk){
-        chk.checked = !chk.checked;
-        chk.dispatchEvent(new Event('change', { bubbles:true }));
-        renderPills();
-        syncSidebar();
-        maybeSave();
-      }
-    });
-
-    // Checkbox direct changes
-    const nutri = card.querySelector('input[name="flag_nutrition"]');
-    const focus = card.querySelector('input[name="flag_focus_case"]');
-    nutri?.addEventListener('change', ()=>{ renderPills(); syncSidebar(); maybeSave(); });
-    focus?.addEventListener('change', ()=>{ renderPills(); syncSidebar(); maybeSave(); });
-
-    // Initial paint
-    renderPills();
-    syncSidebar();
-
-    card.addEventListener('card:close', ()=> deb.flush().catch(()=>{}));
+    card.addEventListener('card:close', function(){ deb.flush().catch(function(){}); });
   }
 
-  /* ---------------------------------------
-   * Tabs + scaling
-   * ------------------------------------- */
-  function initTabs(card, initialIndex=0){
-    const tabs = card.querySelectorAll('.tab-btn');
-    const panes = card.querySelectorAll('.tab-content');
-    const underline = card.querySelector('#tabUnderline');
+  /* Tabs + scaling */
+  function initTabs(card, initialIndex){
+    if (typeof initialIndex !== 'number') initialIndex = 0;
+    var tabs = card.querySelectorAll('.tab-btn');
+    var panes = card.querySelectorAll('.tab-content');
+    var underline = card.querySelector('#tabUnderline');
     if (!tabs.length || !underline) return;
 
     function activate(i){
-      tabs.forEach((b,j)=>b.classList.toggle('active', j===i));
-      panes.forEach((p,j)=>p.classList.toggle('hidden', j!==i));
-      const r = tabs[i].getBoundingClientRect();
-      const pr = tabs[i].parentElement.getBoundingClientRect();
-      underline.style.width = `${r.width}px`;
-      underline.style.left  = `${r.left - pr.left}px`;
-      saveOpenState(); // persist active tab
+      tabs.forEach(function(b,j){ b.classList.toggle('active', j===i); });
+      panes.forEach(function(p,j){ p.classList.toggle('hidden', j!==i); });
+      var r = tabs[i].getBoundingClientRect();
+      var pr = tabs[i].parentElement.getBoundingClientRect();
+      underline.style.width = r.width + 'px';
+      underline.style.left  = (r.left - pr.left) + 'px';
+      saveOpenState();
     }
 
-    tabs.forEach((btn,i)=>btn.addEventListener('click', ()=>{
-      activate(i);
-      const cardEl = btn.closest('.chart-card');
-      cardEl?.__saveDebounced?.();
-      requestAnimationFrame(()=>scaleChart(cardEl));
-    }));
+    tabs.forEach(function(btn,i){
+      btn.addEventListener('click', function(){
+        activate(i);
+        var cardEl = btn.closest('.chart-card');
+        cardEl && cardEl.__saveDebounced && cardEl.__saveDebounced();
+        requestAnimationFrame(function(){ scaleChart(cardEl); });
+      });
+    });
     activate(Math.max(0, Math.min(initialIndex, tabs.length-1)));
   }
 
   function scaleChart(card){
-    const tgt = card.querySelector('.scale-target');
-    const cnt = card.querySelector('.scale-content');
+    var tgt = card.querySelector('.scale-target');
+    var cnt = card.querySelector('.scale-content');
     if (!tgt || !cnt) return;
 
     cnt.style.overflow = 'auto';
@@ -594,101 +654,463 @@ document.addEventListener('DOMContentLoaded', () => {
     cnt.style.webkitOverflowScrolling = 'touch';
 
     tgt.style.transformOrigin = 'top left';
-    const sX = card.clientWidth  / cnt.scrollWidth;
-    const sY = card.clientHeight / cnt.scrollHeight;
-    const s  = Math.min(sX, sY, 1);
-    tgt.style.transform = `scale(${s})`;
+    var sX = card.clientWidth  / cnt.scrollWidth;
+    var sY = card.clientHeight / cnt.scrollHeight;
+    var s  = Math.min(sX, sY, 1);
+    tgt.style.transform = 'scale('+s+')';
   }
 
   function setupScaling(card){
-    requestAnimationFrame(()=>scaleChart(card));
-    const ro = new ResizeObserver(()=>requestAnimationFrame(()=>scaleChart(card)));
+    requestAnimationFrame(function(){ scaleChart(card); });
+    var ro = new ResizeObserver(function(){ requestAnimationFrame(function(){ scaleChart(card); }); });
     ro.observe(card);
-    const cnt = card.querySelector('.scale-content');
+    var cnt = card.querySelector('.scale-content');
     if (cnt) ro.observe(cnt);
-    card.querySelectorAll('img').forEach(img=>img.addEventListener('load', ()=>scaleChart(card), {once:true}));
+    card.querySelectorAll('img').forEach(function(img){ img.addEventListener('load', function(){ scaleChart(card); }, {once:true}); });
     card.__ro = ro;
   }
 
-  /* ---------------------------------------
-   * Load a card’s HTML (strip all <script> tags)
-   * ------------------------------------- */
-  async function loadCardContent(card, name, initialTab=0){
-    const key = normKey(name);
-    const controller = new AbortController();
+  /* ---------- Row reordering (grip + lift + hints + RAF throttle + autoscroll) ---------- */
+  function injectRowGrips(tbody, opts){
+    if (!tbody) return;
+    opts = opts || {};
+    var numbered = !!opts.numbered;
+
+    Array.from(tbody.querySelectorAll('tr')).forEach(function(tr, idx){
+      var firstTd = tr.querySelector('td');
+      if (!firstTd) return;
+      if (getComputedStyle(firstTd).position === 'static') firstTd.style.position = 'relative';
+
+      if (numbered){
+        if (!firstTd.querySelector('.row-index')){
+          var currentNum = (firstTd.textContent || '').trim();
+          firstTd.textContent = '';
+          var idxSpan = document.createElement('span');
+          idxSpan.className = 'row-index';
+          idxSpan.textContent = currentNum || (idx+1);
+          firstTd.appendChild(idxSpan);
+        }
+      }
+
+      if (!firstTd.querySelector('.row-grip')){
+        var grip = document.createElement('span');
+        grip.className = 'row-grip'; grip.title = 'Drag to reorder';
+        grip.textContent = ''; grip.setAttribute('draggable','true');
+        grip.setAttribute('aria-label','Drag to reorder');
+        firstTd.insertBefore(grip, firstTd.firstChild);
+      }
+    });
+  }
+
+  function renumberIfNeeded(tbody){
+    if (!tbody) return;
+    var th = tbody.closest('table') && tbody.closest('table').querySelector('thead th:first-child');
+    var numbered = th && (th.textContent || '').trim() === '#';
+    if (!numbered) return;
+    Array.from(tbody.querySelectorAll('tr')).forEach(function(tr, i){
+      var span = tr.querySelector('td .row-index');
+      if (span) span.textContent = String(i+1);
+    });
+  }
+
+  function makeTableRowsSortable(tbody, onDrop){
+    if (!tbody) return;
+
+    var draggingRow = null;
+    var hoverRow = null;
+    var endHintRow = null;
+    var rafPending = false;
+    var lastY = 0;
+
+    function clearHints(){
+      if (hoverRow){ hoverRow.classList.remove('drag-over-top','drag-over-bottom'); hoverRow = null; }
+      if (endHintRow){ endHintRow.classList.remove('drag-over-bottom'); endHintRow = null; }
+    }
+
+    function findTarget(y){
+      var rows = Array.from(tbody.querySelectorAll('tr:not(.dragging)'));
+      var closest = { offset: Number.NEGATIVE_INFINITY, element: null };
+      for (var i=0;i<rows.length;i++){
+        var box = rows[i].getBoundingClientRect();
+        var offset = y - box.top - box.height/2;
+        if (offset < 0 && offset > closest.offset){
+          closest = { offset: offset, element: rows[i] };
+        }
+      }
+      return closest.element;
+    }
+
+    function autoScroll(y){
+      var scroller = tbody.closest('.chart-body');
+      if (!scroller) return;
+      var rect = scroller.getBoundingClientRect();
+      var margin = 40;
+      var speed  = 12;
+
+      if (y < rect.top + margin){ scroller.scrollTop -= speed; }
+      else if (y > rect.bottom - margin){ scroller.scrollTop += speed; }
+    }
+
+    function processDrag(){
+      rafPending = false;
+      if (!draggingRow) return;
+
+      var eY = lastY;
+      autoScroll(eY);
+
+      var target = findTarget(eY);
+      clearHints();
+
+      if (target) {
+        hoverRow = target;
+        hoverRow.classList.add('drag-over-top');
+        if (hoverRow !== draggingRow) tbody.insertBefore(draggingRow, hoverRow);
+      } else {
+        var rows = Array.from(tbody.querySelectorAll('tr:not(.dragging)'));
+        var lastRow = rows[rows.length-1];
+        if (lastRow){
+          endHintRow = lastRow;
+          endHintRow.classList.add('drag-over-bottom');
+          if (draggingRow.nextSibling !== null) tbody.appendChild(draggingRow);
+        }
+      }
+    }
+
+    tbody.addEventListener('dragstart', function(e){
+      var grip = e.target.closest('.row-grip');
+      if (!grip) { e.preventDefault(); return; }
+      draggingRow = grip.closest('tr');
+      if (!draggingRow) { e.preventDefault(); return; }
+      draggingRow.classList.add('dragging');
+      try { e.dataTransfer.setData('text/plain',''); } catch(_) {}
+      e.dataTransfer.effectAllowed = 'move';
+
+      var rect = draggingRow.getBoundingClientRect();
+      var ghost = document.createElement('div');
+      ghost.style.cssText = `
+        width:${rect.width}px;height:${rect.height}px;
+        box-shadow:0 12px 24px rgba(0,0,0,.16);
+        border-radius:8px;background:#fff;opacity:.95;
+        display:flex;align-items:center;padding:0 12px;font-weight:600;
+      `;
+      var firstInput = draggingRow.querySelector('input');
+      ghost.textContent = (firstInput && firstInput.value) ? firstInput.value : 'Moving row';
+      document.body.appendChild(ghost);
+      e.dataTransfer.setDragImage(ghost, rect.width/2, rect.height/2);
+      setTimeout(function(){ ghost.remove(); }, 0);
+    });
+
+    tbody.addEventListener('dragend', function(){
+      if (draggingRow) draggingRow.classList.remove('dragging');
+      draggingRow = null;
+      clearHints();
+    });
+
+    tbody.addEventListener('dragover', function(e){
+      if (!draggingRow) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      lastY = e.clientY;
+      if (!rafPending){
+        rafPending = true;
+        requestAnimationFrame(processDrag);
+      }
+    });
+
+    tbody.addEventListener('drop', function(e){
+      e.preventDefault();
+      clearHints();
+      renumberIfNeeded(tbody);
+      if (typeof onDrop === 'function') onDrop();
+    });
+  }
+
+  function enableRowReorder(card){
+    var wrBody = card.querySelector('#workout-rev1 table tbody');
+    injectRowGrips(wrBody, { numbered: true });
+    makeTableRowsSortable(wrBody, function(){ card.__saveDebounced && card.__saveDebounced(); });
+
+    var gkBody = card.querySelector('#gk-rev1-section table tbody');
+    injectRowGrips(gkBody, { numbered: false });
+    makeTableRowsSortable(gkBody, function(){ card.__saveDebounced && card.__saveDebounced(); });
+  }
+
+  /* ---- Workout Rev1: sticky toolbar + Apply/Clear + blocks ---- */
+  async function initWorkoutRev1(card){
+    var base = card.querySelector('#workout-rev1');
+    if (!base) return;
+
+    // 1) Wrap the first two control rows in a sticky container
+    (function ensureStickyToolbar(){
+      var rows = base.querySelectorAll(':scope > .flex.items-center');
+      if (!rows || !rows.length) return;
+      var first = rows[0];
+      var second = rows[1] || null;
+      if (first && !first.parentElement.classList.contains('rev1-toolbar-wrap')){
+        var wrap = document.createElement('div');
+        wrap.className = 'rev1-toolbar-wrap';
+        base.insertBefore(wrap, first);
+        wrap.appendChild(first);
+        if (second) wrap.appendChild(second);
+      }
+      function measure(){
+        var wrap = base.querySelector('.rev1-toolbar-wrap');
+        var h = wrap ? Math.ceil(wrap.getBoundingClientRect().height) : 0;
+        base.style.setProperty('--wr1-stick-top', h + 'px');
+      }
+      measure();
+      window.addEventListener('resize', measure);
+      setTimeout(measure, 50);
+    })();
+
+    var clientName = card.dataset.client || '';
+    var LS_KEY = 'fig:wr1:type:' + clientName;
+
+    function getBlocksFromTemplate(){
+      var t = card.querySelector('template#workout-blocks-json');
+      if (!t) return null;
+      try {
+        var raw = (t.textContent || '').trim();
+        return raw ? JSON.parse(raw) : null;
+      } catch(e) {
+        console.error('Failed to parse blocks template JSON', e);
+        return null;
+      }
+    }
+    async function getBlocksFallback(){
+      if (window.__WR1_BLOCK_CACHE__) return window.__WR1_BLOCK_CACHE__;
+      try {
+        var r = await fetch('/charts/blocks.json', { cache: 'no-store' });
+        var j = await r.json();
+        window.__WR1_BLOCK_CACHE__ = j.blocks || {};
+        return window.__WR1_BLOCK_CACHE__;
+      } catch(e) {
+        console.error('Failed to fetch /charts/blocks.json', e);
+        return {};
+      }
+    }
+
+    var BLOCKS = getBlocksFromTemplate();
+    if (!BLOCKS || !Object.keys(BLOCKS).length) {
+      BLOCKS = await getBlocksFallback();
+    }
+
+    var gkBox = base.querySelector('#gk-rev1-section');
+    var sel   = base.querySelector('#workout-rev1-type');
+    var msgEl = base.querySelector('#workout-rev1-msg');
+    function setMsg(t){ if (msgEl) msgEl.textContent = t || ''; }
+
+    function populateProgramOptions(){
+      if (!sel) return;
+      var have = {};
+      Array.from(sel.options).forEach(function(o){ have[o.value] = true; });
+      var allKeys = Object.keys(BLOCKS || {});
+      allKeys.sort(function(a,b){
+        function pref(k){ return k.indexOf('C')===0 ? 0 : (k.indexOf('V')===0 ? 1 : (k.indexOf('TO')===0 ? 2 : 3)); }
+        var ai=pref(a), bi=pref(b);
+        if (ai!==bi) return ai-bi;
+        var na=parseInt(a.replace(/\D/g,''),10)||0;
+        var nb=parseInt(b.replace(/\D/g,''),10)||0;
+        if (a.indexOf('TO')===0 && b.indexOf('TO')===0) return na-nb;
+        if (a[0]===b[0]) return na-nb;
+        return a.localeCompare(b);
+      });
+      allKeys.forEach(function(k){
+        if (!have[k]){
+          var opt = document.createElement('option');
+          opt.value = k; opt.textContent = k;
+          sel.appendChild(opt);
+        }
+      });
+    }
+    populateProgramOptions();
+
+    try {
+      var last = localStorage.getItem(LS_KEY);
+      if (last && sel) sel.value = last;
+    } catch(_) {}
+
+    function fill(code){
+      var key = (code || '').toUpperCase().replace(/\s+/g,'');
+      var block = (BLOCKS || {})[key];
+      if (!block){ setMsg('“' + code + '” not found.'); return; }
+      setMsg('');
+
+      var wrk = Array.from(base.querySelectorAll('.rev1-workout'));
+      var rng = Array.from(base.querySelectorAll('.rev1-rings'));
+      var nts = Array.from(base.querySelectorAll('.rev1-notes'));
+
+      for (var i=0;i<16;i++){
+        var row = (block.rows && block.rows[i]) || {Workout:'',Rings:'',Notes:''};
+        if (wrk[i]) wrk[i].value = row.Workout || '';
+        if (rng[i]) rng[i].value = row.Rings   || '';
+        if (nts[i]) nts[i].value = row.Notes   || '';
+      }
+
+      var showGK = key.indexOf('TO') === 0;
+      if (gkBox) gkBox.classList.toggle('hidden', !showGK);
+
+      var gkRows = Array.from(base.querySelectorAll('#gk-rev1-section tbody tr'));
+      var rawGK = Array.isArray(block.GK) ? block.GK : [];
+
+      var hasMeaningfulGK = false;
+      for (var ii=0; ii<rawGK.length; ii++){
+        var g = rawGK[ii];
+        if (typeof g === 'string' && g.trim().length > 0) { hasMeaningfulGK = true; break; }
+        if (g && typeof g === 'object' && ((g.Workout||'').trim().length > 0)) { hasMeaningfulGK = true; break; }
+      }
+
+      var gkData = [];
+      if (hasMeaningfulGK){
+        for (var jj=0; jj<rawGK.length; jj++){
+          var item = rawGK[jj];
+          if (typeof item === 'string'){
+            gkData.push({ Workout: item, Rings: '', Notes: '' });
+          } else {
+            gkData.push({
+              Workout: item.Workout || '',
+              Rings:   item.Rings   || '',
+              Notes:   item.Notes   || ''
+            });
+          }
+        }
+      } else if (showGK && GK_DEFAULTS[key]) {
+        var list = GK_DEFAULTS[key];
+        for (var kk=0; kk<list.length; kk++){
+          gkData.push({ Workout: list[kk], Rings: '', Notes: '' });
+        }
+      }
+
+      gkRows.forEach(function(tr, idx){
+        var inputs = tr.querySelectorAll('input');
+        if (!inputs || inputs.length < 3) return;
+        var src = gkData[idx] || { Workout:'', Rings:'', Notes:'' };
+        inputs[0].value = src.Workout || '';
+        inputs[1].value = (src.Rings && src.Rings.trim()) ? src.Rings : (showGK ? 'I' : '');
+        inputs[2].value = src.Notes || '';
+      });
+    }
+
+    function clearAll(){
+      setMsg('');
+      base.querySelectorAll('input.rev1-workout, input.rev1-rings, input.rev1-notes').forEach(function(i){ i.value = ''; });
+      Array.from(base.querySelectorAll('#gk-rev1-section tbody tr input')).forEach(function(i){ i.value = ''; });
+      if (gkBox) gkBox.classList.add('hidden');
+    }
+
+    card.addEventListener('click', function(e){
+      var t = e.target;
+      if (!(t instanceof HTMLElement)) return;
+
+      if (t.id === 'workout-rev1-apply'){
+        e.preventDefault();
+        var v = (sel && sel.value) || '';
+        try { localStorage.setItem(LS_KEY, v); } catch(_) {}
+        fill(v);
+        card.__saveDebounced && card.__saveDebounced();
+      }
+      if (t.id === 'workout-rev1-clear'){
+        e.preventDefault();
+        clearAll();
+        try { localStorage.removeItem(LS_KEY); } catch(_) {}
+        card.__saveDebounced && card.__saveDebounced();
+      }
+    });
+
+    sel && sel.addEventListener('keydown', function(e){
+      if (e.key === 'Enter'){
+        e.preventDefault();
+        var v = sel.value || '';
+        try { localStorage.setItem(LS_KEY, v); } catch(_) {}
+        fill(v);
+        card.__saveDebounced && card.__saveDebounced();
+      }
+    });
+
+    if (sel && sel.value && sel.value.toUpperCase().indexOf('TO') === 0){
+      gkBox && gkBox.classList.remove('hidden');
+    } else {
+      gkBox && gkBox.classList.add('hidden');
+    }
+
+    enableRowReorder(card);
+  }
+
+  /* Load a card’s HTML (strip scripts) */
+  async function loadCardContent(card, name, initialTab){
+    if (typeof initialTab !== 'number') initialTab = 0;
+    var controller = new AbortController();
     card.__abortController = controller;
 
-    try{
-      const res = await fetch(`/charts/client/${encodeURIComponent(name)}`, { signal: controller.signal, cache:'no-store' });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const html = await res.text();
-      if (openCards.get(key) !== card) return;
+    try {
+      var res = await fetch('/charts/client/'+encodeURIComponent(name), { signal: controller.signal, cache:'no-store' });
+      if (!res.ok) throw new Error('HTTP '+res.status);
+      var html = await res.text();
+      if (!chartPanel.contains(card)) return;
 
-      const body = card.querySelector('.chart-body');
-
-      const wrapper = document.createElement('div');
+      var body = card.querySelector('.chart-body');
+      var wrapper = document.createElement('div');
       wrapper.innerHTML = html;
-      wrapper.querySelectorAll('script').forEach(s => s.remove()); // prevent duplicate inits
+
+      wrapper.querySelectorAll('script').forEach(function(s){ s.remove(); });
 
       body.innerHTML = '';
-      const frag = document.createDocumentFragment();
-      Array.from(wrapper.childNodes).forEach(n => frag.appendChild(n));
-      body.appendChild(frag);
+      Array.from(wrapper.childNodes).forEach(function(n){ body.appendChild(n); });
 
       initTabs(card, initialTab);
       setupScaling(card);
       wireAutosaveForCard(card, name);
-      saveOpenState(); // persist after load
-    }catch(err){
+      await initWorkoutRev1(card);
+      saveOpenState();
+    } catch(err) {
       if (!controller.signal.aborted){
-        const body = card.querySelector('.chart-body');
-        body.innerHTML = '<div style="padding:1rem;color:#b91c1c">Failed to load. Click to retry.</div>';
-        body.addEventListener('click', ()=> loadCardContent(card, name, initialTab), { once:true });
+        var body2 = card.querySelector('.chart-body');
+        body2.innerHTML = '<div style="padding:1rem;color:#b91c1c">Failed to load. Click to retry.</div>';
+        body2.addEventListener('click', function(){ loadCardContent(card, name, initialTab); }, { once:true });
         console.error('Load error:', err);
       }
-    }finally{
+    } finally {
       delete card.__abortController;
     }
   }
 
-  /* ---------------------------------------
-   * Add a card (opts: { initialTab })
-   * ------------------------------------- */
-  async function addCard(name, opts={}){
-    const key = normKey(name);
+  /* Add a card */
+  async function addCard(name, opts){
+    if (!opts) opts = {};
+    var key = normKey(name);
     if (!key) return;
 
     if (openCards.has(key)){
-      const existing = openCards.get(key);
+      var existing = openCards.get(key);
       existing.scrollIntoView({behavior:'smooth', block:'nearest', inline:'nearest'});
-      const hdr=existing.querySelector('.chart-header'); hdr?.classList.add('flash'); setTimeout(()=>hdr?.classList.remove('flash'),800);
+      var hdr=existing.querySelector('.chart-header'); hdr && hdr.classList.add('flash'); setTimeout(function(){ hdr && hdr.classList.remove('flash'); },800);
       return;
     }
     if (chartPanel.querySelectorAll('.chart-card').length >= 4) return;
 
-    const card = document.createElement('div');
+    var card = document.createElement('div');
     card.className = 'chart-card panel';
     card.dataset.client = name;
-    card.innerHTML = `
-      <div class="scale-target">
-        <div class="scale-content">
-          <div class="chart-header">
-            <span class="truncate">${name}</span>
-            <span>
-              <button class="chart-edit" title="Highlight Edit Mode">✎</button>
-              <button class="chart-close" title="Close">×</button>
-            </span>
-          </div>
-          <div class="chart-body">Loading...</div>
-        </div>
-      </div>`;
+    card.innerHTML = ''+
+      '<div class="scale-target">'+
+        '<div class="scale-content">'+
+          '<div class="chart-header">'+
+            '<span class="truncate">'+name+'</span>'+
+            '<span>'+
+              '<button class="chart-edit" title="Highlight Edit Mode">✎</button>'+
+              '<button class="chart-close" title="Close">×</button>'+
+            '</span>'+
+          '</div>'+
+          '<div class="chart-body">Loading...</div>'+
+        '</div>'+
+      '</div>';
     chartPanel.appendChild(card);
     openCards.set(key, card);
     rebuildCards();
 
-    card.querySelector('.chart-edit').addEventListener('click', ()=> card.classList.toggle('editing'));
-    card.querySelector('.chart-close').addEventListener('click', async ()=>{
-      try { await card.__saveDebounced?.flush(); } catch(e) {}
+    card.querySelector('.chart-edit').addEventListener('click', function(){ card.classList.toggle('editing'); });
+    card.querySelector('.chart-close').addEventListener('click', async function(){
+      try { await (card.__saveDebounced && card.__saveDebounced.flush()); } catch(e) {}
       card.dispatchEvent(new CustomEvent('card:close'));
       if (card.__delegatedHandler){
         card.removeEventListener('input',  card.__delegatedHandler, true);
@@ -700,26 +1122,23 @@ document.addEventListener('DOMContentLoaded', () => {
       openCards.delete(key);
       card.remove();
       rebuildCards();
-      saveOpenState(); // persist after close
+      saveOpenState();
     });
 
-    await loadCardContent(card, name, Number.isInteger(opts.initialTab) ? opts.initialTab : 0);
+    await loadCardContent(card, name, (Number.isInteger(opts.initialTab) ? opts.initialTab : 0));
   }
 
-  /* ---------------------------------------
-   * Open from sidebar
-   * ------------------------------------- */
-  document.getElementById('client-panel').addEventListener('click', e => {
-    const td = e.target.closest('td.client-name'); if (!td) return;
+  /* Open from sidebar + resize + restore */
+  document.getElementById('client-panel').addEventListener('click', function(e){
+    var td = e.target.closest('td.client-name'); if (!td) return;
     addCard(td.dataset.name).then(saveOpenState);
   });
 
-  window.addEventListener('resize', () => {
+  window.addEventListener('resize', function(){
     updateCardWidths();
-    chartPanel.querySelectorAll('.chart-card').forEach(scaleChart);
+    chartPanel.querySelectorAll('.chart-card').forEach(function(c){ scaleChart(c); });
   });
 
-  /* Restore previously open charts */
   restoreOpenState();
 });
 </script>

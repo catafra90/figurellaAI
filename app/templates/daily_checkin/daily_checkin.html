@@ -15,55 +15,70 @@
 
   <!-- Scrollable content with form inside -->
   <div class="flex-1 overflow-y-auto p-4">
-    <form id="daily-form" method="POST" action="{{ url_for('daily_checkin.submit_report') }}" class="space-y-6">
+    <form id="daily-form" method="POST" action="{{ url_for('daily_checkin.submit_report') }}" class="space-y-6" novalidate>
 
       <!-- Sales Section -->
       <div class="bg-white rounded-2xl shadow p-6">
-        <h3 class="text-xl font-semibold mb-4">💰 Sales</h3>
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-xl font-semibold">💰 Sales</h3>
+          <button type="button"
+                  class="bg-figurella text-white px-4 py-2 rounded"
+                  onclick="DC.addRow('sales')">
+            + Add Sale
+          </button>
+        </div>
         <div id="sales-section"></div>
-        <button type="button"
-                class="bg-figurella text-white px-4 py-2 rounded mt-2"
-                onclick="addSaleRow()">
-          + Add Sale
-        </button>
       </div>
 
       <!-- Leads Section -->
       <div class="bg-white rounded-2xl shadow p-6">
-        <h3 class="text-xl font-semibold mb-4">📝 Leads</h3>
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-xl font-semibold">📝 Leads</h3>
+          <button type="button"
+                  class="bg-figurella text-white px-4 py-2 rounded"
+                  onclick="DC.addRow('leads')">
+            + Add Lead
+          </button>
+        </div>
         <div id="leads-section"></div>
-        <button type="button"
-                class="bg-figurella text-white px-4 py-2 rounded mt-2"
-                onclick="addLeadRow()">
-          + Add Lead
-        </button>
       </div>
 
       <!-- Consultations Section -->
       <div class="bg-white rounded-2xl shadow p-6">
-        <h3 class="text-xl font-semibold mb-4">📅 Consultations</h3>
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-xl font-semibold">📅 Consultations</h3>
+          <button type="button"
+                  class="bg-figurella text-white px-4 py-2 rounded"
+                  onclick="DC.addRow('consultations')">
+            + Add Consultation
+          </button>
+        </div>
         <div id="consultations-section"></div>
-        <button type="button"
-                class="bg-figurella text-white px-4 py-2 rounded mt-2"
-                onclick="addConsultationRow()">
-          + Add Consultation
-        </button>
       </div>
 
       <!-- Opportunities Section -->
       <div class="bg-white rounded-2xl shadow p-6">
-        <h3 class="text-xl font-semibold mb-4">💡 Opportunities</h3>
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-xl font-semibold">💡 Opportunities</h3>
+          <button type="button"
+                  class="bg-figurella text-white px-4 py-2 rounded"
+                  onclick="DC.addRow('opportunities')">
+            + Add Opportunity
+          </button>
+        </div>
         <div id="opportunities-section"></div>
-        <button type="button"
-                class="bg-figurella text-white px-4 py-2 rounded mt-2"
-                onclick="addOpportunityRow()">
-          + Add Opportunity
-        </button>
       </div>
 
       <!-- Attendances Section -->
       <div class="bg-white rounded-2xl shadow p-6">
-        <h3 class="text-xl font-semibold mb-4">🧍 Attendances</h3>
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-xl font-semibold">🧍 Attendances</h3>
+          <button type="button"
+                  class="bg-figurella text-white px-4 py-2 rounded"
+                  onclick="DC.addRow('attendances')">
+            + Add Attendance
+          </button>
+        </div>
         <div id="attendances-section"></div>
       </div>
 
@@ -82,41 +97,162 @@
   </div>
 </div>
 
+<!-- Toast -->
+<div id="dc-toast"
+     class="fixed bottom-20 right-4 hidden bg-green-600 text-white px-4 py-2 rounded-lg shadow">
+  ✅ Report submitted
+</div>
+
 <script>
-  function templateRow(fields) {
-    return '<div class="grid grid-cols-' + fields.length + ' gap-2 mb-2">' +
-      fields.map(f =>
-        '<input name="'+f+'[]" ' +
-               'class="border p-2 rounded w-full" ' +
-               'placeholder="'+f.replace(/_/g,' ')+'">').join('') +
-    '</div>';
-  }
-  function addSaleRow() {
-    document.getElementById('sales-section')
-            .insertAdjacentHTML('beforeend', templateRow(['client_name','package_sold','revenue']));
-  }
-  function addLeadRow() {
-    document.getElementById('leads-section')
-            .insertAdjacentHTML('beforeend', templateRow(['lead_name','lead_date','lead_source']));
-  }
-  function addConsultationRow() {
-    document.getElementById('consultations-section')
-            .insertAdjacentHTML('beforeend', templateRow(['consult_client','consult_outcome','consult_source']));
-  }
-  function addOpportunityRow() {
-    document.getElementById('opportunities-section')
-            .insertAdjacentHTML('beforeend', templateRow(['opp_name','opp_provider','opp_description']));
-  }
-  function addAttendanceRow() {
-    document.getElementById('attendances-section')
-            .insertAdjacentHTML('beforeend', templateRow(['att_attended','att_no_show']));
-  }
-  window.onload = function(){
-    addSaleRow();
-    addLeadRow();
-    addConsultationRow();
-    addOpportunityRow();
-    addAttendanceRow();
+/**
+ * Daily Check-in draft persistence + submit handler
+ * - Keeps edits in localStorage while you navigate away.
+ * - Sends to server ONLY on Submit.
+ * - Clears draft ONLY after a successful submit.
+ */
+(function () {
+  const DRAFT_KEY = 'daily_checkin_draft_v3';
+
+  // Field definitions per section
+  const FIELDS = {
+    sales:         ['client_name','package_sold','revenue'],
+    leads:         ['lead_name','lead_date','lead_source'],
+    consultations: ['consult_client','consult_outcome','consult_source'],
+    opportunities: ['opp_name','opp_provider','opp_description'],
+    attendances:   ['att_attended','att_no_show']
   };
+
+  // Section containers
+  const SECTIONS = {
+    sales:         document.getElementById('sales-section'),
+    leads:         document.getElementById('leads-section'),
+    consultations: document.getElementById('consultations-section'),
+    opportunities: document.getElementById('opportunities-section'),
+    attendances:   document.getElementById('attendances-section')
+  };
+
+  // Helpers
+  const $form = document.getElementById('daily-form');
+  const $toast = document.getElementById('dc-toast');
+
+  function showToast() {
+    $toast.classList.remove('hidden');
+    setTimeout(() => $toast.classList.add('hidden'), 1800);
+  }
+
+  // Build a row DOM node
+  function buildRow(section, values = {}) {
+    const fields = FIELDS[section];
+    const row = document.createElement('div');
+    row.className = 'dc-row grid gap-2 mb-2';
+    // Tailwind's dynamic grid-cols can get purged; ensure inline template columns
+    row.style.gridTemplateColumns = `repeat(${fields.length}, minmax(0, 1fr))`;
+
+    fields.forEach((f) => {
+      const input = document.createElement('input');
+      input.name = `${f}[]`;
+      input.className = 'border p-2 rounded w-full';
+      input.placeholder = f.replace(/_/g, ' ');
+      if (values && values[f] != null) input.value = values[f];
+      input.addEventListener('input', saveDraftDebounced);
+      row.appendChild(input);
+    });
+
+    return row;
+  }
+
+  // Save current DOM → draft
+  function collectDraft() {
+    const draft = {};
+    Object.keys(SECTIONS).forEach((section) => {
+      const container = SECTIONS[section];
+      const fields = FIELDS[section];
+      const rows = Array.from(container.querySelectorAll('.dc-row'));
+      draft[section] = rows.map((row) => {
+        const obj = {};
+        fields.forEach((f) => {
+          const el = row.querySelector(`input[name="${f}[]"]`);
+          obj[f] = el ? el.value : '';
+        });
+        return obj;
+      });
+    });
+    draft._ts = Date.now();
+    return draft;
+  }
+
+  function saveDraft() {
+    const data = collectDraft();
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(data));
+  }
+
+  let saveTimer = null;
+  function saveDraftDebounced() {
+    if (saveTimer) clearTimeout(saveTimer);
+    saveTimer = setTimeout(saveDraft, 200);
+  }
+
+  // Render draft (or one empty row per section)
+  function renderFromDraft(draft) {
+    Object.keys(SECTIONS).forEach((section) => {
+      const container = SECTIONS[section];
+      container.innerHTML = '';
+      const rows = (draft && draft[section] && draft[section].length)
+        ? draft[section]
+        : [ {} ]; // at least one blank row
+      rows.forEach((r) => container.appendChild(buildRow(section, r)));
+    });
+  }
+
+  // Public API for Add buttons
+  window.DC = {
+    addRow(section) {
+      if (!SECTIONS[section]) return;
+      SECTIONS[section].appendChild(buildRow(section, {}));
+      saveDraft();
+    }
+  };
+
+  // Attempt AJAX submit; fallback to normal form post on failure
+  async function handleSubmit(e) {
+    e.preventDefault();
+
+    const formData = new FormData($form);
+    // include a hint for the backend (non-breaking)
+    formData.append('ajax', '1');
+
+    try {
+      const res = await fetch($form.action, {
+        method: 'POST',
+        body: formData,
+        headers: { 'Accept': 'application/json' } // backend may still reply HTML; ok if 200
+      });
+
+      if (!res.ok) throw new Error('Non-200 response');
+
+      // Success → clear draft + reset UI
+      localStorage.removeItem(DRAFT_KEY);
+      renderFromDraft(null);
+      showToast();
+    } catch (err) {
+      // If fetch fails (network/JSON), fall back to normal form submission
+      // The draft stays, so user won't lose data.
+      $form.submit();
+    }
+  }
+
+  // Init
+  (function init() {
+    // Load saved draft (if any)
+    let draft = null;
+    try { draft = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null'); } catch(_) {}
+    renderFromDraft(draft);
+
+    // Any input change saves
+    $form.addEventListener('input', saveDraftDebounced);
+    // Submit handler
+    $form.addEventListener('submit', handleSubmit);
+  })();
+})();
 </script>
 {% endblock %}

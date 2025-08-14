@@ -1,32 +1,84 @@
 {# app/templates/charts/_client_form.html #}
-<div class="space-y-6" id="client-chart-root" data-client="{{ client }}">
+<div class="space-y-6" id="client-chart-root"
+     data-client="{{ client }}"
+     data-workout-blocks='{{ workout_blocks_json | tojson }}'>
+
   <style>
+    /* ===== Design tokens ===== */
+    :root{
+      --fig-pink:#CC0066;
+      --fig-pink-600:#AA0055;
+      --ink:#0f172a;
+      --muted:#6b7280;
+      --line:#e5e7eb;       /* gray-200 */
+      --panel:#ffffff;      /* card bg */
+      --zebra:#f3f4f6;      /* very light row */
+      --hover:#eef2f7;
+      --ring:#d1d5db;       /* control border */
+      --head:#f9fafb;
+    }
+
+    /* ===== Tabs ===== */
     .tabs-list{display:flex;gap:1rem;list-style:none;margin:0;padding:0;overflow-x:auto;white-space:nowrap}
     .tabs-list::-webkit-scrollbar{display:none}
     .tabs-list{-ms-overflow-style:none;scrollbar-width:none}
     .tab-btn{background:none;border:none;cursor:pointer;font-weight:600;transition:color .2s,border-color .2s}
-    .tab-btn.active{color:#CC0066;border-color:#CC0066}
-    .tab-btn:hover{color:#AA0055;border-color:#AA0055}
-    .tab-btn:focus{outline:2px solid #CC0066;outline-offset:2px}
+    .tab-btn.active{color:var(--fig-pink);border-color:var(--fig-pink)}
+    .tab-btn:hover{color:var(--fig-pink-600);border-color:var(--fig-pink-600)}
+    .tab-btn:focus{outline:2px solid var(--fig-pink);outline-offset:2px}
     .tabs-wrapper{position:relative}
-    #tabUnderline{position:absolute;bottom:0;height:2px;background:#CC0066;transition:left .3s,width .3s}
+    #tabUnderline{position:absolute;bottom:0;height:2px;background:var(--fig-pink);transition:left .3s,width .3s}
 
-    /* Pink zebra rows */
-    .zebra-pink tbody tr:nth-child(even){background-color:rgba(204,0,102,.10)}
-    /* Ensure cells are also pink (not just the row) */
-    .zebra-pink tbody tr:nth-child(even) > th,
-    .zebra-pink tbody tr:nth-child(even) > td{
-      background-color:rgba(204,0,102,.10);
-    }
-    /* Make controls transparent so pink shows through */
-    .zebra-pink tbody tr:nth-child(even) td input,
-    .zebra-pink tbody tr:nth-child(even) td textarea,
-    .zebra-pink tbody tr:nth-child(even) td select{
-      background-color:transparent; /* add !important if any utility overrides it */
-    }
+    /* ===== Neutral zebra ===== */
+    .zebra-pink tbody tr:nth-child(even){background-color:var(--zebra)!important}
+    .zebra-pink tbody tr:nth-child(even)>th,
+    .zebra-pink tbody tr:nth-child(even)>td{background-color:var(--zebra)!important}
+    .zebra-pink tbody tr:hover>td,
+    .zebra-pink tbody tr:hover>th{background-color:var(--hover)}
 
-    .sticky-header thead th{position:sticky;top:0;background:#f9fafb;z-index:10}
+    /* ===== Sticky headers / scroll ===== */
+    .sticky-header thead th{position:sticky;top:0;background:var(--head);z-index:10}
     .scrollable-table{max-height:300px;overflow-y:auto}
+
+    /* ===== Cards / tables / controls ===== */
+    .card{background:var(--panel);border:1px solid var(--line);border-radius:.75rem;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+    .card-pad{padding:1rem}
+    table.clean{width:100%;border-collapse:separate;border-spacing:0}
+    table.clean thead th{font-weight:600;color:#374151;border-bottom:1px solid var(--line);padding:.6rem;background:var(--head)}
+    table.clean td{border-bottom:1px solid var(--line);padding:.55rem}
+    table.clean.compact th,table.clean.compact td{padding:.35rem .45rem}
+
+    .field{border:1px solid var(--ring);border-radius:.375rem;padding:.35rem .55rem;background:#fff}
+    .select{border:1px solid var(--ring);border-radius:.5rem;padding:.35rem .65rem;background:#fff;appearance:none;background-image:linear-gradient(45deg,transparent 50%,#999 50%),linear-gradient(135deg,#999 50%,transparent 50%),linear-gradient(to right,transparent,transparent);background-position:calc(100% - 18px) calc(50% + 1px),calc(100% - 12px) calc(50% + 1px),100% 0;background-size:6px 6px,6px 6px,2.5rem 100%;background-repeat:no-repeat}
+    .btn{border:1px solid var(--ring);background:#fff;border-radius:.5rem;padding:.45rem .8rem;font-weight:600}
+    .btn:hover{border-color:var(--fig-pink)}
+    .btn-primary{background:var(--fig-pink);color:#fff;border-color:var(--fig-pink)}
+    .btn-primary:hover{background:var(--fig-pink-600);border-color:var(--fig-pink-600)}
+
+    /* ===== Rev1 toolbar ===== */
+    .rev1-toolbar{position:sticky;top:64px;z-index:20;background:rgba(255,255,255,.9);backdrop-filter:saturate(180%) blur(6px);border-bottom:1px solid var(--line)}
+    .toolbar-row{display:flex;align-items:center;gap:.5rem;padding:.65rem .75rem}
+    .toolbar-sp{margin-left:auto;display:flex;align-items:center;gap:.5rem}
+    .toggle{width:36px;height:20px;appearance:none;outline:none;border:1px solid var(--ring);border-radius:999px;position:relative;background:#fff;cursor:pointer}
+    .toggle:checked{background:var(--fig-pink);border-color:var(--fig-pink)}
+    .toggle:before{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;background:#fff;border-radius:999px;transition:left .15s}
+    .toggle:checked:before{left:18px}
+
+    /* ===== Rev1 layout widths (Workout narrower, Notes wider) ===== */
+    :root{
+      --rev1-num: 56px;                           /* "#" column */
+      --rev1-rings: 132px;                        /* Rings column (slimmer / close) */
+      /* Make Workout about half its previous size; Notes takes the gain */
+      --rev1-workout: clamp(240px, 22vw, 420px);  /* narrower workout */
+      --rev1-notes:   clamp(560px, 58vw, 1100px); /* much wider notes */
+    }
+    #rev1-table{ table-layout: fixed; }
+    #rev1-table col.num     { width: var(--rev1-num); }
+    #rev1-table col.workout { width: var(--rev1-workout); }
+    #rev1-table col.rings   { width: var(--rev1-rings); }
+    #rev1-table col.notes   { width: var(--rev1-notes); }
+    #rev1-table td, #rev1-table th{ padding:.40rem .40rem; }
+    #rev1-table .field{ padding:.30rem .45rem; }
   </style>
 
   <div class="border-b mb-4 tabs-wrapper">
@@ -34,6 +86,7 @@
       <li><button class="tab-btn px-4 py-2 border-b-2 border-figurella active" data-tab="profile">Profile</button></li>
       <li><button class="tab-btn px-4 py-2 border-b-2 border-transparent" data-tab="measures">Measures</button></li>
       <li><button class="tab-btn px-4 py-2 border-b-2 border-transparent" data-tab="workout">Workout</button></li>
+      <li><button class="tab-btn px-4 py-2 border-b-2 border-transparent" data-tab="workout-rev1">Workout Rev1</button></li>
       <li><button class="tab-btn px-4 py-2 border-b-2 border-transparent" data-tab="nutrition">Nutrition</button></li>
       <li><button class="tab-btn px-4 py-2 border-b-2 border-transparent" data-tab="communication">Communication</button></li>
     </ul>
@@ -47,103 +100,190 @@
 
   <!-- Measures -->
   <div id="measures" class="tab-content hidden space-y-6 p-4">
-    <style>
-      #measures .scrollable-table { max-height: none; overflow-y: visible; }
-    </style>
-
-    <h2 class="text-lg font-semibold mb-4">Measures</h2>
-    <div class="overflow-x-auto border rounded-lg mb-6 scrollable-table">
-      {# IMPORTANT: use the updated partial that has data-meas / data-col markers #}
+    <style>#measures .scrollable-table { max-height: none; overflow-y: visible; }</style>
+    <h2 class="text-lg font-semibold mb-2">Measures</h2>
+    <div class="card card-pad scrollable-table mb-6">
       {% include 'charts/_measures_table.html' %}
     </div>
   </div>
 
-  {# ===== Workout ===== #}
-  <div id="workout" class="tab-content hidden space-y-6 p-4">
-    {# Compute workout data + detect meta row so we don't render it in the table #}
+  {# ===== Workout (original) – visual refresh, behavior unchanged ===== #}
+  <div id="workout" class="tab-content hidden space-y-4 p-4">
     {% set wdata = (sheets['workout'].data if sheets and sheets.get('workout') and sheets['workout'].data else []) %}
     {% set has_meta = wdata and ('KG' in wdata[0] or 'Tools' in wdata[0] or 'Stretching' in wdata[0]) %}
     {% set offset = 1 if has_meta else 0 %}
     {% set wrec = (wdata[0] if has_meta else {}) %}
 
-    <h2 class="text-lg font-semibold mb-4">Program</h2>
+    <h2 class="text-lg font-semibold">Program</h2>
 
-    <div class="flex items-center space-x-2 mb-4">
-      <label for="workout-kg" class="font-medium">KG :</label>
-      <input id="workout-kg" name="workout_kg" type="text"
-             value="{{ wrec.get('KG','') }}"
-             class="w-24 border border-gray-300 rounded px-2 py-1"/>
-    </div>
+    <div class="card card-pad">
+      <div class="flex items-center gap-3 mb-3">
+        <label for="workout-kg" class="font-medium">KG :</label>
+        <input id="workout-kg" name="workout_kg" type="text" value="{{ wrec.get('KG','') }}" class="field w-24"/>
+        <label for="workout-tools" class="font-medium ml-4">Tools :</label>
+        <input id="workout-tools" name="workout_tools" type="text" value="{{ wrec.get('Tools','') }}" class="field w-64"/>
+      </div>
 
-    <div class="flex items-center space-x-2 mb-6">
-      <label for="workout-tools" class="font-medium">Tools :</label>
-      <input id="workout-tools" name="workout_tools" type="text"
-             value="{{ wrec.get('Tools','') }}"
-             class="w-64 border border-gray-300 rounded px-2 py-1"/>
-    </div>
-
-    <div class="overflow-x-auto mb-6">
-      <table class="w-full border-collapse text-sm zebra-pink sticky-header">
-        <thead class="bg-gray-100 font-semibold text-gray-700">
-          <tr>
-            <th class="border px-2 py-1">#</th>
-            <th class="border px-2 py-1">Workout</th>
-            <th class="border px-2 py-1">Rings</th>
-            <th class="border px-2 py-1">Notes</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for i in range(1,18) %}
-            {% set idx = (i - 1) + offset %}
-            {% set row = (wdata[idx] if wdata|length > idx else {}) %}
+      <div class="overflow-x-auto">
+        <table class="clean zebra-pink sticky-header">
+          <thead>
             <tr>
-              <td class="border px-2 py-1 text-center font-semibold">{{ i }}</td>
-              <td class="border px-2 py-1">
-                <input class="w-full border rounded px-2 py-1 workout-workout" type="text" value="{{ row.get('Workout','') }}"/>
-              </td>
-              <td class="border px-2 py-1">
-                <input class="w-full border rounded px-2 py-1 workout-rings" type="text" value="{{ row.get('Rings','') }}"/>
-              </td>
-              <td class="border px-2 py-1">
-                <input class="w-full border rounded px-2 py-1 workout-notes" type="text" value="{{ row.get('Notes', row.get('Comment','')) }}"/>
-              </td>
+              <th style="width:60px">#</th>
+              <th>Workout</th>
+              <th style="width:240px">Rings</th>
+              <th style="width:280px">Notes</th>
             </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {% for i in range(1,18) %}
+              {% set idx = (i - 1) + offset %}
+              {% set row = (wdata[idx] if wdata|length > idx else {}) %}
+              <tr>
+                <td class="text-center font-semibold">{{ i }}</td>
+                <td><input class="w-full field workout-workout" type="text" value="{{ row.get('Workout','') }}"/></td>
+                <td><input class="w-full field workout-rings" type="text" value="{{ row.get('Rings','') }}"/></td>
+                <td><input class="w-full field workout-notes" type="text" value="{{ row.get('Notes', row.get('Comment','')) }}"/></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
     </div>
 
-    <h3 class="text-lg font-semibold mb-2">Goldorack</h3>
-    <div class="overflow-x-auto border rounded-lg mb-6">
-      <table id="goldorack-table" class="table-auto w-full border-collapse text-sm zebra-pink sticky-header">
-        <thead class="bg-gray-100 font-semibold text-gray-700">
-          <tr>
-            <th class="border px-2 py-1 w-24">GK</th>
-            <th class="border px-2 py-1">Value</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% set gold_rows = (wdata | selectattr('Goldorack') | list) if wdata else [] %}
-          {% for j in range(0,4) %}
-            {% set grow = gold_rows[j] if gold_rows|length > j else {} %}
+    <div class="card card-pad">
+      <h3 class="text-md font-semibold mb-2">Goldorack</h3>
+      <div class="overflow-x-auto">
+        <table id="goldorack-table" class="clean zebra-pink sticky-header">
+          <thead>
             <tr>
-              <td class="border px-2 py-1 whitespace-nowrap">{{ grow.get('Goldorack','GK') }}</td>
-              <td class="border px-2 py-1">
-                <input class="w-full border rounded px-2 py-1 workout-gk" name="workout_gk[]" type="text" value="{{ grow.get('Value','') }}"/>
-              </td>
+              <th style="width:120px">GK</th>
+              <th>Value</th>
             </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody>
+            {% set gold_rows = (wdata | selectattr('Goldorack') | list) if wdata else [] %}
+            {% for j in range(0,4) %}
+              {% set grow = gold_rows[j] if gold_rows|length > j else {} %}
+              <tr>
+                <td class="whitespace-nowrap">{{ grow.get('Goldorack','GK') }}</td>
+                <td><input class="w-full field workout-gk" name="workout_gk[]" type="text" value="{{ grow.get('Value','') }}"/></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
 
-    <div class="flex items-center space-x-2">
-      <label for="stretching" class="font-medium">Stretching :</label>
-      <input id="stretching" name="stretching" type="text"
-             value="{{ wrec.get('Stretching','') }}"
-             class="w-72 h-12 border border-gray-300 rounded px-2 py-1"/>
+      <div class="flex items-center gap-2 mt-4">
+        <label for="stretching" class="font-medium">Stretching :</label>
+        <input id="stretching" name="stretching" type="text" value="{{ wrec.get('Stretching','') }}" class="field w-80"/>
+      </div>
     </div>
   </div>
+
+  {# ===== Workout Rev1 (upgraded UI; Workout narrower, Notes wider) ===== #}
+  <div id="workout-rev1" class="tab-content hidden space-y-4 p-0">
+
+    {% set wrdata     = (sheets['workout_rev1'].data if sheets and sheets.get('workout_rev1') and sheets['workout_rev1'].data else []) %}
+    {% set wr_hasmeta = wrdata and ('KG' in wrdata[0] or 'Tools' in wrdata[0]) %}
+    {% set wr_offset  = 1 if wr_hasmeta else 0 %}
+    {% set wr_rec     = (wrdata[0] if wr_hasmeta else {}) %}
+
+    <!-- Sticky Rev1 toolbar -->
+    <div class="rev1-toolbar">
+      <div class="toolbar-row">
+        <span class="text-sm font-semibold">Program (Rev1)</span>
+
+        <label for="workout-rev1-type" class="ml-4 text-sm font-medium">Type:</label>
+        <select id="workout-rev1-type" class="select">
+          {% for opt in ['C1','C2','C3','C4','C5','V1','V2','V3','V4','V5','TO1','TO2','TO3','TO4','TO5'] %}
+            <option value="{{ opt }}">{{ opt }}</option>
+          {% endfor %}
+        </select>
+
+        <button type="button" id="workout-rev1-apply" class="btn btn-primary">Apply</button>
+        <button type="button" id="workout-rev1-clear" class="btn">Clear</button>
+
+        <div class="toolbar-sp">
+          <label class="text-sm">KG :</label>
+          <input id="workout-rev1-kg" type="text" value="{{ wr_rec.get('KG','') }}" class="field w-24">
+          <label class="text-sm">Tools :</label>
+          <input id="workout-rev1-tools" type="text" value="{{ wr_rec.get('Tools','') }}" class="field w-64">
+          <label class="flex items-center gap-2 text-sm text-gray-600 ml-2">
+            <input id="rev1-compact" type="checkbox" class="toggle">
+            <span>Compact</span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Program table -->
+    <div class="p-4">
+      <div class="card">
+        <div class="card-pad overflow-x-auto">
+          <table class="clean zebra-pink sticky-header" id="rev1-table">
+            <colgroup>
+              <col class="num">
+              <col class="workout">
+              <col class="rings">
+              <col class="notes">
+            </colgroup>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Workout</th>
+                <th>Rings</th>
+                <th>Notes</th>
+              </tr>
+            </thead>
+            <tbody>
+            {% for i in range(1,17) %}
+              {% set idx = (i - 1) + wr_offset %}
+              {% set row = (wrdata[idx] if wrdata|length > idx else {}) %}
+              <tr>
+                <td class="text-center font-semibold">{{ i }}</td>
+                <td><input class="rev1-workout w-full field" type="text" value="{{ row.get('Workout','') }}"></td>
+                <td><input class="rev1-rings   w-full field" type="text" value="{{ row.get('Rings','') }}"></td>
+                <td><input class="rev1-notes   w-full field" type="text" value="{{ row.get('Notes','') }}"></td>
+              </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- GK (visible only for TO* codes) -->
+    <div class="px-4">
+      <div class="card">
+        <div class="card-pad">
+          <h3 class="text-md font-semibold mb-2">Goldorack (TO plans only)</h3>
+          <div id="gk-rev1-section" class="overflow-x-auto hidden">
+            <table class="clean zebra-pink sticky-header">
+              <thead>
+                <tr>
+                  <th>Workout</th>
+                  <th style="width:180px">Rings</th>
+                  <th>Notes</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% set wr_gold = (wrdata | selectattr('Goldorack') | list) if wrdata else [] %}
+                {% for j in range(0,4) %}
+                  {% set grow = wr_gold[j] if wr_gold|length > j else {} %}
+                  <tr>
+                    <td><input class="rev1-gk-workout w-full field" type="text" value="{{ grow.get('Workout', grow.get('Value','')) }}"></td>
+                    <td><input class="rev1-gk-rings w-full field"   type="text" value="{{ grow.get('Rings','') }}"></td>
+                    <td><input class="rev1-gk-notes w-full field"   type="text" value="{{ grow.get('Notes','') }}"></td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div> <!-- /workout-rev1 -->
 
   {# ===== Nutrition ===== #}
   <div id="nutrition" class="tab-content hidden space-y-6 p-4">
@@ -153,34 +293,34 @@
       <div class="flex space-x-4 form-row mt-4 nutrition-row">
         <div class="flex flex-col w-32">
           <label class="text-sm font-medium mb-1">Date</label>
-          <input name="nutrition_date[]" type="date" class="border rounded px-2 py-1 w-full nutrition-date"/>
+          <input name="nutrition_date[]" type="date" class="field w-full nutrition-date"/>
         </div>
         <div class="flex flex-col w-32">
           <label class="text-sm font-medium mb-1">Type</label>
-          <input name="nutrition_type[]" type="text" placeholder="Type" class="border rounded px-2 py-1 w-full nutrition-type"/>
+          <input name="nutrition_type[]" type="text" placeholder="Type" class="field w-full nutrition-type"/>
         </div>
         <div class="flex flex-col flex-1">
           <label class="text-sm font-medium mb-1">Notes</label>
-          <textarea name="nutrition_notes[]" rows="3" placeholder="Notes" class="border rounded px-2 py-1 w-full nutrition-notes"></textarea>
+          <textarea name="nutrition_notes[]" rows="3" placeholder="Notes" class="field w-full nutrition-notes"></textarea>
         </div>
       </div>
     </template>
 
-    <div id="nutrition-rows">
-      {% set nut_rows = (sheets['nutrition'].data if sheets and sheets.get('nutrition') and sheets['nutrition'].data else []) %}
+    {% set nut_rows = (sheets['nutrition'].data if sheets and sheets.get('nutrition') and sheets['nutrition'].data else []) %}
+    <div id="nutrition-rows" class="card card-pad">
       {% for row in nut_rows %}
         <div class="flex space-x-4 form-row mt-4 nutrition-row">
           <div class="flex flex-col w-32">
             <label class="text-sm font-medium mb-1">Date</label>
-            <input name="nutrition_date[]" type="date" value="{{ row.get('Date','') }}" class="border rounded px-2 py-1 w-full nutrition-date"/>
+            <input name="nutrition_date[]" type="date" value="{{ row.get('Date','') }}" class="field w-full nutrition-date"/>
           </div>
           <div class="flex flex-col w-32">
             <label class="text-sm font-medium mb-1">Type</label>
-            <input name="nutrition_type[]" type="text" value="{{ row.get('Type','') }}" class="border rounded px-2 py-1 w-full nutrition-type"/>
+            <input name="nutrition_type[]" type="text" value="{{ row.get('Type','') }}" class="field w-full nutrition-type"/>
           </div>
           <div class="flex flex-col flex-1">
             <label class="text-sm font-medium mb-1">Notes</label>
-            <textarea name="nutrition_notes[]" rows="3" class="border rounded px-2 py-1 w-full nutrition-notes">{{ row.get('Notes','') }}</textarea>
+            <textarea name="nutrition_notes[]" rows="3" class="field w-full nutrition-notes">{{ row.get('Notes','') }}</textarea>
           </div>
         </div>
       {% endfor %}
@@ -189,21 +329,21 @@
         <div class="flex space-x-4 form-row mt-4 nutrition-row">
           <div class="flex flex-col w-32">
             <label class="text-sm font-medium mb-1">Date</label>
-            <input name="nutrition_date[]" type="date" class="border rounded px-2 py-1 w-full nutrition-date"/>
+            <input name="nutrition_date[]" type="date" class="field w-full nutrition-date"/>
           </div>
           <div class="flex flex-col w-32">
             <label class="text-sm font-medium mb-1">Type</label>
-            <input name="nutrition_type[]" type="text" placeholder="Type" class="border rounded px-2 py-1 w-full nutrition-type"/>
+            <input name="nutrition_type[]" type="text" placeholder="Type" class="field w-full nutrition-type"/>
           </div>
           <div class="flex flex-col flex-1">
             <label class="text-sm font-medium mb-1">Notes</label>
-            <textarea name="nutrition_notes[]" rows="3" placeholder="Notes" class="border rounded px-2 py-1 w-full nutrition-notes"></textarea>
+            <textarea name="nutrition_notes[]" rows="3" placeholder="Notes" class="field w-full nutrition-notes"></textarea>
           </div>
         </div>
       {% endif %}
     </div>
 
-    <button id="add-nutrition" type="button" class="mt-4 px-4 py-2 bg-figurella text-white rounded">+ Add Row</button>
+    <button id="add-nutrition" type="button" class="mt-2 btn btn-primary">+ Add Row</button>
   </div>
 
   {# ===== Communication ===== #}
@@ -214,34 +354,34 @@
       <div class="flex space-x-4 form-row mt-4 comm-row">
         <div class="flex flex-col w-32">
           <label class="text-sm font-medium mb-1">Date</label>
-          <input name="comm_date[]" type="date" class="border rounded px-2 py-1 w-full comm-date"/>
+          <input name="comm_date[]" type="date" class="field w-full comm-date"/>
         </div>
         <div class="flex flex-col w-32">
           <label class="text-sm font-medium mb-1">Type</label>
-          <input name="comm_type[]" type="text" placeholder="Type" class="border rounded px-2 py-1 w-full comm-type"/>
+          <input name="comm_type[]" type="text" placeholder="Type" class="field w-full comm-type"/>
         </div>
         <div class="flex flex-col flex-1">
           <label class="text-sm font-medium mb-1">Notes</label>
-          <textarea name="comm_notes[]" rows="3" placeholder="Notes" class="border rounded px-2 py-1 w-full comm-notes"></textarea>
+          <textarea name="comm_notes[]" rows="3" placeholder="Notes" class="field w-full comm-notes"></textarea>
         </div>
       </div>
     </template>
 
-    <div id="comm-rows">
-      {% set comm_rows = (sheets['communication'].data if sheets and sheets.get('communication') and sheets['communication'].data else []) %}
+    {% set comm_rows = (sheets['communication'].data if sheets and sheets.get('communication') and sheets['communication'].data else []) %}
+    <div id="comm-rows" class="card card-pad">
       {% for row in comm_rows %}
         <div class="flex space-x-4 form-row mt-4 comm-row">
           <div class="flex flex-col w-32">
             <label class="text-sm font-medium mb-1">Date</label>
-            <input name="comm_date[]" type="date" value="{{ row.get('Date','') }}" class="border rounded px-2 py-1 w-full comm-date"/>
+            <input name="comm_date[]" type="date" value="{{ row.get('Date','') }}" class="field w-full comm-date"/>
           </div>
           <div class="flex flex-col w-32">
             <label class="text-sm font-medium mb-1">Type</label>
-            <input name="comm_type[]" type="text" value="{{ row.get('Type','') }}" class="border rounded px-2 py-1 w-full comm-type"/>
+            <input name="comm_type[]" type="text" value="{{ row.get('Type','') }}" class="field w-full comm-type"/>
           </div>
           <div class="flex flex-col flex-1">
             <label class="text-sm font-medium mb-1">Notes</label>
-            <textarea name="comm_notes[]" rows="3" class="border rounded px-2 py-1 w-full comm-notes">{{ row.get('Notes','') }}</textarea>
+            <textarea name="comm_notes[]" rows="3" class="field w-full comm-notes">{{ row.get('Notes','') }}</textarea>
           </div>
         </div>
       {% endfor %}
@@ -250,263 +390,57 @@
         <div class="flex space-x-4 form-row mt-4 comm-row">
           <div class="flex flex-col w-32">
             <label class="text-sm font-medium mb-1">Date</label>
-            <input name="comm_date[]" type="date" class="border rounded px-2 py-1 w-full comm-date"/>
+            <input name="comm_date[]" type="date" class="field w-full comm-date"/>
           </div>
           <div class="flex flex-col w-32">
             <label class="text-sm font-medium mb-1">Type</label>
-            <input name="comm_type[]" type="text" placeholder="Type" class="border rounded px-2 py-1 w-full comm-type"/>
+            <input name="comm_type[]" type="text" placeholder="Type" class="field w-full comm-type"/>
           </div>
           <div class="flex flex-col flex-1">
             <label class="text-sm font-medium mb-1">Notes</label>
-            <textarea name="comm_notes[]" rows="3" placeholder="Notes" class="border rounded px-2 py-1 w-full comm-notes"></textarea>
+            <textarea name="comm_notes[]" rows="3" placeholder="Notes" class="field w-full comm-notes"></textarea>
           </div>
         </div>
       {% endif %}
     </div>
 
-    <button id="add-comm" type="button" class="mt-4 px-4 py-2 bg-figurella text-white rounded">+ Add Row</button>
+    <button id="add-comm" type="button" class="mt-2 btn btn-primary">+ Add Row</button>
   </div>
 </div>
 
+{# ---- JSON that survives script stripping ---- #}
+<template id="workout-blocks-json">
+  {{ workout_blocks_json | tojson | safe }}
+</template>
+
+<!-- ===== Small helpers (Type stays a dropdown) ===== -->
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-  // ---------- DEBUG SWITCH ----------
-  const DEBUG_AUTOSAVE = false; // set to true to log payloads/responses
+(function(){
+  if (window.__rev1SelectInit) return; window.__rev1SelectInit = true;
 
-  // ---------- Add-row buttons ----------
-  const addNut  = document.getElementById('add-nutrition');
-  const addComm = document.getElementById('add-comm');
+  const typeSelect = document.getElementById('workout-rev1-type');
+  const gk = document.getElementById('gk-rev1-section');
+  const table = document.getElementById('rev1-table');
+  const compactToggle = document.getElementById('rev1-compact');
 
-  if (addNut) {
-    addNut.addEventListener('click', function () {
-      const rows = document.getElementById('nutrition-rows');
-      const tpl  = document.getElementById('nutrition-row-template').content.cloneNode(true);
-      rows.appendChild(tpl);
-      wireAutosaveTargets(rows);
-      saveChartsDebounced();
-    });
-  }
-  if (addComm) {
-    addComm.addEventListener('click', function () {
-      const rows = document.getElementById('comm-rows');
-      const tpl  = document.getElementById('comm-row-template').content.cloneNode(true);
-      rows.appendChild(tpl);
-      wireAutosaveTargets(rows);
-      saveChartsDebounced();
-    });
-  }
+  function isTO(val){ return /^TO\\d$/i.test(val||''); }
+  function updateGK(){ if (!gk || !typeSelect) return; gk.classList.toggle('hidden', !isTO(typeSelect.value)); }
 
-  // ---------- helpers ----------
-  function debounce(fn, ms) {
-    let t;
-    return (...args) => { clearTimeout(t); t = setTimeout(() => fn.apply(null, args), ms); };
-  }
-  const text = el => (el?.textContent || '').trim();
+  // Init & bind
+  updateGK();
+  typeSelect?.addEventListener('change', updateGK);
 
-  const root   = document.getElementById('client-chart-root');
-  const client = root?.dataset?.client;
-
-  // ---------- collectors ----------
-  function collectMeasures() {
-    const out = [];
-    const tables = Array.from(document.querySelectorAll('#measures table'));
-    if (!tables.length) return out;
-
-    // 1) First table = 1–20 grid
-    const grid = tables[0];
-    grid.querySelectorAll('tbody tr').forEach(tr => {
-      const th = tr.querySelector('th');
-      const field = (th?.textContent || '').trim();
-      if (!field) return;
-
-      const tds = Array.from(tr.querySelectorAll('td'));
-      const row = { Field: field };
-
-      if (field === 'Notes') {
-        row['1'] = (tds[0]?.textContent || '').trim();
-        for (let i = 2; i <= 20; i++) row[String(i)] = '';
-      } else {
-        for (let i = 1; i <= 20; i++) {
-          row[String(i)] = (tds[i - 1]?.textContent || '').trim();
-        }
-      }
-      out.push(row);
-    });
-
-    // 2) Lower measure tables (M0, M2, M3)
-    document.querySelectorAll('#measures table[data-meas]').forEach(tbl => {
-      const key  = tbl.dataset.meas;  // 'M0' | 'M2' | 'M3'
-      const rows = Array.from(tbl.querySelectorAll('tbody tr'));
-      if (!rows.length) return;
-
-      // Header row becomes KEY:__hdr__
-      const hdr = rows[0];
-      if (key === 'M0') {
-        out.push({
-          Field: `${key}:__hdr__`,
-          L1:   text(hdr.querySelector('[data-col="L1"]')),
-          L2:   text(hdr.querySelector('[data-col="L2"]')),
-          DATE: text(hdr.querySelector('[data-col="DATE"]')),
-          LB:   text(hdr.querySelector('[data-col="LB"]')),
-          H1:   text(hdr.querySelector('[data-col="H1"]')),
-          H2:   text(hdr.querySelector('[data-col="H2"]')),
-          TAG:  text(hdr.querySelector('[data-col="TAG"]'))
-        });
-      } else {
-        out.push({
-          Field: `${key}:__hdr__`,
-          DATE: text(hdr.querySelector('[data-col="DATE"]')),
-          LB:   text(hdr.querySelector('[data-col="LB"]')),
-          TAG:  text(hdr.querySelector('[data-col="TAG"]'))
-        });
-      }
-
-      // Measurement rows (Chest, Torso, …)
-      rows.slice(1).forEach(tr => {
-        const fa = tr.dataset.fa || text(tr.querySelector('td.no-edit')) || '';
-        if (!fa) return;
-
-        if (key === 'M0') {
-          out.push({
-            Field: `${key}:${fa}`,
-            L1:   text(tr.querySelector('[data-col="L1"]')),
-            L2:   text(tr.querySelector('[data-col="L2"]')),
-            DATE: text(tr.querySelector('[data-col="DATE"]')),
-            LB:   text(tr.querySelector('[data-col="LB"]')),
-            H1:   text(tr.querySelector('[data-col="H1"]')),
-            H2:   text(tr.querySelector('[data-col="H2"]')),
-            TAG:  text(tr.querySelector('[data-col="TAG"]'))
-          });
-        } else {
-          out.push({
-            Field: `${key}:${fa}`,
-            DATE: text(tr.querySelector('[data-col="DATE"]')),
-            LB:   text(tr.querySelector('[data-col="LB"]')),
-            TAG:  text(tr.querySelector('[data-col="TAG"]'))
-          });
-        }
-      });
-    });
-
-    return out;
-  }
-
-  function collectWorkout() {
-    const pane = document.getElementById('workout');
-    if (!pane) return [];
-
-    const KG         = pane.querySelector('#workout-kg')?.value.trim() || '';
-    const Tools      = pane.querySelector('#workout-tools')?.value.trim() || '';
-    const Stretching = pane.querySelector('#stretching')?.value.trim() || '';
-
-    const workouts = Array.from(pane.querySelectorAll('.workout-workout')).map(i => i.value.trim());
-    const rings    = Array.from(pane.querySelectorAll('.workout-rings')).map(i => i.value.trim());
-    const notes    = Array.from(pane.querySelectorAll('.workout-notes')).map(i => i.value.trim());
-    const gk       = Array.from(pane.querySelectorAll('.workout-gk')).map(i => i.value.trim());
-
-    const data = [];
-    data.push({ KG, Tools, Stretching }); // meta row
-
-    const n = Math.max(workouts.length, rings.length, notes.length, 17);
-    for (let i = 0; i < n; i++) {
-      data.push({ Workout: workouts[i] || '', Rings: rings[i] || '', Notes: notes[i] || '' });
-    }
-    for (let j = 0; j < Math.max(4, gk.length); j++) {
-      data.push({ Goldorack: 'GK', Value: gk[j] || '' });
-    }
-    return data;
-  }
-
-  function collectNutrition() {
-    const rows = [];
-    document.querySelectorAll('#nutrition-rows .nutrition-row').forEach(el => {
-      const Date  = el.querySelector('.nutrition-date')?.value.trim()  || '';
-      const Type  = el.querySelector('.nutrition-type')?.value.trim()  || '';
-      const Notes = el.querySelector('.nutrition-notes')?.value.trim() || '';
-      if (Date || Type || Notes) rows.push({ Date, Type, Notes });
-    });
-    return rows;
-  }
-
-  function collectCommunication() {
-    const rows = [];
-    document.querySelectorAll('#comm-rows .comm-row').forEach(el => {
-      const Date  = el.querySelector('.comm-date')?.value.trim()  || '';
-      const Type  = el.querySelector('.comm-type')?.value.trim()  || '';
-      const Notes = el.querySelector('.comm-notes')?.value.trim() || '';
-      if (Date || Type || Notes) rows.push({ Date, Type, Notes });
-    });
-    return rows;
-  }
-
-  // ---------- save ----------
-  const statusEl = document.getElementById('save-status'); // may not exist
-  const saveCharts = async () => {
-    if (!client) return;
-
-    const sheets = {
-      measures:      { data: collectMeasures() },
-      workout:       { data: collectWorkout() },
-      nutrition:     { columns: ['Date','Type','Notes'], data: collectNutrition() },
-      communication: { columns: ['Date','Type','Notes'], data: collectCommunication() }
-    };
-
-    try {
-      if (statusEl) { statusEl.textContent = 'Saving…'; statusEl.className = 'ml-3 text-sm'; }
-      if (DEBUG_AUTOSAVE) console.debug('AUTOSAVE →', sheets);
-
-      const res = await fetch(`/charts/client/${encodeURIComponent(client)}/save`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sheets })
-      });
-      const j = await res.json().catch(() => ({}));
-
-      if (!res.ok || j.status !== 'success') throw new Error(j.message || `HTTP ${res.status}`);
-      if (DEBUG_AUTOSAVE) console.debug('AUTOSAVE ✓', j);
-      if (statusEl) { statusEl.textContent = 'Saved ✔'; statusEl.className = 'ml-3 text-sm text-green-600'; }
-    } catch (err) {
-      console.error('Auto-save error:', err);
-      if (statusEl) { statusEl.textContent = 'Save failed ✖'; statusEl.className = 'ml-3 text-sm text-red-600'; }
-    }
-  };
-  const saveChartsDebounced = debounce(saveCharts, 600);
-
-  // ---------- autosave wiring ----------
-  function wireAutosaveTargets(scope = document) {
-    scope.querySelectorAll('input, textarea').forEach(el => {
-      el.removeEventListener('input',  saveChartsDebounced);
-      el.removeEventListener('change', saveChartsDebounced);
-      el.addEventListener('input',  saveChartsDebounced);
-      el.addEventListener('change', saveChartsDebounced);
-    });
-    scope.querySelectorAll('[contenteditable="true"]').forEach(el => {
-      el.removeEventListener('input', saveChartsDebounced);
-      el.removeEventListener('blur',  saveChartsDebounced);
-      el.addEventListener('input', saveChartsDebounced);
-      el.addEventListener('blur',  saveChartsDebounced);
-    });
-  }
-  wireAutosaveTargets();
-
-  // Watch for new rows (Add Row buttons)
-  const mo = new MutationObserver(muts => {
-    muts.forEach(m => {
-      m.addedNodes.forEach(node => {
-        if (node instanceof HTMLElement) wireAutosaveTargets(node);
-      });
-    });
-  });
-  mo.observe(document.getElementById('nutrition') || document.body, { childList: true, subtree: true });
-  mo.observe(document.getElementById('communication') || document.body, { childList: true, subtree: true });
-  mo.observe(document.getElementById('measures') || document.body, { childList: true, subtree: true });
-
-  // Save when switching tabs
-  document.querySelectorAll('.tab-btn').forEach(btn => {
-    btn.addEventListener('click', saveChartsDebounced);
+  // Compact density toggle
+  compactToggle?.addEventListener('change', e=>{
+    table?.classList.toggle('compact', e.target.checked);
   });
 
-  // Final flush on close
-  window.addEventListener('beforeunload', saveCharts);
-});
+  // Hooks for Apply / Clear if you expose them globally
+  document.getElementById('workout-rev1-apply')?.addEventListener('click', ()=>{
+    if (window.applyWorkoutBlock) window.applyWorkoutBlock(typeSelect.value);
+  });
+  document.getElementById('workout-rev1-clear')?.addEventListener('click', ()=>{
+    if (window.clearWorkoutBlock) window.clearWorkoutBlock();
+  });
+})();
 </script>
