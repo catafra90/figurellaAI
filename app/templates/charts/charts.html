@@ -129,7 +129,7 @@
     <div id="client-panel" class="panel">
       <div class="flex items-center mb-2">
         <i class="bi bi-bar-chart-fill text-2xl text-figurella"></i>
-        <h1 class="text-2xl font-bold text-figurella ml-2">Charts</h1>
+        <h1 class="text-2xl font-bold text-figurella ml-2">Clients Mgmt</h1>
       </div>
 
       <div class="px-4 pb-2">
@@ -185,27 +185,152 @@
 
 {% block scripts %}
 <script>
-document.addEventListener('DOMContentLoaded', function(){
-  var DEBUG = false;
+window.GK_DEFAULTS = {
+  TO1: [
+    {Workout: "1/2 KICK BACK",         Rings: "I",   Notes: ""},
+    {Workout: "KICK BACK",             Rings: "-",   Notes: ""},
+    {Workout: "SIDE DIAG KICKS",       Rings: "I",   Notes: ""}
+  ],
+  TO2: [
+    {Workout: "1/2 KICKS ON BENCH",    Rings: "I",   Notes: ""},
+    {Workout: "BALLERINA",             Rings: "-",   Notes: ""},
+    {Workout: "INNER FORWARD",         Rings: "I",   Notes: ""}
+  ],
+    TO3: [
+    {Workout: "1/2 KICKS ON BENCH",    Rings: "I",   Notes: ""},
+    {Workout: "BALLERINA",             Rings: "-",   Notes: ""},
+    {Workout: "INNER FORWARD",         Rings: "I",   Notes: ""}
+  ],
+    TO4: [
+    {Workout: "1/2 KICKS ON BENCH",    Rings: "I",   Notes: ""},
+    {Workout: "BALLERINA",             Rings: "-",   Notes: ""},
+    {Workout: "INNER FORWARD",         Rings: "I",   Notes: ""}
+  ],
+    TO5: [
+    {Workout: "1/2 KICKS ON BENCH",    Rings: "I",   Notes: ""},
+    {Workout: "BALLERINA",             Rings: "-",   Notes: ""},
+    {Workout: "INNER FORWARD",         Rings: "I",   Notes: ""}
+  ],
+  B1: [
+    {Workout: "BICEPS",    Rings: "I",   Notes: ""},
+    {Workout: "TRICEPS BACK",      Rings: "L",   Notes: ""},
+    {Workout: "CLAP", Rings: "L",   Notes: ""},
+    {Workout: "ROW", Rings: "L",   Notes: ""},
+    {Workout: "BATMAN", Rings: "S",   Notes: ""},
+    {Workout: "SHOULDER ELBOW", Rings: "I",   Notes: ""},
+    {Workout: "KNEES TO CHEST B", Rings: "-",   Notes: ""},
+    {Workout: "KICK BACK", Rings: "I",   Notes: ""},
+    {Workout: "½ KICK BACK", Rings: "I",   Notes: ""},
+    {Workout: "SIDE DIAG KICK", Rings: "I",   Notes: ""},
+    {Workout: "BOUNCE", Rings: "I",   Notes: ""},
 
-  /* GK defaults */
-  var GK_DEFAULTS = {
-    TO1: ["1/2 KICK BACK", "KICK BACK", "SIDE DIAG KICKS"],
-    TO2: ["1/2 KICKS ON BENCH", "BALLERINA", "INNER FORWARD"],
-    TO3: ["1/2 TRIANGLES ON B", "SQUAT BENCH TOUCH", "DIAGONAL INNER B."],
-    TO4: ["1/2 CIRCLES BENCH", "SUPER MARIO LUNGES", "INNER CIRCLES FWD"],
-    TO5: ["1/2 OPEN CLOSE (B)", "ALTERNATE SQUATS", "SIDE DIAGONAL KICKS B"]
-  };
+  ],
+  B2: [
+    {Workout: "1/2 OPEN CLOSE (B)",    Rings: "I",   Notes: ""},
+    {Workout: "ALTERNATE SQUATS",      Rings: "-",   Notes: ""},
+    {Workout: "SIDE DIAGONAL KICKS B", Rings: "I",   Notes: ""}
+  ],
+  B3: [
+    {Workout: "1/2 OPEN CLOSE (B)",    Rings: "I",   Notes: ""},
+    {Workout: "ALTERNATE SQUATS",      Rings: "-",   Notes: ""},
+    {Workout: "SIDE DIAGONAL KICKS B", Rings: "I",   Notes: ""}
+  ],
+    B4: [
+    {Workout: "1/2 OPEN CLOSE (B)",    Rings: "I",   Notes: ""},
+    {Workout: "ALTERNATE SQUATS",      Rings: "-",   Notes: ""},
+    {Workout: "SIDE DIAGONAL KICKS B", Rings: "I",   Notes: ""}
+  ],
+    B5: [
+    {Workout: "1/2 OPEN CLOSE (B)",    Rings: "I",   Notes: ""},
+    {Workout: "ALTERNATE SQUATS",      Rings: "-",   Notes: ""},
+    {Workout: "SIDE DIAGONAL KICKS B", Rings: "I",   Notes: ""}
+  ],
+    B6: [
+    {Workout: "1/2 OPEN CLOSE (B)",    Rings: "I",   Notes: ""},
+    {Workout: "ALTERNATE SQUATS",      Rings: "-",   Notes: ""},
+    {Workout: "SIDE DIAGONAL KICKS B", Rings: "I",   Notes: ""}
+  ],
+    B7: [
+    {Workout: "1/2 OPEN CLOSE (B)",    Rings: "I",   Notes: ""},
+    {Workout: "ALTERNATE SQUATS",      Rings: "-",   Notes: ""},
+    {Workout: "SIDE DIAGONAL KICKS B", Rings: "I",   Notes: ""}
+  ],
+    B8: [
+    {Workout: "1/2 OPEN CLOSE (B)",    Rings: "I",   Notes: ""},
+    {Workout: "ALTERNATE SQUATS",      Rings: "-",   Notes: ""},
+    {Workout: "SIDE DIAGONAL KICKS B", Rings: "I",   Notes: ""}
+  ],
+    B9: [
+    {Workout: "1/2 OPEN CLOSE (B)",    Rings: "I",   Notes: ""},
+    {Workout: "ALTERNATE SQUATS",      Rings: "-",   Notes: ""},
+    {Workout: "SIDE DIAGONAL KICKS B", Rings: "I",   Notes: ""}
+  ],
+    B10: [
+    {Workout: "1/2 OPEN CLOSE (B)",    Rings: "I",   Notes: ""},
+    {Workout: "ALTERNATE SQUATS",      Rings: "-",   Notes: ""},
+    {Workout: "SIDE DIAGONAL KICKS B", Rings: "I",   Notes: ""}
+  ],
+    B11: [
+    {Workout: "1/2 OPEN CLOSE (B)",    Rings: "I",   Notes: ""},
+    {Workout: "ALTERNATE SQUATS",      Rings: "-",   Notes: ""},
+    {Workout: "SIDE DIAGONAL KICKS B", Rings: "I",   Notes: ""}
+  ],
+    B12: [
+    {Workout: "1/2 OPEN CLOSE (B)",    Rings: "I",   Notes: ""},
+    {Workout: "ALTERNATE SQUATS",      Rings: "-",   Notes: ""},
+    {Workout: "SIDE DIAGONAL KICKS B", Rings: "I",   Notes: ""}
+  ],
+    B13: [
+    {Workout: "1/2 OPEN CLOSE (B)",    Rings: "I",   Notes: ""},
+    {Workout: "ALTERNATE SQUATS",      Rings: "-",   Notes: ""},
+    {Workout: "SIDE DIAGONAL KICKS B", Rings: "I",   Notes: ""}
+  ],
+    B14: [
+    {Workout: "1/2 OPEN CLOSE (B)",    Rings: "I",   Notes: ""},
+    {Workout: "ALTERNATE SQUATS",      Rings: "-",   Notes: ""},
+    {Workout: "SIDE DIAGONAL KICKS B", Rings: "I",   Notes: ""}
+  ],
+      B15: [
+    {Workout: "1/2 OPEN CLOSE (B)",    Rings: "I",   Notes: ""},
+    {Workout: "ALTERNATE SQUATS",      Rings: "-",   Notes: ""},
+    {Workout: "SIDE DIAGONAL KICKS B", Rings: "I",   Notes: ""}
+  ],
+};
 
-  var chartPanel  = document.getElementById('chart-panel');
-  var clientPanel = document.getElementById('client-panel');
-  var divider     = document.querySelector('.sidebar-divider');
-  var searchInput = document.getElementById('clientSearch');
-  var onlyCurrent = document.getElementById('onlyCurrent');
-  var COLLAPSE_THRESHOLD = 60;
 
-  var openCards = new Map();
-  var normKey   = function(s){ return (s || '').trim().toLowerCase(); };
+
+// Global flag: when true, autosave is suppressed (used by Clear)
+window.__rev1SuppressAutosave = false;
+
+
+// Safe text converter for GK items (prevents “[object Object]”)
+window.__toGKText = function(v){
+  if (v == null) return '';
+  if (typeof v === 'string' || typeof v === 'number') return String(v);
+  if (Array.isArray(v)) return v.map(window.__toGKText).join(' ');
+  if (typeof v === 'object') {
+    if (v.Workout != null) return String(v.Workout);
+    if (v.workout != null) return String(v.workout);
+    if (v.name    != null) return String(v.name);
+    if (v.title   != null) return String(v.title);
+    if (v.text    != null) return String(v.text);
+  }
+  return '';
+};
+
+
+
+
+// --- existing vars below ---
+var chartPanel  = document.getElementById('chart-panel');
+var clientPanel = document.getElementById('client-panel');
+var divider     = document.querySelector('.sidebar-divider');
+var searchInput = document.getElementById('clientSearch');
+var onlyCurrent = document.getElementById('onlyCurrent');
+var COLLAPSE_THRESHOLD = 60;
+
+var openCards = new Map();
+var normKey   = function(s){ return (s || '').trim().toLowerCase(); };
 
   /* --- Persistence (open charts + active tab) --- */
   var STORAGE_KEY = 'fig:charts:open-v1';
@@ -233,6 +358,27 @@ document.addEventListener('DOMContentLoaded', function(){
   window.addEventListener('pagehide', saveOpenState);
   window.addEventListener('beforeunload', saveOpenState);
 
+
+
+
+// ---- flush any pending autosaves before leaving the page ----
+function flushAllCards(){
+  document.querySelectorAll('.chart-card').forEach(function(card){
+    if (card.__saveDebounced) {
+      try { card.__saveDebounced.flush(); } catch(_) {}
+    }
+  });
+}
+
+window.addEventListener('pagehide',     flushAllCards);
+window.addEventListener('beforeunload', flushAllCards);
+document.addEventListener('visibilitychange', function(){
+  if (document.visibilityState === 'hidden') flushAllCards();
+});
+
+
+
+  
   /* Sidebar filter */
   function applyFilters() {
     var q    = (searchInput.value || '').toLowerCase();
@@ -577,41 +723,87 @@ document.addEventListener('DOMContentLoaded', function(){
   }
 
   /* Autosave wiring */
-  function wireAutosaveForCard(card, clientName){
-    async function saveCore(){
-      var sheets = {
-        profile:       collectProfileFromCard(card) || {columns:[],data:[]},
-        measures:      { data: collectMeasuresFromCard(card) || [] },
-        workout:       { data: collectWorkoutFromCard(card)  || [] },
-        workout_rev1:  { data: collectWorkoutRev1FromCard(card) || [] },
-        nutrition:     { columns:['Date','Type','Notes'], data: collectNutritionFromCard(card) || [] },
-        communication: { columns:['Date','Type','Notes'], data: collectCommunicationFromCard(card) || [] }
-      };
-      if (DEBUG) console.debug('[save ▶]', clientName, sheets);
-      var res = await fetch('/charts/client/'+encodeURIComponent(clientName)+'/save', {
-        method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ sheets:sheets })
-      });
-      var j = await res.json().catch(function(){ return {}; });
-      if (!res.ok || j.status!=='success') throw new Error(j.message||('HTTP '+res.status));
-      if (DEBUG) console.debug('[save ✓]', clientName);
+function wireAutosaveForCard(card, clientName){
+  // --- helper to push current flag state to the sidebar row ---
+  function updateSidebarFlags(name, nutriOn, focusOn){
+    var rows = document.querySelectorAll('#client-panel tbody tr');
+    rows.forEach(function(tr){
+      var td = tr.querySelector('td.client-name');
+      if (!td) return;
+      if ((td.dataset.name || '').trim() !== (name || '').trim()) return;
+
+      var flags = td.querySelector('.client-flags');
+      if (!flags) {
+        flags = document.createElement('span');
+        flags.className = 'client-flags';
+        td.appendChild(flags);
+      }
+      flags.innerHTML = '';
+      if (nutriOn) flags.innerHTML += '<span title="Nutrition">🍎</span>';
+      if (focusOn)  flags.innerHTML += '<span title="Focus Case">🎯</span>';
+    });
+  }
+
+
+var DEBUG = !!window.DEBUG; // or: var DEBUG = false;
+
+
+  async function saveCore(){
+    var sheets = {
+      profile:       collectProfileFromCard(card) || {columns:[],data:[]},
+      measures:      { data: collectMeasuresFromCard(card) || [] },
+      workout:       { data: collectWorkoutFromCard(card)  || [] },
+      workout_rev1:  { data: collectWorkoutRev1FromCard(card) || [] },
+      nutrition:     { columns:['Date','Type','Notes'], data: collectNutritionFromCard(card) || [] },
+      communication: { columns:['Date','Type','Notes'], data: collectCommunicationFromCard(card) || [] }
+    };
+    if (DEBUG) console.debug('[save ▶]', clientName, sheets);
+    var res = await fetch('/charts/client/'+encodeURIComponent(clientName)+'/save', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ sheets:sheets })
+    });
+    var j = await res.json().catch(function(){ return {}; });
+    if (!res.ok || j.status!=='success') throw new Error(j.message||('HTTP '+res.status));
+    if (DEBUG) console.debug('[save ✓]', clientName);
+  }
+
+var deb = debounceSmart(saveCore, 700);
+card.__saveDebounced = deb;
+var maybeSave = function(){
+  if (window.__rev1SuppressAutosave) return;
+  deb();
+};
+
+
+  // Delegate input/change/blur to trigger autosave and sync flags
+  var delegatedHandler = function(e){
+    var el = e.target;
+    if (!(el instanceof HTMLElement)) return;
+
+    // When the hidden checkboxes change, immediately reflect that in the sidebar
+    if (el.name === 'flag_nutrition' || el.name === 'flag_focus_case') {
+      var nutriOn = !!(card.querySelector('input[name="flag_nutrition"]') && card.querySelector('input[name="flag_nutrition"]').checked);
+      var focusOn = !!(card.querySelector('input[name="flag_focus_case"]') && card.querySelector('input[name="flag_focus_case"]').checked);
+      updateSidebarFlags(clientName, nutriOn, focusOn);
     }
 
-    var deb = debounceSmart(saveCore, 700);
-    card.__saveDebounced = deb;
-    var maybeSave = function(){ deb(); };
+    if (el.matches('input, textarea, [contenteditable="true"], select')) {
+      maybeSave();
+    }
+  };
+  card.addEventListener('input',  delegatedHandler, true);
+  card.addEventListener('change', delegatedHandler, true);
+  card.addEventListener('blur',   delegatedHandler, true);
+  card.__delegatedHandler = delegatedHandler;
 
-    var delegatedHandler = function(e){
-      var el = e.target;
-      if (!(el instanceof HTMLElement)) return;
-      if (el.matches('input, textarea, [contenteditable="true"], select')) maybeSave();
-    };
-    card.addEventListener('input',  delegatedHandler, true);
-    card.addEventListener('change', delegatedHandler, true);
-    card.addEventListener('blur',   delegatedHandler, true);
-    card.__delegatedHandler = delegatedHandler;
 
-    card.addEventListener('card:close', function(){ deb.flush().catch(function(){}); });
-  }
+
+
+  // Flush pending save on close
+  card.addEventListener('card:close', function(){ deb.flush().catch(function(){}); });
+}
+
 
   /* Tabs + scaling */
   function initTabs(card, initialIndex){
@@ -835,25 +1027,27 @@ document.addEventListener('DOMContentLoaded', function(){
     makeTableRowsSortable(gkBody, function(){ card.__saveDebounced && card.__saveDebounced(); });
   }
 
-  /* ---- Workout Rev1: sticky toolbar + Apply/Clear + blocks ---- */
-  async function initWorkoutRev1(card){
+/* ---- Workout Rev1: sticky toolbar + Apply/Clear + blocks (ES5/Promise) ---- */
+var initWorkoutRev1 = function (card) {
+  return new Promise(function (resolve) {
     var base = card.querySelector('#workout-rev1');
-    if (!base) return;
+    if (!base) { resolve(); return; }
 
-    // 1) Wrap the first two control rows in a sticky container
-    (function ensureStickyToolbar(){
-      var rows = base.querySelectorAll(':scope > .flex.items-center');
-      if (!rows || !rows.length) return;
+    // 1) Sticky toolbar (no :scope usage)
+    (function ensureStickyToolbar() {
+      var all  = Array.prototype.slice.call(base.querySelectorAll('.flex.items-center'));
+      var rows = all.filter(function (el) { return el && el.parentElement === base; });
+      if (!rows.length) return;
       var first = rows[0];
       var second = rows[1] || null;
-      if (first && !first.parentElement.classList.contains('rev1-toolbar-wrap')){
+      if (first && !first.parentElement.classList.contains('rev1-toolbar-wrap')) {
         var wrap = document.createElement('div');
         wrap.className = 'rev1-toolbar-wrap';
         base.insertBefore(wrap, first);
         wrap.appendChild(first);
         if (second) wrap.appendChild(second);
       }
-      function measure(){
+      function measure() {
         var wrap = base.querySelector('.rev1-toolbar-wrap');
         var h = wrap ? Math.ceil(wrap.getBoundingClientRect().height) : 0;
         base.style.setProperty('--wr1-stick-top', h + 'px');
@@ -866,251 +1060,548 @@ document.addEventListener('DOMContentLoaded', function(){
     var clientName = card.dataset.client || '';
     var LS_KEY = 'fig:wr1:type:' + clientName;
 
-    function getBlocksFromTemplate(){
+    function getBlocksFromTemplate() {
       var t = card.querySelector('template#workout-blocks-json');
       if (!t) return null;
       try {
         var raw = (t.textContent || '').trim();
         return raw ? JSON.parse(raw) : null;
-      } catch(e) {
+      } catch (e) {
         console.error('Failed to parse blocks template JSON', e);
         return null;
       }
     }
-    async function getBlocksFallback(){
-      if (window.__WR1_BLOCK_CACHE__) return window.__WR1_BLOCK_CACHE__;
-      try {
-        var r = await fetch('/charts/blocks.json', { cache: 'no-store' });
-        var j = await r.json();
-        window.__WR1_BLOCK_CACHE__ = j.blocks || {};
-        return window.__WR1_BLOCK_CACHE__;
-      } catch(e) {
-        console.error('Failed to fetch /charts/blocks.json', e);
-        return {};
+    function getBlocksFallback() {
+      if (window.__WR1_BLOCK_CACHE__) return Promise.resolve(window.__WR1_BLOCK_CACHE__);
+      return fetch('/charts/blocks.json', { cache: 'no-store' })
+        .then(function (r) { return r.json(); })
+        .then(function (j) {
+          window.__WR1_BLOCK_CACHE__ = j.blocks || {};
+          return window.__WR1_BLOCK_CACHE__;
+        })
+        .catch(function (e) {
+          console.error('Failed to fetch /charts/blocks.json', e);
+          return {};
+        });
+    }
+
+    var gkBox   = base.querySelector('#gk-rev1-section');
+    var sel     = base.querySelector('#workout-rev1-type');
+    var msgEl   = base.querySelector('#workout-rev1-msg');
+    var kgEl    = base.querySelector('#workout-rev1-kg');
+    var toolsEl = base.querySelector('#workout-rev1-tools');
+    function setMsg(t) { if (msgEl) msgEl.textContent = t || ''; }
+
+function __readMainRows() {
+  var out = [];
+  var wrk = base.querySelectorAll('.rev1-workout');
+  var rng = base.querySelectorAll('.rev1-rings');
+  var nts = base.querySelectorAll('.rev1-notes');
+  var n = Math.max(wrk.length, rng.length, nts.length, 16);
+  for (var i = 0; i < n; i++) {
+    out.push({
+      Workout: (wrk[i] && wrk[i].value ? wrk[i].value.trim() : ''),
+      Rings:   (rng[i] && rng[i].value ? rng[i].value.trim() : ''),
+      Notes:   (nts[i] && nts[i].value ? nts[i].value.trim() : '')
+    });
+  }
+  return out;
+}
+
+
+// === MAIN ROWS PERSIST START (per client) ===
+// (must be inside initWorkoutRev1 → afterBlocks so `card` and `base` exist)
+var ROWS_KEY        = 'fig:wr1:rows:' + (card.dataset.client || '');
+var JUSTCLEARED_KEY = 'fig:wr1:justcleared:' + (card.dataset.client || '');
+
+function __tableHasAnyValue() {
+  var wrk = base.querySelectorAll('.rev1-workout');
+  var rng = base.querySelectorAll('.rev1-rings');
+  var nts = base.querySelectorAll('.rev1-notes');
+  var n = Math.max(wrk.length, rng.length, nts.length, 16);
+  for (var i = 0; i < n; i++) {
+    if ((wrk[i] && wrk[i].value && wrk[i].value.trim()) ||
+        (rng[i] && rng[i].value && rng[i].value.trim()) ||
+        (nts[i] && nts[i].value && nts[i].value.trim())) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function __writeMainRows(rows) {
+  var wrk = base.querySelectorAll('.rev1-workout');
+  var rng = base.querySelectorAll('.rev1-rings');
+  var nts = base.querySelectorAll('.rev1-notes');
+  var n = Math.max(wrk.length, rng.length, nts.length, rows ? rows.length : 0);
+  for (var i = 0; i < n; i++) {
+    var src = (rows && rows[i]) || { Workout: '', Rings: '', Notes: '' };
+    // Only fill if currently empty to avoid overwriting server-rendered values
+    if (wrk[i] && !wrk[i].value.trim()) wrk[i].value = src.Workout || '';
+    if (rng[i] && !rng[i].value.trim()) rng[i].value = src.Rings   || '';
+    if (nts[i] && !nts[i].value.trim()) nts[i].value = src.Notes   || '';
+  }
+}
+
+function __saveRowsToLocal() {
+  try { localStorage.setItem(ROWS_KEY, JSON.stringify(__readMainRows())); } catch(_) {}
+  card.__saveDebounced && card.__saveDebounced();
+}
+
+function __loadRowsFromLocal() {
+  // If we *just* cleared, skip rehydration once
+  var jc = null;
+  try { jc = localStorage.getItem(JUSTCLEARED_KEY); } catch(_) {}
+  if (jc) {
+    try { localStorage.removeItem(JUSTCLEARED_KEY); } catch(_) {}
+    return;
+  }
+
+  // If server already rendered values (e.g., Notes), don't overwrite
+  if (__tableHasAnyValue()) return;
+
+  var raw = null;
+  try { raw = localStorage.getItem(ROWS_KEY); } catch(_) {}
+  if (!raw) return;
+
+  var rows = [];
+  try { rows = JSON.parse(raw) || []; } catch(_) { rows = []; }
+  if (rows && rows.length) __writeMainRows(rows);
+}
+
+
+function __clearRowsLocal() { try { localStorage.removeItem(ROWS_KEY); } catch(_) {} }
+
+// Save when user types in main 16-row table
+base.addEventListener('input', function(ev){
+  var t = ev.target;
+  if (!(t instanceof HTMLElement)) return;
+  if (t.classList && (t.classList.contains('rev1-workout') ||
+                      t.classList.contains('rev1-rings')   ||
+                      t.classList.contains('rev1-notes'))) {
+    __saveRowsToLocal();
+  }
+}, true);
+
+base.addEventListener('change', function(ev){
+  var t = ev.target;
+  if (!(t instanceof HTMLElement)) return;
+  if (t.classList && (t.classList.contains('rev1-workout') ||
+                      t.classList.contains('rev1-rings')   ||
+                      t.classList.contains('rev1-notes'))) {
+    __saveRowsToLocal();
+  }
+}, true);
+// === MAIN ROWS PERSIST END ===
+
+
+
+
+
+
+
+
+
+// ---- GK local persistence (per client) ----
+var GK_KEY = 'fig:wr1:gk:' + (card.dataset.client || '');
+
+function __readGKRows() {
+  var out = [];
+  var rows = base.querySelectorAll('#gk-rev1-section tbody tr');
+  rows.forEach(function(tr){
+    var ins = tr.querySelectorAll('input');
+    if (!ins || ins.length < 3) return;
+    out.push({
+      Workout: (ins[0].value || '').trim(),
+      Rings:   (ins[1].value || '').trim(),
+      Notes:   (ins[2].value || '').trim()
+    });
+  });
+  return out;
+}
+
+function __writeGKRows(rows) {
+  var rowsDom = base.querySelectorAll('#gk-rev1-section tbody tr');
+  rowsDom.forEach(function(tr, i){
+    var src = rows[i] || {Workout:'',Rings:'',Notes:''};
+    var ins = tr.querySelectorAll('input');
+    if (!ins || ins.length < 3) return;
+    // Only set if empty to avoid overwriting freshly loaded server data
+    if (!ins[0].value.trim()) ins[0].value = src.Workout || '';
+    if (!ins[1].value.trim()) ins[1].value = src.Rings   || '';
+    if (!ins[2].value.trim()) ins[2].value = src.Notes   || '';
+  });
+}
+
+function __saveGKToLocal() {
+  try { localStorage.setItem(GK_KEY, JSON.stringify(__readGKRows())); } catch(_) {}
+  // also trigger your autosave
+  card.__saveDebounced && card.__saveDebounced();
+}
+
+function __loadGKFromLocal() {
+  var raw = null;
+  try { raw = localStorage.getItem(GK_KEY); } catch(_) {}
+  if (!raw) return;
+  var rows = [];
+  try { rows = JSON.parse(raw) || []; } catch(_) { rows = []; }
+  if (rows && rows.length) __writeGKRows(rows);
+}
+
+function __clearGKLocal() {
+  try { localStorage.removeItem(GK_KEY); } catch(_) {}
+}
+
+// Save on any GK input
+if (gkBox) {
+  gkBox.addEventListener('input', __saveGKToLocal, true);
+  gkBox.addEventListener('change', __saveGKToLocal, true);
+}
+
+
+
+
+    // Per-program KG/Tools memoization
+    var KT_KEY = 'fig:wr1:kgtools:' + clientName;
+    function ktRead()  { try { return JSON.parse(localStorage.getItem(KT_KEY) || '{}') || {}; } catch (_) { return {}; } }
+    function ktWrite(m){ try { localStorage.setItem(KT_KEY, JSON.stringify(m || {})); } catch (_) {} }
+    function ktGet(type){ var m = ktRead(); return m[type] || { kg: '', tools: '' }; }
+    function ktSet(type, kg, tools) { var m = ktRead(); m[type] = { kg: kg || '', tools: tools || '' }; ktWrite(m); }
+    function currentTypeKey(){ return (sel && sel.value ? sel.value : '').toUpperCase().replace(/\s+/g, ''); }
+
+    function afterBlocks(BLOCKS) {
+      // Populate select with keys from blocks
+      (function populateProgramOptions() {
+        if (!sel) return;
+        var have = {};
+        Array.prototype.slice.call(sel.options).forEach(function (o) { have[o.value] = true; });
+        var allKeys = Object.keys(BLOCKS || {});
+        allKeys.sort(function (a, b) {
+          function pref(k) { return k.indexOf('C') === 0 ? 0 : (k.indexOf('V') === 0 ? 1 : (k.indexOf('TO') === 0 ? 2 : 3)); }
+          var ai = pref(a), bi = pref(b);
+          if (ai !== bi) return ai - bi;
+          var na = parseInt(a.replace(/\D/g, ''), 10) || 0;
+          var nb = parseInt(b.replace(/\D/g, ''), 10) || 0;
+          if (a.indexOf('TO') === 0 && b.indexOf('TO') === 0) return na - nb;
+          if (a[0] === b[0]) return na - nb;
+          return a.localeCompare(b);
+        });
+        allKeys.forEach(function (k) {
+          if (!have[k]) {
+            var opt = document.createElement('option');
+            opt.value = k; opt.textContent = k;
+            sel.appendChild(opt);
+          }
+        });
+      })();
+
+if (sel) {
+  sel.addEventListener('change', function () {
+    // remember selection for this client
+    try { localStorage.setItem(LS_KEY, sel.value || ''); } catch (_) {}
+
+    // fill table & GK defaults (only into *empty* inputs)
+    fill(sel.value || '');
+
+    // persist per-program KG/Tools memo now that we may have meta defaults
+    var key = currentTypeKey();
+    if (key) ktSet(key, kgEl ? kgEl.value : '', toolsEl ? toolsEl.value : '');
+
+    // save the 16 rows + GK to local drafts (so reopening restores Notes, etc.)
+    try { __saveRowsToLocal(); } catch(_) {}
+    try { __saveGKToLocal(); } catch(_) {}
+
+    // kick the debounced server save
+    card.__saveDebounced && card.__saveDebounced();
+  });
+}
+
+      function saveKTForCurrent() {
+        var key = currentTypeKey(); if (!key) return;
+        ktSet(key, kgEl ? kgEl.value : '', toolsEl ? toolsEl.value : '');
       }
-    }
+      if (kgEl)    { kgEl.addEventListener('input', saveKTForCurrent);  kgEl.addEventListener('change', saveKTForCurrent); }
+      if (toolsEl) { toolsEl.addEventListener('input', saveKTForCurrent); toolsEl.addEventListener('change', saveKTForCurrent); }
 
-    var BLOCKS = getBlocksFromTemplate();
-    if (!BLOCKS || !Object.keys(BLOCKS).length) {
-      BLOCKS = await getBlocksFallback();
-    }
+      function fill(code) {
+        var key = (code || '').toUpperCase().replace(/\s+/g, '');
+        var block = (BLOCKS || {})[key];
+        if (!block) { setMsg('“' + code + '” not found.'); return; }
+        setMsg('');
 
-    var gkBox = base.querySelector('#gk-rev1-section');
-    var sel   = base.querySelector('#workout-rev1-type');
-    var msgEl = base.querySelector('#workout-rev1-msg');
-    function setMsg(t){ if (msgEl) msgEl.textContent = t || ''; }
+        // Per-program KG/Tools (block meta > memo)
+        var metaKG =
+          (block && (block.KG || (block.meta && block.meta.KG))) ||
+          (block && block.rows && block.rows[0] && block.rows[0].KG) || '';
+        var metaTools =
+          (block && (block.Tools || (block.meta && block.meta.Tools))) ||
+          (block && block.rows && block.rows[0] && block.rows[0].Tools) || '';
 
-    function populateProgramOptions(){
-      if (!sel) return;
-      var have = {};
-      Array.from(sel.options).forEach(function(o){ have[o.value] = true; });
-      var allKeys = Object.keys(BLOCKS || {});
-      allKeys.sort(function(a,b){
-        function pref(k){ return k.indexOf('C')===0 ? 0 : (k.indexOf('V')===0 ? 1 : (k.indexOf('TO')===0 ? 2 : 3)); }
-        var ai=pref(a), bi=pref(b);
-        if (ai!==bi) return ai-bi;
-        var na=parseInt(a.replace(/\D/g,''),10)||0;
-        var nb=parseInt(b.replace(/\D/g,''),10)||0;
-        if (a.indexOf('TO')===0 && b.indexOf('TO')===0) return na-nb;
-        if (a[0]===b[0]) return na-nb;
-        return a.localeCompare(b);
-      });
-      allKeys.forEach(function(k){
-        if (!have[k]){
-          var opt = document.createElement('option');
-          opt.value = k; opt.textContent = k;
-          sel.appendChild(opt);
+        var memo = ktGet(key);
+        if (kgEl)    kgEl.value    = (metaKG !== '' && metaKG != null) ? String(metaKG) : (memo.kg || '');
+        if (toolsEl) toolsEl.value = (metaTools !== '' && metaTools != null) ? String(metaTools) : (memo.tools || '');
+        ktSet(key, kgEl ? kgEl.value : '', toolsEl ? toolsEl.value : '');
+
+        // Main 16 rows (fill empties only)
+        var wrk = Array.prototype.slice.call(base.querySelectorAll('.rev1-workout'));
+        var rng = Array.prototype.slice.call(base.querySelectorAll('.rev1-rings'));
+        var nts = Array.prototype.slice.call(base.querySelectorAll('.rev1-notes'));
+        for (var i = 0; i < 16; i++) {
+          var row = (block.rows && block.rows[i]) || { Workout: '', Rings: '', Notes: '' };
+          if (wrk[i] && !wrk[i].value.trim()) wrk[i].value = row.Workout || '';
+          if (rng[i] && !rng[i].value.trim()) rng[i].value = row.Rings   || '';
+          if (nts[i] && !nts[i].value.trim()) nts[i].value = row.Notes   || '';
         }
-      });
-    }
-    populateProgramOptions();
 
-    try {
-      var last = localStorage.getItem(LS_KEY);
-      if (last && sel) sel.value = last;
-    } catch(_) {}
+        // GK
+        var showGK = /^TO\d+$/i.test(key);
+        if (gkBox) gkBox.classList.toggle('hidden', !showGK);
 
-    function fill(code){
-      var key = (code || '').toUpperCase().replace(/\s+/g,'');
-      var block = (BLOCKS || {})[key];
-      if (!block){ setMsg('“' + code + '” not found.'); return; }
-      setMsg('');
+        var gkRows  = Array.prototype.slice.call(base.querySelectorAll('#gk-rev1-section tbody tr'));
+        var gkBlock = (block && (block.GK != null ? block.GK : block.gk));
+        var gks;
+        if (Object.prototype.toString.call(gkBlock) === '[object Array]') {
+          gks = gkBlock;
+        } else if (gkBlock && Object.prototype.toString.call(gkBlock.rows) === '[object Array]') {
+          gks = gkBlock.rows;
+        } else {
+          gks = [];
+        }
 
-      var wrk = Array.from(base.querySelectorAll('.rev1-workout'));
-      var rng = Array.from(base.querySelectorAll('.rev1-rings'));
-      var nts = Array.from(base.querySelectorAll('.rev1-notes'));
-
-      for (var i=0;i<16;i++){
-        var row = (block.rows && block.rows[i]) || {Workout:'',Rings:'',Notes:''};
-        if (wrk[i]) wrk[i].value = row.Workout || '';
-        if (rng[i]) rng[i].value = row.Rings   || '';
-        if (nts[i]) nts[i].value = row.Notes   || '';
-      }
-
-      var showGK = key.indexOf('TO') === 0;
-      if (gkBox) gkBox.classList.toggle('hidden', !showGK);
-
-      var gkRows = Array.from(base.querySelectorAll('#gk-rev1-section tbody tr'));
-      var rawGK = Array.isArray(block.GK) ? block.GK : [];
-
-      var hasMeaningfulGK = false;
-      for (var ii=0; ii<rawGK.length; ii++){
-        var g = rawGK[ii];
-        if (typeof g === 'string' && g.trim().length > 0) { hasMeaningfulGK = true; break; }
-        if (g && typeof g === 'object' && ((g.Workout||'').trim().length > 0)) { hasMeaningfulGK = true; break; }
-      }
-
-      var gkData = [];
-      if (hasMeaningfulGK){
-        for (var jj=0; jj<rawGK.length; jj++){
-          var item = rawGK[jj];
-          if (typeof item === 'string'){
-            gkData.push({ Workout: item, Rings: '', Notes: '' });
+        var gkData = [];
+        for (var jj = 0; jj < gks.length; jj++) {
+          var it = gks[jj];
+          if (typeof it === 'string') {
+            gkData.push({ Workout: it, Rings: '', Notes: '' });
           } else {
             gkData.push({
-              Workout: item.Workout || '',
-              Rings:   item.Rings   || '',
-              Notes:   item.Notes   || ''
+              Workout: __toGKText(it),
+              Rings:   (it && it.Rings) || '',
+              Notes:   (it && it.Notes) || ''
             });
           }
         }
-      } else if (showGK && GK_DEFAULTS[key]) {
-        var list = GK_DEFAULTS[key];
-        for (var kk=0; kk<list.length; kk++){
-          gkData.push({ Workout: list[kk], Rings: '', Notes: '' });
+        if (!gkData.length && showGK && window.GK_DEFAULTS && window.GK_DEFAULTS[key]) {
+          gkData = window.GK_DEFAULTS[key].map(function (it) {
+            return { Workout: __toGKText(it), Rings: (it && it.Rings) || 'I', Notes: (it && it.Notes) || '' };
+          });
         }
+
+        gkRows.forEach(function (tr, idx) {
+          var inputs = tr.querySelectorAll('input');
+          if (!inputs || inputs.length < 3) return;
+          var src = gkData[idx] || { Workout: '', Rings: '', Notes: '' };
+          if (!inputs[0].value.trim()) inputs[0].value = src.Workout || '';
+          if (!inputs[1].value.trim()) inputs[1].value = src.Rings   || '';
+          if (!inputs[2].value.trim()) inputs[2].value = src.Notes   || '';
+        });
       }
 
-      gkRows.forEach(function(tr, idx){
-        var inputs = tr.querySelectorAll('input');
-        if (!inputs || inputs.length < 3) return;
-        var src = gkData[idx] || { Workout:'', Rings:'', Notes:'' };
-        inputs[0].value = src.Workout || '';
-        inputs[1].value = (src.Rings && src.Rings.trim()) ? src.Rings : (showGK ? 'I' : '');
-        inputs[2].value = src.Notes || '';
-      });
-    }
+function clearAll() {
+  setMsg('');
 
-    function clearAll(){
-      setMsg('');
-      base.querySelectorAll('input.rev1-workout, input.rev1-rings, input.rev1-notes').forEach(function(i){ i.value = ''; });
-      Array.from(base.querySelectorAll('#gk-rev1-section tbody tr input')).forEach(function(i){ i.value = ''; });
-      if (gkBox) gkBox.classList.add('hidden');
-    }
-
-    card.addEventListener('click', function(e){
-      var t = e.target;
-      if (!(t instanceof HTMLElement)) return;
-
-      if (t.id === 'workout-rev1-apply'){
-        e.preventDefault();
-        var v = (sel && sel.value) || '';
-        try { localStorage.setItem(LS_KEY, v); } catch(_) {}
-        fill(v);
-        card.__saveDebounced && card.__saveDebounced();
-      }
-      if (t.id === 'workout-rev1-clear'){
-        e.preventDefault();
-        clearAll();
-        try { localStorage.removeItem(LS_KEY); } catch(_) {}
-        card.__saveDebounced && card.__saveDebounced();
-      }
-    });
-
-    sel && sel.addEventListener('keydown', function(e){
-      if (e.key === 'Enter'){
-        e.preventDefault();
-        var v = sel.value || '';
-        try { localStorage.setItem(LS_KEY, v); } catch(_) {}
-        fill(v);
-        card.__saveDebounced && card.__saveDebounced();
-      }
-    });
-
-    if (sel && sel.value && sel.value.toUpperCase().indexOf('TO') === 0){
-      gkBox && gkBox.classList.remove('hidden');
-    } else {
-      gkBox && gkBox.classList.add('hidden');
-    }
-
-    enableRowReorder(card);
+  // 1) Suppress autosave & cancel any pending run
+  window.__rev1SuppressAutosave = true;
+  if (card.__saveDebounced && card.__saveDebounced.cancel) {
+    card.__saveDebounced.cancel();
   }
 
-  /* Load a card’s HTML (strip scripts) */
-  async function loadCardContent(card, name, initialTab){
-    if (typeof initialTab !== 'number') initialTab = 0;
-    var controller = new AbortController();
-    card.__abortController = controller;
+  // 2) Visually clear inputs
+  Array.prototype.slice.call(base.querySelectorAll('input.rev1-workout, input.rev1-rings, input.rev1-notes'))
+    .forEach(function (i) { i.value = ''; });
+  Array.prototype.slice.call(base.querySelectorAll('#gk-rev1-section tbody tr input'))
+    .forEach(function (i) { i.value = ''; });
+  if (gkBox) gkBox.classList.add('hidden');
 
+  // 3) Reset KG/Tools and per-program memo
+  var key = currentTypeKey();
+  if (key) ktSet(key, '', '');
+  if (kgEl) kgEl.value = '';
+  if (toolsEl) toolsEl.value = '';
+
+  // 4) Nuke local drafts
+  __clearRowsLocal();
+  __clearGKLocal();
+
+  // 5) Persist clear on the server and mark “just cleared” so drafts won’t rehydrate on reload
+  (async function persistClear(){
     try {
-      var res = await fetch('/charts/client/'+encodeURIComponent(name), { signal: controller.signal, cache:'no-store' });
-      if (!res.ok) throw new Error('HTTP '+res.status);
-      var html = await res.text();
-      if (!chartPanel.contains(card)) return;
+      const res = await fetch('/charts/client/' + encodeURIComponent(card.dataset.client || '') + '/workout-rev1/clear', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      try { localStorage.setItem(JUSTCLEARED_KEY, '1'); } catch(_) {}
+    } catch (err) {
+      console.error('Clear failed:', err);
+    } finally {
+      // 6) Re-enable autosave after the UI is stable
+      setTimeout(function(){ window.__rev1SuppressAutosave = false; }, 250);
+    }
+  })();
+}
 
+
+
+
+      card.addEventListener('click', function (e) {
+        var t = e.target;
+        if (!(t instanceof HTMLElement)) return;
+
+if (t.id === 'rev1-apply' || t.id === 'workout-rev1-apply') {
+  e.preventDefault();
+  var v = (sel && sel.value) || '';
+  try { localStorage.setItem(LS_KEY, v); } catch (_) {}
+  fill(v); // fills main 16 rows and GK defaults for TO*
+
+  // Persist both main rows and GK immediately after Apply
+  try { __saveRowsToLocal(); } catch(_) {}
+  try { __saveGKToLocal(); } catch(_) {}
+
+  var key = currentTypeKey();
+  if (key) ktSet(key, kgEl ? kgEl.value : '', toolsEl ? toolsEl.value : '');
+  card.__saveDebounced && card.__saveDebounced();
+}
+
+
+
+      });
+
+      if (sel) sel.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          var v = sel.value || '';
+          try { localStorage.setItem(LS_KEY, v); } catch (_) {}
+          fill(v);
+          var key = currentTypeKey();
+          if (key) ktSet(key, kgEl ? kgEl.value : '', toolsEl ? toolsEl.value : '');
+          card.__saveDebounced && card.__saveDebounced();
+        }
+      });
+
+      // Restore last-used Type (do NOT overwrite table inputs)
+      try {
+        var last = localStorage.getItem(LS_KEY);
+        if (last && sel) {
+          sel.value = last;
+          var gkSec = base.querySelector('#gk-rev1-section');
+          if (gkSec) gkSec.classList.toggle('hidden', !/^TO\d$/i.test(last));
+          var memo = ktGet(last.toUpperCase().replace(/\s+/g, ''));
+          if (kgEl && typeof memo.kg === 'string') kgEl.value = memo.kg;
+          if (toolsEl && typeof memo.tools === 'string') toolsEl.value = memo.tools;
+        }
+      } catch (_) {}
+
+__loadGKFromLocal();
+__loadRowsFromLocal(); // restore 16-row table (Workout/Rings/Notes), doesn't overwrite non-empty inputs
+
+
+      // initial GK visibility
+      if (sel && sel.value && sel.value.toUpperCase().indexOf('TO') === 0) {
+        if (gkBox) gkBox.classList.remove('hidden');
+      } else {
+        if (gkBox) gkBox.classList.add('hidden');
+      }
+    } // end afterBlocks
+
+    var BLOCKS = getBlocksFromTemplate();
+    if (!BLOCKS || !Object.keys(BLOCKS).length) {
+      getBlocksFallback().then(
+        function (b) { afterBlocks(b || {}); resolve(); },
+        function ()  { afterBlocks({});     resolve(); }
+      );
+    } else {
+      afterBlocks(BLOCKS);
+      resolve();
+    }
+  }); // closes new Promise
+};   // closes var initWorkoutRev1 = function
+
+
+
+
+/* Load a card’s HTML (strip scripts) — Promise, no await */
+function loadCardContent(card, name, initialTab){
+  if (typeof initialTab !== 'number') initialTab = 0;
+  var controller = new AbortController();
+  card.__abortController = controller;
+
+  return fetch('/charts/client/'+encodeURIComponent(name), { signal: controller.signal, cache:'no-store' })
+    .then(function(res){
+      if (!res.ok) throw new Error('HTTP '+res.status);
+      return res.text();
+    })
+    .then(function(html){
+      if (!chartPanel.contains(card)) return;
       var body = card.querySelector('.chart-body');
       var wrapper = document.createElement('div');
       wrapper.innerHTML = html;
+      Array.prototype.slice.call(wrapper.querySelectorAll('script')).forEach(function(s){ s.remove(); });
 
-      wrapper.querySelectorAll('script').forEach(function(s){ s.remove(); });
+body.innerHTML = '';
+Array.prototype.slice.call(wrapper.childNodes).forEach(function(n){ body.appendChild(n); });
 
-      body.innerHTML = '';
-      Array.from(wrapper.childNodes).forEach(function(n){ body.appendChild(n); });
+initTabs(card, initialTab);
+setupScaling(card);
+wireAutosaveForCard(card, name);
 
-      initTabs(card, initialTab);
-      setupScaling(card);
-      wireAutosaveForCard(card, name);
-      await initWorkoutRev1(card);
-      saveOpenState();
-    } catch(err) {
+// ✅ wire row dragging now that DOM is in place
+enableRowReorder(card);
+
+return initWorkoutRev1(card);
+
+    })
+    .then(function(){ saveOpenState(); })
+    .catch(function(err){
       if (!controller.signal.aborted){
         var body2 = card.querySelector('.chart-body');
         body2.innerHTML = '<div style="padding:1rem;color:#b91c1c">Failed to load. Click to retry.</div>';
         body2.addEventListener('click', function(){ loadCardContent(card, name, initialTab); }, { once:true });
         console.error('Load error:', err);
       }
-    } finally {
-      delete card.__abortController;
-    }
+    })
+    .finally(function(){ delete card.__abortController; });
+}
+
+/* Add a card — Promise, no await */
+function addCard(name, opts){
+  if (!opts) opts = {};
+  var key = normKey(name);
+  if (!key) return Promise.resolve();
+
+  if (openCards.has(key)){
+    var existing = openCards.get(key);
+    existing.scrollIntoView({behavior:'smooth', block:'nearest', inline:'nearest'});
+    var hdr = existing.querySelector('.chart-header');
+    if (hdr){ hdr.classList.add('flash'); setTimeout(function(){ hdr.classList.remove('flash'); },800); }
+    return Promise.resolve();
   }
+  if (chartPanel.querySelectorAll('.chart-card').length >= 4) return Promise.resolve();
 
-  /* Add a card */
-  async function addCard(name, opts){
-    if (!opts) opts = {};
-    var key = normKey(name);
-    if (!key) return;
+  var card = document.createElement('div');
+  card.className = 'chart-card panel';
+  card.dataset.client = name;
+  card.innerHTML = ''
+    + '<div class="scale-target">'
+    + '  <div class="scale-content">'
+    + '    <div class="chart-header">'
+    + '      <span class="truncate">'+name+'</span>'
+    + '      <span>'
+    + '        <button class="chart-edit" title="Highlight Edit Mode">✎</button>'
+    + '        <button class="chart-close" title="Close">×</button>'
+    + '      </span>'
+    + '    </div>'
+    + '    <div class="chart-body">Loading...</div>'
+    + '  </div>'
+    + '</div>';
+  chartPanel.appendChild(card);
+  openCards.set(key, card);
+  rebuildCards();
 
-    if (openCards.has(key)){
-      var existing = openCards.get(key);
-      existing.scrollIntoView({behavior:'smooth', block:'nearest', inline:'nearest'});
-      var hdr=existing.querySelector('.chart-header'); hdr && hdr.classList.add('flash'); setTimeout(function(){ hdr && hdr.classList.remove('flash'); },800);
-      return;
-    }
-    if (chartPanel.querySelectorAll('.chart-card').length >= 4) return;
-
-    var card = document.createElement('div');
-    card.className = 'chart-card panel';
-    card.dataset.client = name;
-    card.innerHTML = ''+
-      '<div class="scale-target">'+
-        '<div class="scale-content">'+
-          '<div class="chart-header">'+
-            '<span class="truncate">'+name+'</span>'+
-            '<span>'+
-              '<button class="chart-edit" title="Highlight Edit Mode">✎</button>'+
-              '<button class="chart-close" title="Close">×</button>'+
-            '</span>'+
-          '</div>'+
-          '<div class="chart-body">Loading...</div>'+
-        '</div>'+
-      '</div>';
-    chartPanel.appendChild(card);
-    openCards.set(key, card);
-    rebuildCards();
-
-    card.querySelector('.chart-edit').addEventListener('click', function(){ card.classList.toggle('editing'); });
-    card.querySelector('.chart-close').addEventListener('click', async function(){
-      try { await (card.__saveDebounced && card.__saveDebounced.flush()); } catch(e) {}
+  card.querySelector('.chart-edit').addEventListener('click', function(){ card.classList.toggle('editing'); });
+  card.querySelector('.chart-close').addEventListener('click', function(){
+    var flushP = (card.__saveDebounced && card.__saveDebounced.flush) ? card.__saveDebounced.flush() : Promise.resolve();
+    flushP.finally(function(){
       card.dispatchEvent(new CustomEvent('card:close'));
       if (card.__delegatedHandler){
         card.removeEventListener('input',  card.__delegatedHandler, true);
@@ -1124,22 +1615,26 @@ document.addEventListener('DOMContentLoaded', function(){
       rebuildCards();
       saveOpenState();
     });
-
-    await loadCardContent(card, name, (Number.isInteger(opts.initialTab) ? opts.initialTab : 0));
-  }
-
-  /* Open from sidebar + resize + restore */
-  document.getElementById('client-panel').addEventListener('click', function(e){
-    var td = e.target.closest('td.client-name'); if (!td) return;
-    addCard(td.dataset.name).then(saveOpenState);
   });
 
-  window.addEventListener('resize', function(){
-    updateCardWidths();
-    chartPanel.querySelectorAll('.chart-card').forEach(function(c){ scaleChart(c); });
-  });
+  var tabIdx = (Number.isInteger && Number.isInteger(opts.initialTab)) ? opts.initialTab : 0;
+  return loadCardContent(card, name, tabIdx);
+}
 
-  restoreOpenState();
+/* Open from sidebar + resize + restore (unchanged) */
+document.getElementById('client-panel').addEventListener('click', function(e){
+  var td = e.target.closest('td.client-name'); if (!td) return;
+  addCard(td.dataset.name).then(saveOpenState);
 });
+
+window.addEventListener('resize', function(){
+  updateCardWidths();
+  Array.prototype.slice.call(chartPanel.querySelectorAll('.chart-card'))
+    .forEach(function(c){ scaleChart(c); });
+});
+
+restoreOpenState();
+
+;
 </script>
 {% endblock %}

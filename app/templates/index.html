@@ -2,7 +2,73 @@
 
 {% block content %}
 <div class="container mx-auto p-6">
-  <!-- Quick Actions (unchanged)... -->
+
+  {# fallbacks if the view didn’t pass them #}
+  {% set reports_ep = reports_ep|default(None) %}
+  {% set checkin_ep = checkin_ep|default(None) %}
+
+  <!-- Quick Actions -->
+  <section aria-label="Quick actions" class="mb-8">
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+      <!-- Charts -->
+      <a href="{{ url_for('charts.view_charts') }}"
+         class="group bg-white rounded-xl shadow hover:shadow-lg border transition p-5 flex flex-col items-center justify-center text-center">
+        <i class="bi bi-bar-chart-line text-3xl mb-2 text-figurella group-hover:scale-110 transition"></i>
+        <div class="font-semibold">Clients Mgmt</div>
+        <div class="text-xs text-gray-500 mt-1">Open client charts</div>
+      </a>
+
+      <!-- Clients -->
+      <a href="{{ url_for('clients.clients') }}"
+         class="group bg-white rounded-xl shadow hover:shadow-lg border transition p-5 flex flex-col items-center justify-center text-center">
+        <i class="bi bi-people text-3xl mb-2 text-figurella group-hover:scale-110 transition"></i>
+        <div class="font-semibold">Contacts</div>
+        <div class="text-xs text-gray-500 mt-1">View all contacts</div>
+      </a>
+
+      <!-- Calendar -->
+      <a href="{{ url_for('calendar.view_calendar') }}"
+         class="group bg-white rounded-xl shadow hover:shadow-lg border transition p-5 flex flex-col items-center justify-center text-center">
+        <i class="bi bi-calendar-event text-3xl mb-2 text-figurella group-hover:scale-110 transition"></i>
+        <div class="font-semibold">Calendar</div>
+        <div class="text-xs text-gray-500 mt-1">Appointments &amp; tasks</div>
+      </a>
+
+      <!-- Daily Checks -->
+      {% if checkin_ep %}
+      <a href="{{ url_for(checkin_ep) }}"
+         class="group bg-white rounded-xl shadow hover:shadow-lg border transition p-5 flex flex-col items-center justify-center text-center">
+        <i class="bi bi-clipboard-check text-3xl mb-2 text-figurella group-hover:scale-110 transition"></i>
+        <div class="font-semibold">Daily Checks</div>
+        <div class="text-xs text-gray-500 mt-1">Record today’s check-ins</div>
+      </a>
+      {% else %}
+      <div class="bg-white rounded-xl shadow border p-5 flex flex-col items-center justify-center text-center opacity-60 pointer-events-none"
+           title="Daily Check-In route not found">
+        <i class="bi bi-clipboard-check text-3xl mb-2 text-gray-400"></i>
+        <div class="font-semibold text-gray-600">Daily Checks</div>
+        <div class="text-xs text-gray-400 mt-1">Not available</div>
+      </div>
+      {% endif %}
+
+      <!-- Reports -->
+      {% if reports_ep %}
+      <a href="{{ url_for(reports_ep) }}"
+         class="group bg-white rounded-xl shadow hover:shadow-lg border transition p-5 flex flex-col items-center justify-center text-center">
+        <i class="bi bi-file-earmark-text text-3xl mb-2 text-figurella group-hover:scale-110 transition"></i>
+        <div class="font-semibold">Reports</div>
+        <div class="text-xs text-gray-500 mt-1">Daily &amp; monthly reports</div>
+      </a>
+      {% else %}
+      <div class="bg-white rounded-xl shadow border p-5 flex flex-col items-center justify-center text-center opacity-60 pointer-events-none"
+           title="Reports module not installed">
+        <i class="bi bi-file-earmark-text text-3xl mb-2 text-gray-400"></i>
+        <div class="font-semibold text-gray-600">Reports</div>
+        <div class="text-xs text-gray-400 mt-1">Module not installed</div>
+      </div>
+      {% endif %}
+    </div>
+  </section>
 
   <!-- Notifications (Today) -->
   <div id="home-notifications" class="mt-8">
@@ -23,7 +89,6 @@
   const subtitle = document.getElementById('notif-subtitle');
   const toastRoot = document.getElementById('toast-root');
 
-  // ===== Local "Done" persistence =====
   const DONE_STORE_KEY = 'fc_done_occurrences_v1';
   function loadDoneSet() {
     try { return new Set(JSON.parse(localStorage.getItem(DONE_STORE_KEY) || '')) }
@@ -33,9 +98,8 @@
     try { localStorage.setItem(DONE_STORE_KEY, JSON.stringify([...set])); } catch {}
   }
   const doneSet = loadDoneSet();
-  const doneKey = (id, token) => `${String(id)}|${token}`; // token = ISO or YYYY-MM-DD
+  const doneKey = (id, token) => `${String(id)}|${token}`;
 
-  // ===== Helpers =====
   function todayRangeISO() {
     const start = new Date(); start.setHours(0,0,0,0);
     const end = new Date();   end.setHours(23,59,59,999);
@@ -65,7 +129,6 @@
     setTimeout(() => el.remove(), 6000);
   }
 
-  // ===== API helper: mark done on server if available =====
   async function apiMarkDone(id, occurrenceStart) {
     try {
       const url = occurrenceStart
@@ -87,7 +150,6 @@
     } catch (_e) { return false; }
   }
 
-  // ===== Render one notification row =====
   function renderTask(ev) {
     const li = document.createElement('li');
     li.className = 'p-3 flex items-start gap-3';
@@ -102,8 +164,7 @@
         ${ev.extendedProps?.location ? `<div class="text-xs text-gray-500">Location: ${ev.extendedProps.location}</div>` : ''}
         ${ev.extendedProps?.assignee ? `<div class="text-xs text-gray-500">Assignee: ${ev.extendedProps.assignee}</div>` : ''}
       </div>
-      <button class="ml-auto inline-flex items-center gap-1 px-2 py-1 rounded-md border text-gray-500 hover:text-green-600 hover:border-green-300 transition"
-              title="Mark complete">
+      <button class="ml-auto inline-flex items-center gap-1 px-2 py-1 rounded-md border text-gray-500 hover:text-green-600 hover:border-green-300 transition" title="Mark complete">
         <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
           <path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm3.707-9.707a1 1 0 0 0-1.414-1.414L9 10.172 7.707 8.879a1 1 0 0 0-1.414 1.414l2 2a1 1 0 0 0 1.414 0l4-4Z" clip-rule="evenodd"/>
         </svg>
@@ -112,24 +173,19 @@
     `;
 
     li.querySelector('button').addEventListener('click', async () => {
-      // Normalize to ISO + also save day token (YYYY-MM-DD)
       const rawStart = ev.occurrenceStart || ev.start;
       const iso = new Date(rawStart).toISOString();
       const day = iso.slice(0,10);
 
-      // 1) persist locally (both keys so Calendar can always match)
       doneSet.add(doneKey(ev.id, iso));
       doneSet.add(doneKey(ev.id, day));
       saveDoneSet(doneSet);
 
-      // 2) best-effort server persist
       await apiMarkDone(ev.id, rawStart);
 
-      // 3) update UI
       li.remove();
       ensureEmptyState();
 
-      // 4) tell Calendar (if open) to flip to green now
       if (window.markCalendarEventDone) window.markCalendarEventDone(ev.id, rawStart);
       if (window.dispatchEvent) window.dispatchEvent(new Event('calendar:refresh'));
     });
@@ -137,7 +193,6 @@
     list.appendChild(li);
   }
 
-  // ===== Load today's notifications =====
   async function loadToday() {
     const { start, end, label } = todayRangeISO();
     subtitle.textContent = `Today • ${label}`;
@@ -153,7 +208,6 @@
         const iso = new Date(raw).toISOString();
         const day = iso.slice(0,10);
 
-        // server flags
         const serverList = Array.isArray(ep.completedOn) ? ep.completedOn
                          : Array.isArray(ep.completed_on) ? ep.completed_on
                          : [];
@@ -161,7 +215,6 @@
                         || serverList.includes(iso)
                         || serverList.some(s => typeof s === 'string' && s.slice(0,10) === day);
 
-        // local flags (exact or day)
         const localDone  = doneSet.has(doneKey(ev.id, iso)) || doneSet.has(doneKey(ev.id, day));
 
         return !(serverDone || localDone);
@@ -178,7 +231,6 @@
     }
   }
 
-  // Optional: upcoming toasts
   async function pollToasts() {
     try {
       const res = await fetch('/calendar/api/alarms?within=60&grace=5&include_events=1&fallback_events=0&limit=25');

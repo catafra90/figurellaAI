@@ -1,92 +1,69 @@
-{# templates/figurella_reports/report_home.html #}
+{# templates/figurella_reports/reports_home.html #}
 {% extends "base.html" %}
 
 {% block extra_head %}
-  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css">
-  <style>
-    html, body { margin:0; padding:0; height:100%; overflow:hidden; }
-    #home-main { position:absolute; top:64px; bottom:44px; left:0; right:0; display:flex; overflow:hidden; }
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css">
+<style>
+  html, body { margin:0; padding:0; height:100%; overflow:hidden; }
+  #home-main { position:absolute; top:64px; bottom:44px; left:0; right:0; display:flex; overflow:hidden; }
 
-    /* Left pane (cards) */
-    #home-pane {
-      position:absolute; top:0; bottom:0; left:0;
-      width:48%; transition: transform .3s ease;
-      z-index:1000;
-    }
-    #home-pane.collapsed { transform: translateX(-100%); }
+  /* Left cards */
+  #home-pane { position:absolute; top:0; bottom:0; left:0; width:48%; transition: transform .3s; z-index:1000; }
+  #home-pane.collapsed { transform: translateX(-100%); }
 
-    /* Pull-tab */
-    #pull-tab {
-      position:absolute; top:0; bottom:0; left:0;
-      width:43px; background:#e5e7eb; cursor:pointer;
-      display:none; z-index:1001;
-    }
-    #home-pane.collapsed + #pull-tab { display:block; }
-    #pull-tab::after {
-      content: "Reports";
-      writing-mode: vertical-rl;
-      transform: translate(-50%,-50%) rotate(180deg);
-      position:absolute; top:50%; left:50%;
-      font-weight:bold; color:#ec4899;
-      pointer-events:none;
-    }
+  /* Pull-tab */
+  #pull-tab { position:absolute; top:0; bottom:0; left:0; width:43px; background:#e5e7eb; cursor:pointer; display:none; z-index:1001; }
+  #home-pane.collapsed + #pull-tab { display:block; }
+  #pull-tab::after { content:"Reports"; writing-mode:vertical-rl; transform:translate(-50%,-50%) rotate(180deg); position:absolute; top:50%; left:50%; font-weight:700; color:#ec4899; }
 
-    /* Right blank panel */
-    #blank-panel {
-      position:absolute; top:0; bottom:0;
-      left:48%; right:0; padding:1rem;
-      box-sizing:border-box;
-      transition:left .3s ease;
-    }
-    #home-pane.collapsed ~ #pull-tab + #blank-panel {
-      left:43px;
-    }
+  /* Right panel */
+  #blank-panel { position:absolute; top:0; bottom:0; left:48%; right:0; padding:1rem; box-sizing:border-box; transition:left .3s; overflow:auto; display:flex; flex-direction:column; gap:1rem; background:#f3f4f6; }
+  #home-pane.collapsed ~ #pull-tab + #blank-panel { left:43px; }
 
-    /* Panel styling */
-    .panel {
-      background:white;
-      border-radius:.75rem;
-      box-shadow:0 0 16px rgba(0,0,0,0.15);
-      padding:1rem; box-sizing:border-box;
-      display:flex; flex-direction:column;
-      height:100%;
-    }
+  .panel { background:white; border-radius:.75rem; box-shadow:0 0 16px rgba(0,0,0,.15); padding:1rem; display:flex; flex-direction:column; height:100%; }
+  #cards-grid { display:grid; grid-template-columns:repeat(1,1fr); gap:1.5rem; }
+  @media (min-width:640px){ #cards-grid{ grid-template-columns:repeat(2,1fr);} }
+  @media (min-width:1024px){ #cards-grid{ grid-template-columns:repeat(3,1fr);} }
 
-    /* Cards grid overrides */
-    #cards-grid {
-      display:grid;
-      grid-template-columns:repeat(1,1fr);
-      gap:1.5rem;
-    }
-    @media (min-width: 640px) { /* sm */
-      #cards-grid { grid-template-columns:repeat(2,1fr); }
-    }
-    @media (min-width: 1024px) { /* lg */
-      #cards-grid { grid-template-columns:repeat(3,1fr); }
-    }
-  </style>
+  /* Filter bar */
+  .filter-bar{ display:flex; gap:.5rem; align-items:end; flex-wrap:wrap; background:#fff; border:1px solid #e5e7eb; border-radius:1rem; padding:.75rem 1rem; box-shadow:0 6px 24px rgba(17,24,39,.06); }
+  .filter-bar .field{ display:flex; flex-direction:column; gap:.25rem; }
+  .filter-bar label{ font-size:.8rem; color:#374151; font-weight:600; }
+  .filter-bar input{ border:1px solid #d1d5db; border-radius:.5rem; padding:.45rem .6rem; min-width:11rem; }
+  .btn-primary{ background:#ec4899; color:#fff; border:none; border-radius:.6rem; padding:.55rem .9rem; font-weight:600; cursor:pointer; }
+  .btn-ghost{ background:#f3f4f6; border:none; border-radius:.6rem; padding:.55rem .9rem; font-weight:600; cursor:pointer; }
+
+  /* Frequency card */
+  .freq-card{ background:#fff; border:1px solid #e5e7eb; border-radius:1rem; box-shadow:0 6px 24px rgba(17,24,39,.06); overflow:hidden; }
+  .freq-head{ display:flex; align-items:center; justify-content:space-between; padding:.75rem 1rem; background:linear-gradient(180deg,#fafafa,#f5f5f5); border-bottom:1px solid #e5e7eb; }
+  .freq-title{ font-weight:700; color:#0f172a; display:flex; gap:.5rem; align-items:center; }
+  .freq-title .badge{ font-size:.75rem; font-weight:600; padding:.15rem .5rem; border-radius:9999px; background:#fee2e2; color:#b91c1c; }
+  .freq-title .badge-info{ background:#e0f2fe; color:#075985; display:none; }
+  .freq-scroll{ width:100%; overflow:auto; padding:.5rem; }
+  .freq-table{ width:100%; border-collapse:separate; border-spacing:0; font-size:.9rem; text-align:center; }
+  .freq-table thead th{ position:sticky; top:0; background:#f9fafb; font-weight:700; padding:.6rem .5rem; border-bottom:1px solid #e5e7eb; }
+  .freq-table tbody td{ padding:.85rem .5rem; border-bottom:1px solid #f0f2f5; background:#fff; }
+</style>
 {% endblock %}
 
 {% block content %}
 <main id="home-main">
-  <!-- LEFT: cards pane -->
-  <div id="home-pane" class="panel">
-    <div class="flex items-center justify-between mb-6">
-      <h1 class="text-2xl font-bold text-figurella">Figurella Reports</h1>
-      <div class="space-x-2">
-        <button id="toggle-pane" class="px-2 py-1 bg-gray-200 hover:bg-gray-300 rounded">
-          <i class="bi bi-chevron-left"></i>
-        </button>
-        <form method="post" action="{{ url_for('reports_bp.refresh_all_reports') }}">
-          <button type="submit"
-                  class="px-4 py-1 bg-figurella text-white rounded hover:bg-pink-600 transition">
-            🔄 Refresh All
-          </button>
-        </form>
-      </div>
-    </div>
+  <!-- LEFT: cards -->
+<div id="home-pane" class="panel">
+  <div class="flex items-center justify-between mb-6">
+    <h1 class="text-2xl font-bold text-figurella">Reports</h1>
 
-    <div id="cards-grid">
+    <!-- Refresh All (POST) -->
+    <form action="{{ url_for('reports_bp.refresh_all_reports') }}" method="POST" class="inline">
+      <button type="submit" class="btn-ghost flex items-center gap-2">
+        <i class="bi bi-arrow-clockwise"></i>
+        Refresh All
+      </button>
+    </form>
+  </div>
+
+  <div id="cards-grid">
+
       {% for c in cards %}
         <a href="{{ url_for('reports_bp.view_history', report_name=c.label) }}"
            class="bg-white rounded-xl shadow p-6 flex flex-col items-center hover:shadow-lg transition">
@@ -99,33 +76,176 @@
     </div>
   </div>
 
-  <!-- Pull-tab & blank right panel -->
+  <!-- RIGHT -->
   <div id="pull-tab"></div>
-  <div id="blank-panel" class="panel">
-    <!-- intentionally blank -->
+  <div id="blank-panel">
+
+    {# defaults so the table always renders #}
+    {% if months is not defined %}
+      {% set months = [
+        ('Jan','Jan.'), ('Feb','Feb.'), ('Mar','Mar.'), ('Apr','Apr.'),
+        ('May','May'), ('June','June'), ('July','July'), ('Aug','Aug.'),
+        ('Sept','Sept.'), ('Oct','Oct.'), ('Nov','Nov.'), ('Dec','Dec.')
+      ] %}
+    {% endif %}
+    {% if freq_row is not defined %}
+      {% set freq_row = {} %}
+    {% endif %}
+
+    <!-- Filters -->
+    <section class="filter-bar" id="freq-filters"
+             data-fetch-url="{{ url_for('reports_bp.ibf_frequency') }}"
+             data-client-url="{{ url_for('reports_bp.ibf_clients') }}">
+      <div class="field">
+        <label for="freq-client">Client</label>
+        <input id="freq-client" type="text" placeholder="Client name…" list="client-list">
+        <datalist id="client-list"></datalist>
+      </div>
+      <div class="field">
+        <label for="freq-start">Start date</label>
+        <input id="freq-start" type="date">
+      </div>
+      <div class="field">
+        <label for="freq-end">End date</label>
+        <input id="freq-end" type="date">
+      </div>
+      <div class="field" style="flex-direction:row;gap:.5rem;">
+        <button id="freq-load" class="btn-primary" type="button">Load</button>
+      </div>
+    </section>
+
+    <!-- Frequency -->
+    <section class="freq-card">
+      <div class="freq-head">
+        <div class="freq-title">
+          📅 Frequency
+          <span class="badge">IBF (Bubble totals)</span>
+          <span id="current-client" class="badge badge-info"></span>
+        </div>
+      </div>
+      <div class="freq-scroll">
+        <table id="frequency-table" class="freq-table">
+          <thead>
+            <tr>
+              {% for short,label in months %}<th>{{ label }}</th>{% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              {% for short,label in months %}
+                <td class="freq-cell" data-month="{{ short }}">{{ freq_row.get(short) or '0' }}</td>
+              {% endfor %}
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
   </div>
 </main>
 {% endblock %}
 
 {% block scripts %}
-  {{ super() }}
-  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-  <script>
-    $(function(){
-      // Toggle collapse of left pane
-      function setIcon(){
-        const icon = $('#toggle-pane i');
-        if ($('#home-pane').hasClass('collapsed')) {
-          icon.removeClass('bi-chevron-left').addClass('bi-chevron-right');
-        } else {
-          icon.removeClass('bi-chevron-right').addClass('bi-chevron-left');
-        }
-      }
-      $('#toggle-pane, #pull-tab').on('click', () => {
-        $('#home-pane').toggleClass('collapsed');
-        setIcon();
+{{ super() }}
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+  $(function(){
+    // Collapse left pane (optional)
+    $('#toggle-pane, #pull-tab').on('click', ()=>$('#home-pane').toggleClass('collapsed'));
+
+    const MONTHS = ["Jan","Feb","Mar","Apr","May","June","July","Aug","Sept","Oct","Nov","Dec"];
+
+    function setThisYear(){
+      const y = new Date().getFullYear();
+      $('#freq-start').val(`${y}-01-01`);
+      $('#freq-end').val(`${y}-12-31`);
+    }
+    $('#freq-thisyear').on('click', setThisYear);
+
+    function renderFrequency(monthMap){
+      MONTHS.forEach(m=>{
+        const td = document.querySelector(`td.freq-cell[data-month="${m}"]`);
+        if (!td) return;
+        const v = (monthMap && (monthMap[m] || monthMap[m+'.'])) ?? 0;
+        td.textContent = String(v);
       });
-      setIcon();
+    }
+
+    function setCurrentClientBadge(name){
+      const badge = document.getElementById('current-client');
+      const txt = (name||'').trim();
+      if (!txt){
+        badge.style.display = 'none';
+      }else{
+        badge.textContent = txt;
+        badge.style.display = 'inline-block';
+      }
+    }
+
+    async function loadFrequency(){
+      const base = $('#freq-filters').data('fetch-url') || '{{ url_for("reports_bp.ibf_frequency") }}';
+      const client = $('#freq-client').val().trim();
+      const start = $('#freq-start').val();
+      const end   = $('#freq-end').val();
+
+      const params = new URLSearchParams();
+      if (client) params.set('client', client);
+      if (start)  params.set('start', start);
+      if (end)    params.set('end', end);
+
+      try{
+        const res = await fetch(base + (params.toString()?`?${params}`:""), { headers:{'Accept':'application/json'} });
+        if (!res.ok){
+          console.error('Frequency HTTP', res.status, await res.text());
+          return;
+        }
+        const data = await res.json();
+        renderFrequency(data && data.months);
+        setCurrentClientBadge(client);
+      }catch(e){
+        console.error('Frequency fetch error:', e);
+      }
+    }
+
+    // ---- Client suggestions (datalist) ----
+    let suggestTimer = null;
+    async function fetchClientSuggestions(q){
+      const base = $('#freq-filters').data('client-url') || '{{ url_for("reports_bp.ibf_clients") }}';
+      const url  = q ? `${base}?q=${encodeURIComponent(q)}` : base;
+      try{
+        const res = await fetch(url, {headers:{'Accept':'application/json'}});
+        if(!res.ok) return [];
+        const data = await res.json();
+        return Array.isArray(data.clients) ? data.clients : [];
+      }catch(e){ console.error(e); return []; }
+    }
+    function fillDatalist(list){
+      const dl = document.getElementById('client-list');
+      dl.innerHTML = '';
+      list.forEach(name=>{
+        const opt = document.createElement('option');
+        opt.value = name;
+        dl.appendChild(opt);
+      });
+    }
+    $('#freq-client').on('input', function(){
+      const q = this.value.trim();
+      clearTimeout(suggestTimer);
+      suggestTimer = setTimeout(async ()=>{
+        const names = await fetchClientSuggestions(q);
+        fillDatalist(names);
+      }, 150);
     });
-  </script>
+
+    $('#freq-load').on('click', loadFrequency);
+    $('#freq-client,#freq-start,#freq-end').on('keydown', e=>{
+      if(e.key==='Enter'){ e.preventDefault(); loadFrequency(); }
+    });
+
+    // Initial defaults + one autoload
+    setThisYear();
+    setCurrentClientBadge($('#freq-client').val());
+    loadFrequency();
+  });
+</script>
 {% endblock %}

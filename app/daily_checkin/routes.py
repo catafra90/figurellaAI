@@ -108,8 +108,15 @@ def _build_plain_text_message(submission_date, sections, history_url: str | None
     return "\n".join(lines)
 
 # ---------- Views ----------
+
+# Optional: base redirect so /daily-check-in/ goes to the launcher/wizard
+@daily_checkin_bp.route('/')
+def index():
+    return redirect(url_for('daily_checkin.combined_report_wizard'))
+
 @daily_checkin_bp.route('/wizard', endpoint='combined_report_wizard')
 def combined_report_wizard():
+    # This template contains the app launcher (tiles) and the Daily Checks wizard.
     return render_template('daily_checkin/daily_checkin.html', active_page='report')
 
 @daily_checkin_bp.route('/report')
@@ -177,7 +184,7 @@ def submit_report():
         except Exception:
             pass
 
-        # 🔔 Always send full plain-text message (no cards) so it renders in Chat
+        # Always send a plain-text message so it renders in Chat
         try:
             text_msg = _build_plain_text_message(submission_date, sections, history_url)
             send_to_google_chat(text_msg)
@@ -194,3 +201,12 @@ def report_history():
     os.makedirs(download_dir, exist_ok=True)
     files = sorted([f for f in os.listdir(download_dir) if f.endswith('.xlsx')], reverse=True)
     return render_template('daily_checkin/report_history.html', files=files, active_page='report')
+
+# ---------- New: Monthly Planning ----------
+@daily_checkin_bp.route('/monthly-planning', methods=['GET'])
+def monthly_planning():
+    """
+    Simple client-side monthly planner.
+    The template handles autosave to localStorage, CSV export, and printing.
+    """
+    return render_template('daily_checkin/monthly_planning.html', active_page='report')

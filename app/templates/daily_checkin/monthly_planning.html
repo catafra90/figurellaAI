@@ -1,0 +1,527 @@
+<div class="bg-white rounded-2xl shadow">
+
+  <!-- Toolbar -->
+  <div class="px-4 py-3 border-b flex items-center justify-between">
+    <div class="flex items-center gap-2">
+      <button id="mp-add-row" type="button"
+              class="bg-figurella text-white px-4 py-2 rounded hover:bg-pink-700 transition">
+        + Add Row
+      </button>
+
+      <!-- Import buttons -->
+      <button id="mp-import-expiring" type="button"
+              class="px-3 py-2 rounded bg-gray-100 hover:bg-gray-200">
+        Import Expiring PINK
+      </button>
+
+      <button id="mp-import-lowres" type="button"
+              class="px-3 py-2 rounded bg-gray-100 hover:bg-gray-200">
+        Import Low Residual (&lt;10)
+      </button>
+    </div>
+    <div></div>
+  </div>
+
+  <!-- Main Table -->
+  <div class="p-4 overflow-x-auto">
+    <table id="mp-table" class="min-w-full border border-gray-200 text-sm text-center mb-8">
+      <thead>
+        <tr>
+          <th rowspan="2" class="border border-gray-300 bg-gray-100 px-4 py-2 font-semibold">Status</th>
+          <th rowspan="2" class="border border-gray-300 bg-blue-100  px-4 py-2 font-semibold">Internal Planning</th>
+          <th rowspan="2" class="border border-gray-300 bg-blue-200  px-4 py-2 font-semibold">Closing Date</th>
+          <th colspan="2" class="border border-gray-300 bg-green-200  px-4 py-2 font-semibold">PROP 1 (Most Likely)</th>
+          <th colspan="2" class="border border-gray-300 bg-yellow-200 px-4 py-2 font-semibold">PROP 2 (Plan B)</th>
+          <th colspan="2" class="border border-gray-300 bg-red-200    px-4 py-2 font-semibold">PROP 3 (Worst)</th>
+          <th rowspan="2" class="border border-gray-300 bg-gray-300 px-4 py-2 font-semibold">Average</th>
+          <th rowspan="2" class="border border-gray-300 bg-white px-3 py-2"></th>
+        </tr>
+        <tr>
+          <th class="border border-gray-300 bg-green-50  px-4 py-2">Pack</th>
+          <th class="border border-gray-300 bg-green-50  px-4 py-2">Price</th>
+          <th class="border border-gray-300 bg-yellow-50 px-4 py-2">Pack</th>
+          <th class="border border-gray-300 bg-yellow-50 px-4 py-2">Price</th>
+          <th class="border border-gray-300 bg-red-50   px-4 py-2">Pack</th>
+          <th class="border border-gray-300 bg-red-50   px-4 py-2">Price</th>
+        </tr>
+      </thead>
+      <tbody id="mp-body">
+        <tr>
+          <!-- Status -->
+          <td class="border border-gray-200 px-2 py-2">
+            <select class="w-full border border-gray-200 rounded px-2 py-1 text-sm" data-key="status">
+              <option value="">-- select --</option>
+              <option>approved</option>
+              <option>offered</option>
+              <option>next month</option>
+              <option>stop</option>
+            </select>
+          </td>
+
+          <!-- Internal Planning + Closing -->
+          <td class="border border-gray-200 px-2 py-2">
+            <input class="w-full border border-gray-200 rounded px-2 py-1 text-sm"
+                   data-key="internal_planning" placeholder="internal planning">
+          </td>
+          <td class="border border-gray-200 px-2 py-2">
+            <input class="w-full border border-gray-200 rounded px-2 py-1 text-sm"
+                   type="date" data-key="closing_date">
+          </td>
+
+          <!-- PROP 1 -->
+          <td class="border border-gray-200 px-2 py-2">
+            <select class="pack w-full border border-gray-200 rounded px-2 py-1 text-sm" data-key="p1_pack">
+              <option value="">-- select pack --</option>
+              <option value="Pink 3"  data-price="1000">Pink 3 — $1,000</option>
+              <option value="Pink 6"  data-price="2000">Pink 6 — $2,000</option>
+              <option value="Pink 12" data-price="7000">Pink 12 — $7,000</option>
+              <option value="TOP"     data-price="100">TOP — $100</option>
+            </select>
+          </td>
+          <td class="border border-gray-200 px-2 py-2">
+            <input class="price w-full border border-gray-200 rounded px-2 py-1 text-sm"
+                   data-key="p1_price" placeholder="$0" value="$0" inputmode="decimal">
+          </td>
+
+          <!-- PROP 2 -->
+          <td class="border border-gray-200 px-2 py-2">
+            <select class="pack w-full border border-gray-200 rounded px-2 py-1 text-sm" data-key="p2_pack">
+              <option value="">-- select pack --</option>
+              <option value="Pink 3"  data-price="1000">Pink 3 — $1,000</option>
+              <option value="Pink 6"  data-price="2000">Pink 6 — $2,000</option>
+              <option value="Pink 12" data-price="7000">Pink 12 — $7,000</option>
+              <option value="TOP"     data-price="100">TOP — $100</option>
+            </select>
+          </td>
+          <td class="border border-gray-200 px-2 py-2">
+            <input class="price w-full border border-gray-200 rounded px-2 py-1 text-sm"
+                   data-key="p2_price" placeholder="$0" value="$0" inputmode="decimal">
+          </td>
+
+          <!-- PROP 3 -->
+          <td class="border border-gray-200 px-2 py-2">
+            <select class="pack w-full border border-gray-200 rounded px-2 py-1 text-sm" data-key="p3_pack">
+              <option value="">-- select pack --</option>
+              <option value="Pink 3"  data-price="1000">Pink 3 — $1,000</option>
+              <option value="Pink 6"  data-price="2000">Pink 6 — $2,000</option>
+              <option value="Pink 12" data-price="7000">Pink 12 — $7,000</option>
+              <option value="TOP"     data-price="100">TOP — $100</option>
+            </select>
+          </td>
+          <td class="border border-gray-200 px-2 py-2">
+            <input class="price w-full border border-gray-200 rounded px-2 py-1 text-sm"
+                   data-key="p3_price" placeholder="$0" value="$0" inputmode="decimal">
+          </td>
+
+          <td class="border border-gray-200 px-2 py-2 text-right pr-3"><span class="avg">0.00</span></td>
+          <td class="border border-gray-200 px-2 py-2">
+            <button class="row-del px-2 py-1 rounded bg-gray-100 hover:bg-gray-200" type="button" title="Remove row">
+              <i class="bi bi-trash"></i>
+            </button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Row template (used by + Add Row) -->
+    <template id="mp-row-template">
+      <tr>
+        <td class="border border-gray-200 px-2 py-2">
+          <select class="w-full border border-gray-200 rounded px-2 py-1 text-sm" data-key="status">
+            <option value="">-- select --</option>
+            <option>approved</option>
+            <option>offered</option>
+            <option>next month</option>
+            <option>stop</option>
+          </select>
+        </td>
+        <td class="border border-gray-200 px-2 py-2">
+          <input class="w-full border border-gray-200 rounded px-2 py-1 text-sm"
+                 data-key="internal_planning" placeholder="internal planning">
+        </td>
+        <td class="border border-gray-200 px-2 py-2">
+          <input class="w-full border border-gray-200 rounded px-2 py-1 text-sm"
+                 type="date" data-key="closing_date">
+        </td>
+
+        <!-- PROP 1 -->
+        <td class="border border-gray-200 px-2 py-2">
+          <select class="pack w-full border border-gray-200 rounded px-2 py-1 text-sm" data-key="p1_pack">
+            <option value="">-- select pack --</option>
+            <option value="Pink 3"  data-price="1000">Pink 3 — $1,000</option>
+            <option value="Pink 6"  data-price="2000">Pink 6 — $2,000</option>
+            <option value="Pink 12" data-price="7000">Pink 12 — $7,000</option>
+            <option value="TOP"     data-price="100">TOP — $100</option>
+          </select>
+        </td>
+        <td class="border border-gray-200 px-2 py-2">
+          <input class="price w-full border border-gray-200 rounded px-2 py-1 text-sm"
+                 data-key="p1_price" placeholder="$0" value="$0" inputmode="decimal">
+        </td>
+
+        <!-- PROP 2 -->
+        <td class="border border-gray-200 px-2 py-2">
+          <select class="pack w-full border border-gray-200 rounded px-2 py-1 text-sm" data-key="p2_pack">
+            <option value="">-- select pack --</option>
+            <option value="Pink 3"  data-price="1000">Pink 3 — $1,000</option>
+            <option value="Pink 6"  data-price="2000">Pink 6 — $2,000</option>
+            <option value="Pink 12" data-price="7000">Pink 12 — $7,000</option>
+            <option value="TOP"     data-price="100">TOP — $100</option>
+          </select>
+        </td>
+        <td class="border border-gray-200 px-2 py-2">
+          <input class="price w-full border border-gray-200 rounded px-2 py-1 text-sm"
+                 data-key="p2_price" placeholder="$0" value="$0" inputmode="decimal">
+        </td>
+
+        <!-- PROP 3 -->
+        <td class="border border-gray-200 px-2 py-2">
+          <select class="pack w-full border border-gray-200 rounded px-2 py-1 text-sm" data-key="p3_pack">
+            <option value="">-- select pack --</option>
+            <option value="Pink 3"  data-price="1000">Pink 3 — $1,000</option>
+            <option value="Pink 6"  data-price="2000">Pink 6 — $2,000</option>
+            <option value="Pink 12" data-price="7000">Pink 12 — $7,000</option>
+            <option value="TOP"     data-price="100">TOP — $100</option>
+          </select>
+        </td>
+        <td class="border border-gray-200 px-2 py-2">
+          <input class="price w-full border border-gray-200 rounded px-2 py-1 text-sm"
+                 data-key="p3_price" placeholder="$0" value="$0" inputmode="decimal">
+        </td>
+
+        <td class="border border-gray-200 px-2 py-2 text-right pr-3"><span class="avg">0.00</span></td>
+        <td class="border border-gray-200 px-2 py-2">
+          <button class="row-del px-2 py-1 rounded bg-gray-100 hover:bg-gray-200" type="button" title="Remove row">
+            <i class="bi bi-trash"></i>
+          </button>
+        </td>
+      </tr>
+    </template>
+  </div>
+</div>
+
+<!-- SECOND TABLE BELOW (1/3 width) -->
+<div class="flex mt-6">
+  <div class="bg-white rounded-2xl shadow w-1/3">
+    <div class="p-4 overflow-x-auto">
+      <table class="min-w-full border border-gray-200 text-sm">
+        <thead>
+          <tr>
+            <th class="border border-gray-300 bg-gray-100 px-4 py-2 text-left font-semibold">Metric</th>
+            <th class="border border-gray-300 bg-gray-100 px-4 py-2 text-left font-semibold">Value</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="border px-4 py-2">GOAL</td>
+            <td class="border px-4 py-2">
+              <input id="metric-goal" class="w-full border rounded px-2 py-1">
+            </td>
+          </tr>
+
+          <tr>
+            <td class="border px-4 py-2">PAYMENTS DUE</td>
+            <td class="border px-4 py-2 flex items-center gap-2">
+              <input id="metric-payments-due" class="w-full border rounded px-2 py-1" readonly>
+            </td>
+          </tr>
+
+          <tr>
+            <td class="border px-4 py-2">PAYMENTS DONE</td>
+            <td class="border px-4 py-2 flex items-center gap-2">
+              <input id="metric-payments-done" class="w-full border rounded px-2 py-1" readonly>
+            </td>
+          </tr>
+
+          <tr>
+            <td class="border px-4 py-2">SALES</td>
+            <td class="border px-4 py-2 flex items-center gap-2">
+              <input id="metric-sales" class="w-full border rounded px-2 py-1" readonly>
+            </td>
+          </tr>
+
+          <tr>
+            <td class="border px-4 py-2">MISSING</td>
+            <td class="border px-4 py-2">
+              <input id="metric-missing" class="w-full border rounded px-2 py-1" readonly>
+            </td>
+          </tr>
+
+          <tr><td class="border px-4 py-2">MISSING - AVERAGE</td><td class="border px-4 py-2"><input class="w-full border rounded px-2 py-1"></td></tr>
+          <tr><td class="border px-4 py-2">OK NEEDED</td><td class="border px-4 py-2"><input class="w-full border rounded px-2 py-1"></td></tr>
+          <tr><td class="border px-4 py-2">CONSU TO DO</td><td class="border px-4 py-2"><input class="w-full border rounded px-2 py-1"></td></tr>
+          <tr><td class="border px-4 py-2">LEADS TO ACTIVATE</td><td class="border px-4 py-2"><input class="w-full border rounded px-2 py-1"></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  // ===== Helpers =====
+  const BODY_ID = 'mp-body';
+  const TPL_ID  = 'mp-row-template';
+
+  const log  = (...a)=>console.log('[MonthlyPlanning]', ...a);
+  const warn = (...a)=>console.warn('[MonthlyPlanning]', ...a);
+
+  function getBody(){ return document.getElementById(BODY_ID); }
+  function getTpl(){  return document.getElementById(TPL_ID); }
+
+  function fmtCurrency(n){
+    try { return new Intl.NumberFormat(undefined,{style:'currency',currency:'USD'}).format(Number(n||0)); }
+    catch(e){ return `$${Number(n||0).toFixed(2)}`; }
+  }
+
+  function setCurrency(el, n){
+    if (!el) return;
+    try { el.value = new Intl.NumberFormat(undefined,{style:'currency',currency:'USD'}).format(Number(n||0)); }
+    catch { el.value = `$${Number(n||0).toFixed(2)}`; }
+  }
+
+  // ===== Pack → Price auto-fill =====
+  function handlePackChange(e){
+    const sel = e.target.closest('select.pack');
+    if (!sel) return;
+    const td  = sel.closest('td');
+    const priceTd = td && td.nextElementSibling;
+    const input = priceTd && priceTd.querySelector('input.price');
+    if (!input) return;
+
+    const opt = sel.selectedOptions && sel.selectedOptions[0];
+    const raw = opt ? Number(opt.getAttribute('data-price') || 0) : 0;
+    setCurrency(input, raw);
+    if (typeof window.recalc === 'function') window.recalc(sel.closest('tr'));
+  }
+
+  function wirePackAuto(scope){
+    const root = scope || document;
+    root.querySelectorAll('select.pack').forEach(sel=>{
+      sel.removeEventListener('change', handlePackChange);
+      sel.addEventListener('change', handlePackChange);
+      // sync once for preselected values
+      const event = new Event('change', {bubbles:false});
+      sel.dispatchEvent(event);
+    });
+  }
+
+  // expose for rows created later (your code calls this)
+  window.wirePackAuto = wirePackAuto;
+
+  // ===== Row helpers =====
+  function createRowFromTemplate(){
+    const body = getBody(), tpl = getTpl();
+    if (!body || !tpl) return null;
+    const tr = tpl.content.firstElementChild.cloneNode(true);
+    body.appendChild(tr);
+    wirePackAuto(tr);
+    if (typeof window.recalc === 'function') window.recalc(tr);
+    return tr;
+  }
+
+  function emptyStarterRow(){
+    const body = getBody();
+    if (!body || !body.rows.length) return null;
+    const tr = body.rows[0];
+    const ip = tr.querySelector('[data-key="internal_planning"]');
+    const closing = tr.querySelector('[data-key="closing_date"]');
+    return (ip && closing && !ip.value.trim() && !closing.value.trim()) ? tr : null;
+  }
+
+  function parseMoney(str){
+    if (str == null) return 0;
+    const s = String(str).trim();
+    if (!s) return 0;
+    const m = s.match(/[-+]?\d+(?:[.,]\d{3})*(?:[.,]\d{2})?/g);
+    if (!m) return 0;
+    let token = m[m.length-1];
+    if (token.includes(',') && !token.includes('.')) token = token.replace(/\./g,'').replace(',', '.');
+    else token = token.replace(/,/g,'');
+    const n = Number(token);
+    return isFinite(n) ? n : 0;
+  }
+
+  // ===== Metrics / Missing =====
+  function updateMissing(){
+    const goalEl   = document.getElementById('metric-goal');
+    const dueEl    = document.getElementById('metric-payments-due');
+    const doneEl   = document.getElementById('metric-payments-done');
+    const salesEl  = document.getElementById('metric-sales');
+    const missEl   = document.getElementById('metric-missing');
+
+    const goal  = parseMoney(goalEl?.value);
+    const due   = parseMoney(dueEl?.value);
+    const done  = parseMoney(doneEl?.value);
+    const sales = parseMoney(salesEl?.value);
+
+    const missing = goal - (due + done + sales);
+    setCurrency(missEl, missing);
+  }
+
+  async function fillPaymentsDueMetric(){
+    try{
+      const res = await fetch('/figurella-reports/reports/payments_due/total', {credentials:'same-origin'});
+      if(!res.ok) return;
+      const data = await res.json();
+      const el = document.getElementById('metric-payments-due');
+      if (el) el.value = fmtCurrency(data?.total || 0);
+      updateMissing();
+      log('Due total:', data);
+    }catch(e){ warn('fillPaymentsDueMetric', e); }
+  }
+
+  async function fillPaymentsDoneMetric(){
+    try{
+      const now = new Date();
+      const res = await fetch(`/figurella-reports/reports/payments_done/total?year=${now.getFullYear()}&month=${now.getMonth()+1}`, {credentials:'same-origin'});
+      if(!res.ok) return;
+      const data = await res.json();
+      const el = document.getElementById('metric-payments-done');
+      if (el) el.value = fmtCurrency(data?.total || 0);
+      updateMissing();
+      log('Done total:', data);
+    }catch(e){ warn('fillPaymentsDoneMetric', e); }
+  }
+
+  async function fillSalesMetric(){
+    try{
+      const now = new Date();
+      const res = await fetch(`/figurella-reports/reports/contracts/sales_total?year=${now.getFullYear()}&month=${now.getMonth()+1}`, {credentials:'same-origin'});
+      if(!res.ok) return;
+      const data = await res.json();
+      const el = document.getElementById('metric-sales');
+      if (el) el.value = fmtCurrency(data?.total || 0);
+      updateMissing();
+      log('Sales total:', data);
+    }catch(e){ warn('fillSalesMetric', e); }
+  }
+
+  // Tiny toast for import feedback
+  function toast(msg){
+    const t = document.createElement('div');
+    t.textContent = msg;
+    t.style.cssText = 'position:fixed;right:16px;bottom:16px;background:#111;color:#fff;padding:10px 14px;border-radius:10px;opacity:.95;z-index:9999';
+    document.body.appendChild(t);
+    setTimeout(()=>t.remove(), 2200);
+  }
+
+  // ===== Imports =====
+  async function importExpiringPink(){
+    try{
+      const res = await fetch('/figurella-reports/reports/expiring_pink', {credentials:'same-origin'});
+      if(!res.ok){ toast('Expiring PINK: HTTP error'); return; }
+      const data = await res.json();
+      const list = Array.isArray(data?.clients) ? data.clients : [];
+      if (!list.length){ toast('No expiring PINK this month'); return; }
+
+      const body = getBody(); if (!body){ toast('Table body not found'); return; }
+      const existing = new Set(
+        Array.from(body.querySelectorAll('[data-key="internal_planning"]'))
+          .map(i => (i.value||'').replace(/—\s*Expiring PINK/i,'').trim().toLowerCase())
+      );
+
+      let starter = emptyStarterRow(), usedStarter = false, added = 0;
+      for (const {name, expiration} of list){
+        const n = String(name||'').trim();
+        const exp = String(expiration||'').slice(0,10);
+        if (!n || existing.has(n.toLowerCase())) continue;
+
+        const tr = (!usedStarter && starter) ? (usedStarter = true, starter) : createRowFromTemplate();
+        if (!tr) break;
+
+        tr.querySelector('[data-key="internal_planning"]')?.setAttribute('value', `${n} — Expiring PINK`);
+        const ip = tr.querySelector('[data-key="internal_planning"]'); if (ip) ip.value = `${n} — Expiring PINK`;
+        const dateEl = tr.querySelector('[data-key="closing_date"]');
+        if (dateEl){ dateEl.value = exp; dateEl.setAttribute('value', exp); }
+        const st = tr.querySelector('[data-key="status"]'); if (st) st.value = '';
+
+        wirePackAuto(tr);
+        if (typeof window.recalc === 'function') window.recalc(tr);
+        existing.add(n.toLowerCase());
+        added++;
+      }
+      toast(`Imported ${added} expiring`);
+      await fillPaymentsDueMetric();
+    }catch(e){ warn('importExpiringPink', e); toast('Expiring PINK: error'); }
+  }
+
+  async function importLowResidual(){
+    try{
+      const res = await fetch('/figurella-reports/reports/subscriptions/low_residual?threshold=10', {credentials:'same-origin'});
+      if(!res.ok){ toast('Low Residual: HTTP error'); return; }
+      const data = await res.json();
+      const list = Array.isArray(data?.clients) ? data.clients : [];
+      if (!list.length){ toast('No low residual < 10'); return; }
+
+      const body = getBody(); if (!body){ toast('Table body not found'); return; }
+      const existing = new Set(
+        Array.from(body.querySelectorAll('[data-key="internal_planning"]'))
+          .map(i => (i.value||'').replace(/—.*/,'').trim().toLowerCase())
+      );
+
+      let starter = emptyStarterRow(), usedStarter = false, added = 0;
+      for (const {name, residual} of list){
+        const n = String(name||'').trim();
+        if (!n || existing.has(n.toLowerCase())) continue;
+
+        const tr = (!usedStarter && starter) ? (usedStarter = true, starter) : createRowFromTemplate();
+        if (!tr) break;
+
+        tr.querySelector('[data-key="internal_planning"]')?.setAttribute('value', `${n} — Low residual (${residual})`);
+        const ip = tr.querySelector('[data-key="internal_planning"]'); if (ip) ip.value = `${n} — Low residual (${residual})`;
+        const st = tr.querySelector('[data-key="status"]'); if (st) st.value = '';
+
+        wirePackAuto(tr);
+        if (typeof window.recalc === 'function') window.recalc(tr);
+        existing.add(n.toLowerCase());
+        added++;
+      }
+      toast(`Imported ${added} low residual`);
+      await fillPaymentsDueMetric();
+    }catch(e){ warn('importLowResidual', e); toast('Low Residual: error'); }
+  }
+
+  // ===== Wire once =====
+  function wire(){
+    // Add row
+    document.getElementById('mp-add-row')?.addEventListener('click', (e)=>{ e.preventDefault(); createRowFromTemplate(); });
+
+    // Delete row (delegated)
+    document.getElementById('mp-body')?.addEventListener('click', (e)=>{
+      const btn = e.target.closest('.row-del');
+      if (!btn) return;
+      e.preventDefault();
+      const tr = btn.closest('tr');
+      const body = tr?.parentElement;
+      tr?.remove();
+      if (typeof window.recalc === 'function') window.recalc();
+      if (body && body.rows.length === 0) createRowFromTemplate();
+    });
+
+    // Imports
+    document.getElementById('mp-import-expiring')?.addEventListener('click', importExpiringPink);
+    document.getElementById('mp-import-lowres') ?.addEventListener('click', importLowResidual);
+
+    // Wire pack→price for existing row(s)
+    wirePackAuto(document);
+
+    // Metrics on load
+    fillPaymentsDueMetric();
+    fillPaymentsDoneMetric();
+    fillSalesMetric();
+
+    // Recompute when GOAL changes
+    document.getElementById('metric-goal')?.addEventListener('input', updateMissing);
+
+    // Initial missing compute (if goal prefilled)
+    setTimeout(updateMissing, 0);
+  }
+
+  if (document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', wire, { once:true });
+  } else {
+    wire();
+  }
+})();
+</script>

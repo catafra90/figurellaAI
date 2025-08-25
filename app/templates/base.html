@@ -143,10 +143,10 @@
     // ---- Items (labels + routes) ----
     const CMDK_ITEMS = [
       { label: 'Home',               href: "{{ url_for('home.index') }}" },
-      { label: 'Daily Check-in',     href: "{{ url_for('daily_checkin.report_home') }}" },
-      { label: 'Clients',            href: "{{ url_for('clients.clients') }}" },
-      { label: 'Figurella Reports',  href: "{{ url_for('reports_bp.reports_home') }}" },
-      { label: 'Charts',             href: "{{ url_for('charts.view_charts') }}" }
+      { label: 'Daily Checks',     href: "{{ url_for('daily_checkin.report_home') }}" },
+      { label: 'Contacts',            href: "{{ url_for('clients.clients') }}" },
+      { label: 'Reports',  href: "{{ url_for('reports_bp.reports_home') }}" },
+      { label: 'Clients Mgmt',             href: "{{ url_for('charts.view_charts') }}" }
     ];
 
     const modal = document.getElementById('cmdk');

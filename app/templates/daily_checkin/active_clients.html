@@ -1,0 +1,298 @@
+<!-- File: app/templates/daily_checkin/active_clients.html -->
+<div class="bg-white rounded-2xl shadow flex flex-col h-[85vh]" style="height:85vh">
+
+  <!-- Toolbar -->
+  <div class="px-4 py-3 border-b flex items-center justify-between">
+    <div class="flex items-center gap-2">
+      <div class="relative">
+        <i class="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+        <input id="ac-search" type="text" placeholder="Search clients…"
+               class="pl-9 pr-3 py-2 border rounded w-72 focus:outline-none focus:ring-2 focus:ring-pink-300">
+      </div>
+      <button id="ac-refresh" type="button"
+              class="px-3 py-2 rounded bg-gray-100 hover:bg-gray-200">
+        <i class="bi bi-arrow-clockwise mr-1"></i> Refresh
+      </button>
+    </div>
+    <div class="text-sm text-gray-500" id="ac-meta"></div>
+  </div>
+
+  <!-- Table -->
+  <div class="p-4 flex-1 overflow-x-auto overflow-y-auto">
+    <table class="min-w-full border border-gray-200 text-sm">
+      <thead class="bg-gray-50 text-center">
+        <tr id="ac-head-row1">
+          <!-- Row numbers column -->
+          <th class="border px-2 py-2 w-10">#</th>
+
+          <!-- Month headers tagged for JS -->
+          <th class="border px-3 py-2" data-month="January">January</th>
+          <th class="border px-2 py-2 w-16">Bubb</th>
+
+          <th class="border px-3 py-2" data-month="February">February</th>
+          <th class="border px-2 py-2 w-16">Bubb</th>
+
+          <th class="border px-3 py-2" data-month="March">March</th>
+          <th class="border px-2 py-2 w-16">Bubb</th>
+
+          <th class="border px-3 py-2" data-month="April">April</th>
+          <th class="border px-2 py-2 w-16">Bubb</th>
+
+          <th class="border px-3 py-2" data-month="May">May</th>
+          <th class="border px-2 py-2 w-16">Bubb</th>
+
+          <th class="border px-3 py-2" data-month="June">June</th>
+          <th class="border px-2 py-2 w-16">Bubb</th>
+
+          <th class="border px-3 py-2" data-month="July">July</th>
+          <th class="border px-2 py-2 w-16">Bubb</th>
+
+          <th class="border px-3 py-2" data-month="August">August</th>
+          <th class="border px-2 py-2 w-16">Bubb</th>
+
+          <th class="border px-3 py-2" data-month="September">September</th>
+          <th class="border px-2 py-2 w-16">Bubb</th>
+
+          <th class="border px-3 py-2" data-month="October">October</th>
+          <th class="border px-2 py-2 w-16">Bubb</th>
+
+          <th class="border px-3 py-2" data-month="November">November</th>
+          <th class="border px-2 py-2 w-16">Bubb</th>
+
+          <th class="border px-3 py-2" data-month="December">December</th>
+          <th class="border px-2 py-2 w-16">Bubb</th>
+        </tr>
+      </thead>
+      <tbody id="ac-body">
+        <tr id="ac-empty">
+          <!-- 12 months * 2 + 1 row-number column = 25 -->
+          <td class="border px-3 py-4 text-center text-gray-500" colspan="25">
+            Active clients by month will appear here once loaded.
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<style>
+  /* badges under month titles */
+  .ac-badges { display:flex; gap:4px; justify-content:center; margin-top:6px; }
+  .ac-badge  { display:inline-block; min-width:1.5rem; padding:0 6px; border-radius:999px;
+               font-size:12px; line-height:1.25rem; border:1px solid transparent; }
+  .ac-badge-pink   { background:#fce7f3; color:#be185d; border-color:#f9a8d4; }   /* NEW */
+  .ac-badge-red    { background:#fee2e2; color:#b91c1c; border-color:#fecaca; }   /* DROPOFF */
+  .ac-badge-yellow { background:#fef9c3; color:#a16207; border-color:#fde68a; }   /* JOINED */
+
+  /* optional sticky first column (uncomment if you want it sticky) */
+  /*
+  td.ac-sticky, th.ac-sticky {
+    position: sticky; left: 0; z-index: 2; background: #fff;
+  }
+  */
+</style>
+
+<script>
+(() => {
+  const YEAR = 2025;
+  // include monthly bubb + acquisition/new flag
+  const ENDPOINT = `/figurella-reports/reports/IBF/active_clients?year=${YEAR}&with_bubb=1&with_acq=1`;
+
+  const $body   = document.getElementById('ac-body');
+  const $empty  = document.getElementById('ac-empty');
+  const $meta   = document.getElementById('ac-meta');
+  const $search = document.getElementById('ac-search');
+  const $head1  = document.getElementById('ac-head-row1');
+
+  const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  let cache = null;
+
+  function escapeHTML(s){
+    return String(s||"").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39'}[m]));
+  }
+
+  // add/update badges beneath month header cells
+  function updateHeaderBadges(countsPerMonth){
+    if (!$head1) return;
+    const monthThs = Array.from($head1.querySelectorAll('th[data-month]'));
+    for (const th of monthThs){
+      const label = th.getAttribute('data-month');
+      const c = countsPerMonth[label] || {pink:0, red:0, yellow:0};
+      th.innerHTML = `
+        <div>${label}</div>
+        <div class="ac-badges">
+          <span class="ac-badge ac-badge-pink"   title="New this month">${c.pink||0}</span>
+          <span class="ac-badge ac-badge-red"    title="Drop off next month">${c.red||0}</span>
+          <span class="ac-badge ac-badge-yellow" title="Joined this month">${c.yellow||0}</span>
+        </div>
+      `;
+    }
+  }
+
+  function render(data, query=""){
+    $body.innerHTML = "";
+    if (!data || !data.months){ $body.appendChild($empty); updateHeaderBadges({}); return; }
+
+    const months = {};
+    let maxLen = 0;
+    const q = (query||"").toLowerCase().trim();
+
+    // normalize + filter per month, track longest column
+    for (const m of MONTHS){
+      const arr = Array.isArray(data.months[m]) ? data.months[m] : [];
+      const norm = arr.map(x => (typeof x === "string" ? {name:x, bubb:"", new:false} : x));
+      const filt = q ? norm.filter(it => String(it.name||"").toLowerCase().includes(q)) : norm;
+      months[m] = filt;
+      if (filt.length > maxLen) maxLen = filt.length;
+    }
+
+    // sets of names per month for comparison
+    const sets = {};
+    for (const m of MONTHS){
+      sets[m] = new Set(months[m].map(it => (it.name||"").toLowerCase()));
+    }
+
+    // first and last months that actually have any data
+    let firstIdxWithData = -1, lastIdxWithData = -1;
+    for (let i = 0; i < MONTHS.length; i++){
+      if (months[MONTHS[i]].length > 0){ firstIdxWithData = i; break; }
+    }
+    for (let i = MONTHS.length - 1; i >= 0; i--){
+      if (months[MONTHS[i]].length > 0){ lastIdxWithData = i; break; }
+    }
+
+    // ---------- compute color counts per month ----------
+    const countsPerMonth = {};
+    for (let mi=0; mi<MONTHS.length; mi++){
+      const m     = MONTHS[mi];
+      const prevM = MONTHS[mi-1];
+      const nextM = MONTHS[mi+1];
+      let pink=0, red=0, yellow=0;
+
+      for (const item of months[m]){
+        const name = item.name || "";
+        if (!name) continue;
+        const nameLower = name.toLowerCase();
+        const inPrev = mi>0 && prevM ? sets[prevM].has(nameLower) : false;
+        const inNext = mi<MONTHS.length-1 && nextM ? sets[nextM].has(nameLower) : false;
+
+        // precedence: red (drop next), then pink (new), then yellow (joined)
+        if (mi < lastIdxWithData && !inNext) {
+          red++;
+        } else if (item.new) {
+          pink++;
+        } else if (mi > firstIdxWithData && !inPrev) {
+          yellow++;
+        }
+      }
+      countsPerMonth[m] = {pink, red, yellow};
+    }
+    updateHeaderBadges(countsPerMonth);
+    // ----------------------------------------------------
+
+    // Always show at least the totals row, even if no names
+    if (maxLen === 0){ $empty.classList.add('hidden'); }
+
+    // ---------- compute and render the TOP totals row ----------
+    const trTop = document.createElement('tr');
+    trTop.className = 'bg-gray-50';
+    trTop.innerHTML = `<td class="border px-2 py-1 text-center font-semibold text-gray-700">TOT</td>`;
+
+    for (let mi=0; mi<MONTHS.length; mi++){
+      const m = MONTHS[mi];
+      const prevM = MONTHS[mi-1];
+      const prevCount = prevM ? (months[prevM]?.length || 0) : 0;
+      const c = countsPerMonth[m] || {pink:0, red:0, yellow:0};
+      const hasAny = (months[m] && months[m].length > 0);
+
+      // NEW: leave blank if current month has no clients yet
+      const totalCell = hasAny
+        ? (prevCount + (c.pink||0) + (c.yellow||0) - (c.red||0))
+        : '';
+
+      trTop.innerHTML += `
+        <td class="border px-3 py-1 text-center font-semibold text-gray-800">${totalCell}</td>
+        <td class="border px-2 py-1"></td>
+      `;
+    }
+    $body.appendChild(trTop);
+    // ----------------------------------------------------------
+
+    // No names? we're done (we still showed totals)
+    if (maxLen === 0){ return; }
+
+    // render data rows under the totals row
+    for (let row=0; row<maxLen; row++){
+      const tr = document.createElement('tr');
+
+      // Row-number cell (1-based, reflects current filtered view)
+      tr.innerHTML += `<td class="border px-2 py-1 text-center text-gray-500">${row + 1}</td>`;
+
+      for (let mi=0; mi<MONTHS.length; mi++){
+        const m     = MONTHS[mi];
+        const prevM = MONTHS[mi-1];
+        const nextM = MONTHS[mi+1];
+
+        const item = months[m][row] || {name:"", bubb:"", new:false};
+        const name = item.name || "";
+        const bubb = item.bubb ?? "";
+        const nameLower = name.toLowerCase();
+
+        let nameCls = "";
+        let bubbCls = "";
+
+        // NEW (pink)
+        if (item.new){
+          nameCls = 'bg-pink-50 text-pink-700 font-medium';
+          bubbCls = 'bg-pink-50 text-pink-700 font-semibold';
+        }
+
+        // JOINED THIS MONTH (yellow) — only if NOT the first populated month
+        if (mi > firstIdxWithData && name && !sets[prevM]?.has(nameLower)){
+          if (!item.new){ // keep pink if also new
+            nameCls = 'bg-yellow-50 text-yellow-800 font-medium';
+            bubbCls = 'bg-yellow-50 text-yellow-800 font-semibold';
+          }
+        }
+
+        // DROPOFF NEXT MONTH (red) — only if BEFORE the last populated month
+        if (mi < lastIdxWithData){
+          const inThis = !!name;
+          const inNext = nextM ? sets[nextM].has(nameLower) : true;
+          if (inThis && !inNext){
+            nameCls = 'bg-red-100 text-red-700 font-bold';
+            bubbCls = 'bg-red-100 text-red-700 font-bold';
+          }
+        }
+
+        tr.innerHTML += `
+          <td class="border px-3 py-1 text-left ${nameCls}">${escapeHTML(name)}</td>
+          <td class="border px-2 py-1 text-center w-16 ${bubbCls}">${escapeHTML(bubb)}</td>
+        `;
+      }
+
+      $body.appendChild(tr);
+    }
+  }
+
+  async function fetchAndRender(){
+    try{
+      const res = await fetch(ENDPOINT, {credentials:'same-origin'});
+      const data = await res.json();
+      cache = data;
+      $meta.textContent = `Year ${data.year || YEAR}`;
+      render(cache, $search?.value);
+    }catch(e){
+      const emptyMonths = Object.fromEntries(MONTHS.map(m => [m, []]));
+      cache = {year: YEAR, months: emptyMonths};
+      $meta.textContent = 'No data';
+      render(cache);
+    }
+  }
+
+  document.getElementById('ac-refresh')?.addEventListener('click', fetchAndRender);
+  $search?.addEventListener('input', () => render(cache, $search.value));
+
+  fetchAndRender();
+})();
+</script>

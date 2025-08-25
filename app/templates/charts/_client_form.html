@@ -4,43 +4,34 @@
      data-workout-blocks='{{ workout_blocks_json | tojson }}'>
 
   <style>
-    /* ===== Design tokens ===== */
     :root{
-      --fig-pink:#CC0066;
-      --fig-pink-600:#AA0055;
-      --ink:#0f172a;
-      --muted:#6b7280;
-      --line:#e5e7eb;       /* gray-200 */
-      --panel:#ffffff;      /* card bg */
-      --zebra:#f3f4f6;      /* very light row */
-      --hover:#eef2f7;
-      --ring:#d1d5db;       /* control border */
-      --head:#f9fafb;
+      --fig-pink:#CC0066; --fig-pink-600:#AA0055; --ink:#0f172a; --muted:#6b7280;
+      --line:#e5e7eb; --panel:#ffffff; --zebra:#f3f4f6; --hover:#eef2f7;
+      --ring:#d1d5db; --head:#f9fafb;
+      --rev1-num:56px; --rev1-rings:132px;
+      --rev1-workout:clamp(240px,22vw,420px);
+      --rev1-notes:clamp(560px,58vw,1100px);
     }
-
-    /* ===== Tabs ===== */
+    .hidden{display:none !important}
     .tabs-list{display:flex;gap:1rem;list-style:none;margin:0;padding:0;overflow-x:auto;white-space:nowrap}
-    .tabs-list::-webkit-scrollbar{display:none}
-    .tabs-list{-ms-overflow-style:none;scrollbar-width:none}
-    .tab-btn{background:none;border:none;cursor:pointer;font-weight:600;transition:color .2s,border-color .2s}
-    .tab-btn.active{color:var(--fig-pink);border-color:var(--fig-pink)}
-    .tab-btn:hover{color:var(--fig-pink-600);border-color:var(--fig-pink-600)}
-    .tab-btn:focus{outline:2px solid var(--fig-pink);outline-offset:2px}
+    .tab-btn{background:none;border:none;cursor:pointer;font-weight:600}
+    .tab-btn.active{color:var(--fig-pink)}
     .tabs-wrapper{position:relative}
-    #tabUnderline{position:absolute;bottom:0;height:2px;background:var(--fig-pink);transition:left .3s,width .3s}
+    #tabUnderline{position:absolute;bottom:0;height:2px;background:var(--fig-pink)}
 
-    /* ===== Neutral zebra ===== */
+/* Force GK visible whenever Type is TO* or B* (no JS needed) */
+#workout-rev1:has(#workout-rev1-type option[value^="TO"]:checked) #gk-rev1-section,
+#workout-rev1:has(#workout-rev1-type option[value^="B"]:checked)  #gk-rev1-section {
+  display: block !important;     /* overrides .hidden { display:none!important } */
+  visibility: visible !important;
+}
+
+
     .zebra-pink tbody tr:nth-child(even){background-color:var(--zebra)!important}
-    .zebra-pink tbody tr:nth-child(even)>th,
-    .zebra-pink tbody tr:nth-child(even)>td{background-color:var(--zebra)!important}
-    .zebra-pink tbody tr:hover>td,
-    .zebra-pink tbody tr:hover>th{background-color:var(--hover)}
-
-    /* ===== Sticky headers / scroll ===== */
+    .zebra-pink tbody tr:hover>td,.zebra-pink tbody tr:hover>th{background-color:var(--hover)}
     .sticky-header thead th{position:sticky;top:0;background:var(--head);z-index:10}
     .scrollable-table{max-height:300px;overflow-y:auto}
 
-    /* ===== Cards / tables / controls ===== */
     .card{background:var(--panel);border:1px solid var(--line);border-radius:.75rem;box-shadow:0 1px 2px rgba(0,0,0,.04)}
     .card-pad{padding:1rem}
     table.clean{width:100%;border-collapse:separate;border-spacing:0}
@@ -49,14 +40,22 @@
     table.clean.compact th,table.clean.compact td{padding:.35rem .45rem}
 
     .field{border:1px solid var(--ring);border-radius:.375rem;padding:.35rem .55rem;background:#fff}
-    .select{border:1px solid var(--ring);border-radius:.5rem;padding:.35rem .65rem;background:#fff;appearance:none;background-image:linear-gradient(45deg,transparent 50%,#999 50%),linear-gradient(135deg,#999 50%,transparent 50%),linear-gradient(to right,transparent,transparent);background-position:calc(100% - 18px) calc(50% + 1px),calc(100% - 12px) calc(50% + 1px),100% 0;background-size:6px 6px,6px 6px,2.5rem 100%;background-repeat:no-repeat}
+    .select{border:1px solid var(--ring);border-radius:.5rem;padding:.35rem .65rem;background:#fff;appearance:none}
     .btn{border:1px solid var(--ring);background:#fff;border-radius:.5rem;padding:.45rem .8rem;font-weight:600}
     .btn:hover{border-color:var(--fig-pink)}
     .btn-primary{background:var(--fig-pink);color:#fff;border-color:var(--fig-pink)}
     .btn-primary:hover{background:var(--fig-pink-600);border-color:var(--fig-pink-600)}
 
-    /* ===== Rev1 toolbar ===== */
-    .rev1-toolbar{position:sticky;top:64px;z-index:20;background:rgba(255,255,255,.9);backdrop-filter:saturate(180%) blur(6px);border-bottom:1px solid var(--line)}
+/* Toolbar should sit under tabs and scroll away */
+.rev1-toolbar{
+  position: static !important;
+  top: auto !important;
+  z-index: auto !important;
+  background: transparent !important;
+  border-bottom: 0 !important;
+  backdrop-filter: none !important;
+  margin-top: .5rem;
+}
     .toolbar-row{display:flex;align-items:center;gap:.5rem;padding:.65rem .75rem}
     .toolbar-sp{margin-left:auto;display:flex;align-items:center;gap:.5rem}
     .toggle{width:36px;height:20px;appearance:none;outline:none;border:1px solid var(--ring);border-radius:999px;position:relative;background:#fff;cursor:pointer}
@@ -64,31 +63,46 @@
     .toggle:before{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;background:#fff;border-radius:999px;transition:left .15s}
     .toggle:checked:before{left:18px}
 
-    /* ===== Rev1 layout widths (Workout narrower, Notes wider) ===== */
-    :root{
-      --rev1-num: 56px;                           /* "#" column */
-      --rev1-rings: 132px;                        /* Rings column (slimmer / close) */
-      /* Make Workout about half its previous size; Notes takes the gain */
-      --rev1-workout: clamp(240px, 22vw, 420px);  /* narrower workout */
-      --rev1-notes:   clamp(560px, 58vw, 1100px); /* much wider notes */
-    }
-    #rev1-table{ table-layout: fixed; }
-    #rev1-table col.num     { width: var(--rev1-num); }
-    #rev1-table col.workout { width: var(--rev1-workout); }
-    #rev1-table col.rings   { width: var(--rev1-rings); }
-    #rev1-table col.notes   { width: var(--rev1-notes); }
-    #rev1-table td, #rev1-table th{ padding:.40rem .40rem; }
-    #rev1-table .field{ padding:.30rem .45rem; }
+    #rev1-table{table-layout:fixed}
+    #rev1-table col.num{width:var(--rev1-num)} #rev1-table col.workout{width:var(--rev1-workout)}
+    #rev1-table col.rings{width:var(--rev1-rings)} #rev1-table col.notes{width:var(--rev1-notes)}
+    #rev1-table td,#rev1-table th{padding:.40rem .40rem}
+    #rev1-table .field{padding:.30rem .45rem}
+
+    .modal-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.45);display:none;align-items:center;justify-content:center;z-index:50}
+    .modal-backdrop.show{display:flex}
+    .modal-card{background:#fff;border:1px solid var(--line);border-radius:.75rem;max-width:980px;width:96%;max-height:85vh;overflow:auto;box-shadow:0 10px 25px rgba(0,0,0,.18)}
+    .modal-head{display:flex;align-items:center;justify-content:space-between;padding:.9rem 1rem;border-bottom:1px solid var(--line);position:sticky;top:0;background:#fff;z-index:1}
+    .modal-body{padding:1rem}
+
+    .toast{position:fixed;right:14px;bottom:14px;background:#0f172a;color:#fff;padding:.6rem .8rem;border-radius:.5rem;opacity:0;transform:translateY(10px);transition:all .2s ease;z-index:60}
+    .toast.show{opacity:1;transform:translateY(0)}
+
+/* Auto-number rows in GK table */
+#gk-rev1-table.gk-numbered tbody { counter-reset: gkrow; }
+#gk-rev1-table.gk-numbered tbody tr { counter-increment: gkrow; }
+#gk-rev1-table.gk-numbered td.row-num::before {
+  content: counter(gkrow);
+  display: inline-block;
+}
+#gk-rev1-table td.row-num { width:56px; }
+#gk-rev1-table td.drag-handle { cursor: grab; }
+
+
   </style>
 
   <div class="border-b mb-4 tabs-wrapper">
     <ul class="tabs-list">
-      <li><button class="tab-btn px-4 py-2 border-b-2 border-figurella active" data-tab="profile">Profile</button></li>
-      <li><button class="tab-btn px-4 py-2 border-b-2 border-transparent" data-tab="measures">Measures</button></li>
-      <li><button class="tab-btn px-4 py-2 border-b-2 border-transparent" data-tab="workout">Workout</button></li>
-      <li><button class="tab-btn px-4 py-2 border-b-2 border-transparent" data-tab="workout-rev1">Workout Rev1</button></li>
-      <li><button class="tab-btn px-4 py-2 border-b-2 border-transparent" data-tab="nutrition">Nutrition</button></li>
-      <li><button class="tab-btn px-4 py-2 border-b-2 border-transparent" data-tab="communication">Communication</button></li>
+      <li><button class="tab-btn px-4 py-2 border-b-2 border-figurella active" data-tab="profile"
+                  onclick="(function(btn){document.querySelectorAll('.tab-content').forEach(c=>c.classList.toggle('hidden',c.id!=='profile'));document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b===btn));})(this)">Profile</button></li>
+      <li><button class="tab-btn px-4 py-2 border-b-2 border-transparent" data-tab="measures"
+                  onclick="(function(btn){document.querySelectorAll('.tab-content').forEach(c=>c.classList.toggle('hidden',c.id!=='measures'));document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b===btn));})(this)">Chart</button></li>
+      <li><button class="tab-btn px-4 py-2 border-b-2 border-transparent" data-tab="workout-rev1"
+                  onclick="(function(btn){document.querySelectorAll('.tab-content').forEach(c=>c.classList.toggle('hidden',c.id!=='workout-rev1'));document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b===btn));})(this)">Workout</button></li>
+      <li><button class="tab-btn px-4 py-2 border-b-2 border-transparent" data-tab="nutrition"
+                  onclick="(function(btn){document.querySelectorAll('.tab-content').forEach(c=>c.classList.toggle('hidden',c.id!=='nutrition'));document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b===btn));})(this)">Nutrition</button></li>
+      <li><button class="tab-btn px-4 py-2 border-b-2 border-transparent" data-tab="communication"
+                  onclick="(function(btn){document.querySelectorAll('.tab-content').forEach(c=>c.classList.toggle('hidden',c.id!=='communication'));document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b===btn));})(this)">Communication</button></li>
     </ul>
     <span id="tabUnderline"></span>
   </div>
@@ -100,143 +114,237 @@
 
   <!-- Measures -->
   <div id="measures" class="tab-content hidden space-y-6 p-4">
-    <style>#measures .scrollable-table { max-height: none; overflow-y: visible; }</style>
+    <style>#measures .scrollable-table{max-height:none;overflow-y:visible}</style>
     <h2 class="text-lg font-semibold mb-2">Measures</h2>
     <div class="card card-pad scrollable-table mb-6">
       {% include 'charts/_measures_table.html' %}
     </div>
   </div>
 
-  {# ===== Workout (original) – visual refresh, behavior unchanged ===== #}
-  <div id="workout" class="tab-content hidden space-y-4 p-4">
-    {% set wdata = (sheets['workout'].data if sheets and sheets.get('workout') and sheets['workout'].data else []) %}
-    {% set has_meta = wdata and ('KG' in wdata[0] or 'Tools' in wdata[0] or 'Stretching' in wdata[0]) %}
-    {% set offset = 1 if has_meta else 0 %}
-    {% set wrec = (wdata[0] if has_meta else {}) %}
 
-    <h2 class="text-lg font-semibold">Program</h2>
+<!-- Workout Rev1 -->
+<div id="workout-rev1" class="tab-content hidden space-y-4 p-0">
+  {% set wrdata     = (sheets['workout_rev1'].data if sheets and sheets.get('workout_rev1') and sheets['workout_rev1'].data else []) %}
+  {% set wr_hasmeta = wrdata and ('KG' in wrdata[0] or 'Tools' in wrdata[0]) %}
+  {% set wr_offset  = 1 if wr_hasmeta else 0 %}
+  {% set wr_rec     = (wrdata[0] if wr_hasmeta else {}) %}
 
-    <div class="card card-pad">
-      <div class="flex items-center gap-3 mb-3">
-        <label for="workout-kg" class="font-medium">KG :</label>
-        <input id="workout-kg" name="workout_kg" type="text" value="{{ wrec.get('KG','') }}" class="field w-24"/>
-        <label for="workout-tools" class="font-medium ml-4">Tools :</label>
-        <input id="workout-tools" name="workout_tools" type="text" value="{{ wrec.get('Tools','') }}" class="field w-64"/>
-      </div>
+  <div class="rev1-toolbar">
+    <div class="toolbar-row">
+      <span class="text-sm font-semibold">Program</span>
 
-      <div class="overflow-x-auto">
-        <table class="clean zebra-pink sticky-header">
-          <thead>
-            <tr>
-              <th style="width:60px">#</th>
-              <th>Workout</th>
-              <th style="width:240px">Rings</th>
-              <th style="width:280px">Notes</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for i in range(1,18) %}
-              {% set idx = (i - 1) + offset %}
-              {% set row = (wdata[idx] if wdata|length > idx else {}) %}
-              <tr>
-                <td class="text-center font-semibold">{{ i }}</td>
-                <td><input class="w-full field workout-workout" type="text" value="{{ row.get('Workout','') }}"/></td>
-                <td><input class="w-full field workout-rings" type="text" value="{{ row.get('Rings','') }}"/></td>
-                <td><input class="w-full field workout-notes" type="text" value="{{ row.get('Notes', row.get('Comment','')) }}"/></td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    </div>
+<label for="workout-rev1-type" class="ml-4 text-sm font-medium">Type:</label>
+<select id="workout-rev1-type" class="select"
+  onchange="(function(sel,gk,tbl){
+    var v=(sel.value||'').trim();
+    var defs=(window.GK_DEFAULTS && window.GK_DEFAULTS[v])||null;
 
-    <div class="card card-pad">
-      <h3 class="text-md font-semibold mb-2">Goldorack</h3>
-      <div class="overflow-x-auto">
-        <table id="goldorack-table" class="clean zebra-pink sticky-header">
-          <thead>
-            <tr>
-              <th style="width:120px">GK</th>
-              <th>Value</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% set gold_rows = (wdata | selectattr('Goldorack') | list) if wdata else [] %}
-            {% for j in range(0,4) %}
-              {% set grow = gold_rows[j] if gold_rows|length > j else {} %}
-              <tr>
-                <td class="whitespace-nowrap">{{ grow.get('Goldorack','GK') }}</td>
-                <td><input class="w-full field workout-gk" name="workout_gk[]" type="text" value="{{ grow.get('Value','') }}"/></td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
+    // show/hide GK section
+    if(gk){
+      if(defs){ gk.classList.remove('hidden'); gk.style.removeProperty('display'); }
+      else    { gk.classList.add('hidden');    gk.style.setProperty('display','none','important'); }
+    }
+    if(!defs || !tbl || !tbl.tBodies || !tbl.tBodies[0]) return;
 
-      <div class="flex items-center gap-2 mt-4">
-        <label for="stretching" class="font-medium">Stretching :</label>
-        <input id="stretching" name="stretching" type="text" value="{{ wrec.get('Stretching','') }}" class="field w-80"/>
+    var body = tbl.tBodies[0];
+
+    // normalize items to {Workout,Rings,Notes}
+    var rows = defs.map(function(d,i){
+      if (typeof d === 'string'){
+        // allow rings fallback if you still keep GK_RINGS_DEFAULTS for some types
+        var r = (window.GK_RINGS_DEFAULTS && window.GK_RINGS_DEFAULTS[v] && window.GK_RINGS_DEFAULTS[v][i]) || '';
+        return {Workout:d, Rings:r, Notes:''};
+      }
+      if (d && typeof d === 'object'){
+        return {
+          Workout: d.Workout || d.w || '',
+          Rings:   d.Rings   || d.r || '',
+          Notes:   d.Notes   || d.n || ''
+        };
+      }
+      return {Workout:'', Rings:'', Notes:''};
+    });
+
+
+    
+    // ensure enough table rows exist
+    while (body.rows.length < rows.length){
+      var tr = body.insertRow();
+      tr.innerHTML =
+        '<td><input class=&quot;rev1-gk-workout w-full field&quot; type=&quot;text&quot;></td>'+
+        '<td><input class=&quot;rev1-gk-rings   w-full field&quot; type=&quot;text&quot;></td>'+
+        '<td><input class=&quot;rev1-gk-notes   w-full field&quot; type=&quot;text&quot;></td>';
+    }
+
+    // write values (overwrite workouts/rings; leave notes if you want)
+    rows.forEach(function(d,i){
+      var tr = body.rows[i]; if(!tr) return;
+      var w = tr.querySelector('.rev1-gk-workout');
+      var r = tr.querySelector('.rev1-gk-rings');
+      var n = tr.querySelector('.rev1-gk-notes');
+      if (w) w.value = d.Workout || '';
+      if (r) r.value = d.Rings   || '';
+      if (n && !n.value) n.value = d.Notes || '';
+    });
+  })(this, document.getElementById('gk-rev1-section'), document.getElementById('gk-rev1-table'))">
+  {% for opt in ['C1','C2','C3','C4','C5','V1','V2','V3','V4','V5','TO1','TO2','TO3','TO4','TO5','B1','B2','B3','B4','B5','B6','B7','B8','B9','B10','B11','B12','B13','B14','B15'] %}
+    <option value="{{ opt }}">{{ opt }}</option>
+  {% endfor %}
+</select>
+
+
+
+      <!-- EARLY RESTORE: run immediately after the select is in DOM -->
+      <script>
+      (function(){
+        try{
+          var root=document.getElementById('client-chart-root');
+          if(!root) return;
+          var client=root.dataset.client||'unknown';
+          var key='charts:'+client+':workoutrev1:state';
+          var stateRaw=localStorage.getItem(key);
+          if(!stateRaw) return;
+          var s=JSON.parse(stateRaw)||{};
+          var sel=document.getElementById('workout-rev1-type');
+          if(sel && s.type && Array.from(sel.options).some(o=>o.value===s.type)){
+            sel.value=s.type;
+            var gk=document.getElementById('gk-rev1-section');
+if (gk){
+  var has=!!(window.GK_DEFAULTS && window.GK_DEFAULTS[s.type]);
+  if(has){ gk.classList.remove('hidden'); gk.style.removeProperty('display'); }
+  else   { gk.classList.add('hidden');    gk.style.setProperty('display','none','important'); }
+}
+            sel.dispatchEvent(new Event('change',{bubbles:true}));
+          }
+        }catch(e){}
+      })();
+      </script>
+
+
+
+
+      <!-- Clear -->
+      <button type="button" id="rev1-clear" class="btn"
+        onclick="(function(){
+          const tbl=document.getElementById('rev1-table');
+          if(tbl){ Array.from(tbl.tBodies[0].rows).forEach(tr=>{
+            tr.querySelector('.rev1-workout').value='';
+            tr.querySelector('.rev1-rings').value='';
+            tr.querySelector('.rev1-notes').value='';
+          });}
+          const gk=document.getElementById('gk-rev1-table');
+          if(gk){ Array.from(gk.tBodies[0].rows).forEach(tr=>{
+            tr.querySelector('.rev1-gk-workout').value='';
+            tr.querySelector('.rev1-gk-rings').value='';
+            tr.querySelector('.rev1-gk-notes').value='';
+          });}
+        })()">
+        Clear
+      </button>
+
+      <div class="toolbar-sp">
+        <label class="text-sm">KG :</label>
+        <input id="workout-rev1-kg" type="text" value="{{ wr_rec.get('KG','') }}" class="field w-24">
+        <label class="text-sm">Tools :</label>
+        <input id="workout-rev1-tools" type="text" value="{{ wr_rec.get('Tools','') }}" class="field w-64">
+
+        <!-- EARLY RESTORE for KG/Tools -->
+        <script>
+        (function(){
+          try{
+            var root=document.getElementById('client-chart-root');
+            if(!root) return;
+            var client=root.dataset.client||'unknown';
+            var key='charts:'+client+':workoutrev1:state';
+            var sRaw=localStorage.getItem(key);
+            if(!sRaw) return;
+            var s=JSON.parse(sRaw)||{};
+            var kg=document.getElementById('workout-rev1-kg');
+            var tools=document.getElementById('workout-rev1-tools');
+            if(kg && typeof s.kg==='string') kg.value=s.kg;
+            if(tools && typeof s.tools==='string') tools.value=s.tools;
+          }catch(e){}
+        })();
+        </script>
+
+        <!-- Archive -->
+        <button type="button" class="btn btn-primary" title="Save to History"
+          onclick="(async function(root){
+            const client = root.dataset.client||'';
+            const program_type = document.getElementById('workout-rev1-type')?.value||'';
+            const kg     = document.getElementById('workout-rev1-kg')?.value||'';
+            const tools  = document.getElementById('workout-rev1-tools')?.value||'';
+            const tbl    = document.getElementById('rev1-table');
+            const gkTbl  = document.getElementById('gk-rev1-table');
+            const rows = [];
+            if(tbl){
+              Array.from(tbl.tBodies[0].rows).forEach(tr=>{
+                rows.push({
+                  Workout:tr.querySelector('.rev1-workout')?.value?.trim()||'',
+                  Rings:  tr.querySelector('.rev1-rings')?.value?.trim()||'',
+                  Notes:  tr.querySelector('.rev1-notes')?.value?.trim()||''
+                });
+              });
+            }
+            const gk_rows=[];
+            if(gkTbl){
+              Array.from(gkTbl.tBodies[0].rows).forEach(tr=>{
+                gk_rows.push({
+                  Workout:tr.querySelector('.rev1-gk-workout')?.value?.trim()||'',
+                  Rings:  tr.querySelector('.rev1-gk-rings')?.value?.trim()||'',
+                  Notes:  tr.querySelector('.rev1-gk-notes')?.value?.trim()||''
+                });
+              });
+            }
+            try{
+              const res = await fetch('/charts/client/'+encodeURIComponent(client)+'/workout-rev1/submit',{
+                method:'POST',headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({ program_type, kg, tools, rows, gk_rows })
+              });
+              const data = await res.json().catch(()=>({}));
+              const t = document.getElementById('rev1-toast');
+              if(res.ok && data.status==='success'){
+                if(t){ t.textContent='Saved to history'; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),1600); }
+              }else{
+                if(t){ t.textContent='Save failed'; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),1800); }
+                console.error('Save error', data);
+              }
+            }catch(e){
+              const t=document.getElementById('rev1-toast');
+              if(t){ t.textContent='Save failed'; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),1800); }
+              console.error(e);
+            }
+
+            /* persist on archive too */
+            try{
+              const key='charts:'+client+':workoutrev1:state';
+              localStorage.setItem(key, JSON.stringify({type:program_type, kg, tools, scroll:(document.scrollingElement||document.body).scrollTop||0}));
+            }catch(_){}
+          })(document.getElementById('client-chart-root'))">
+          Archive
+        </button>
+
+        <a class="btn" title="Open full history page"
+           href="{{ url_for('charts.workout_rev_history', client=client) }}">
+          <i class="bi bi-clock-history"></i>
+        </a>
       </div>
     </div>
   </div>
 
-  {# ===== Workout Rev1 (upgraded UI; Workout narrower, Notes wider) ===== #}
-  <div id="workout-rev1" class="tab-content hidden space-y-4 p-0">
-
-    {% set wrdata     = (sheets['workout_rev1'].data if sheets and sheets.get('workout_rev1') and sheets['workout_rev1'].data else []) %}
-    {% set wr_hasmeta = wrdata and ('KG' in wrdata[0] or 'Tools' in wrdata[0]) %}
-    {% set wr_offset  = 1 if wr_hasmeta else 0 %}
-    {% set wr_rec     = (wrdata[0] if wr_hasmeta else {}) %}
-
-    <!-- Sticky Rev1 toolbar -->
-    <div class="rev1-toolbar">
-      <div class="toolbar-row">
-        <span class="text-sm font-semibold">Program (Rev1)</span>
-
-        <label for="workout-rev1-type" class="ml-4 text-sm font-medium">Type:</label>
-        <select id="workout-rev1-type" class="select">
-          {% for opt in ['C1','C2','C3','C4','C5','V1','V2','V3','V4','V5','TO1','TO2','TO3','TO4','TO5'] %}
-            <option value="{{ opt }}">{{ opt }}</option>
-          {% endfor %}
-        </select>
-
-        <button type="button" id="workout-rev1-apply" class="btn btn-primary">Apply</button>
-        <button type="button" id="workout-rev1-clear" class="btn">Clear</button>
-
-        <div class="toolbar-sp">
-          <label class="text-sm">KG :</label>
-          <input id="workout-rev1-kg" type="text" value="{{ wr_rec.get('KG','') }}" class="field w-24">
-          <label class="text-sm">Tools :</label>
-          <input id="workout-rev1-tools" type="text" value="{{ wr_rec.get('Tools','') }}" class="field w-64">
-          <label class="flex items-center gap-2 text-sm text-gray-600 ml-2">
-            <input id="rev1-compact" type="checkbox" class="toggle">
-            <span>Compact</span>
-          </label>
-        </div>
-      </div>
-    </div>
-
-    <!-- Program table -->
-    <div class="p-4">
-      <div class="card">
-        <div class="card-pad overflow-x-auto">
-          <table class="clean zebra-pink sticky-header" id="rev1-table">
-            <colgroup>
-              <col class="num">
-              <col class="workout">
-              <col class="rings">
-              <col class="notes">
-            </colgroup>
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Workout</th>
-                <th>Rings</th>
-                <th>Notes</th>
-              </tr>
-            </thead>
-            <tbody>
-            {% for i in range(1,17) %}
+  <!-- Program table -->
+  <div class="p-4">
+    <div class="card">
+      <div class="card-pad overflow-x-auto">
+        <table class="clean zebra-pink sticky-header" id="rev1-table">
+          <colgroup>
+            <col class="num"><col class="workout"><col class="rings"><col class="notes">
+          </colgroup>
+          <thead>
+            <tr><th>#</th><th>Movements</th><th>Rings</th><th>Notes</th></tr>
+          </thead>
+          <tbody>
+            {% for i in range(1,21) %}
               {% set idx = (i - 1) + wr_offset %}
               {% set row = (wrdata[idx] if wrdata|length > idx else {}) %}
               <tr>
@@ -246,50 +354,428 @@
                 <td><input class="rev1-notes   w-full field" type="text" value="{{ row.get('Notes','') }}"></td>
               </tr>
             {% endfor %}
-            </tbody>
-          </table>
-        </div>
+          </tbody>
+        </table>
       </div>
     </div>
+  </div>
 
-    <!-- GK (visible only for TO* codes) -->
-    <div class="px-4">
-      <div class="card">
-        <div class="card-pad">
-          <h3 class="text-md font-semibold mb-2">Goldorack (TO plans only)</h3>
-          <div id="gk-rev1-section" class="overflow-x-auto hidden">
-            <table class="clean zebra-pink sticky-header">
-              <thead>
-                <tr>
-                  <th>Workout</th>
-                  <th style="width:180px">Rings</th>
-                  <th>Notes</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% set wr_gold = (wrdata | selectattr('Goldorack') | list) if wrdata else [] %}
-                {% for j in range(0,4) %}
-                  {% set grow = wr_gold[j] if wr_gold|length > j else {} %}
-                  <tr>
-                    <td><input class="rev1-gk-workout w-full field" type="text" value="{{ grow.get('Workout', grow.get('Value','')) }}"></td>
-                    <td><input class="rev1-gk-rings w-full field"   type="text" value="{{ grow.get('Rings','') }}"></td>
-                    <td><input class="rev1-gk-notes w-full field"   type="text" value="{{ grow.get('Notes','') }}"></td>
-                  </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-          </div>
-        </div>
+<!-- GK (TO & B) -->
+<div class="px-4">
+  <div class="card">
+    <div class="card-pad">
+      <h3 class="text-md font-semibold mb-2">Goldorack (TO &amp; B plans)</h3>
+
+      <div id="gk-rev1-section" class="overflow-x-auto hidden">
+        <table class="clean zebra-pink sticky-header gk-numbered" id="gk-rev1-table">
+  <thead>
+    <tr>
+      <th style="width:56px; text-align:center">#</th>
+      <th>Movements</th>
+      <th style="width:180px">Rings</th>
+      <th>Notes</th>
+    </tr>
+  </thead>
+<tbody>
+  {% set wr_gold = (wrdata | selectattr('Goldorack') | list) if wrdata else [] %}
+  {% for j in range(0,12) %}
+    {% set grow = wr_gold[j] if wr_gold|length > j else {} %}
+    <tr data-gk-id="{{ j }}">
+      <td class="row-num drag-handle text-center font-semibold" title="Drag to reorder"></td>
+      <td><input class="rev1-gk-workout w-full field" type="text"
+                 value="{{ grow.get('Workout', grow.get('Value','')) }}"></td>
+      <td><input class="rev1-gk-rings w-full field"   type="text" value="{{ grow.get('Rings','') }}"></td>
+      <td><input class="rev1-gk-notes w-full field"   type="text" value="{{ grow.get('Notes','') }}"></td>
+    </tr>
+  {% endfor %}
+</tbody>
+
+</table>
+<script>
+(function(){
+  const ROOT  = document.getElementById('client-chart-root');
+  const CLIENT = ROOT ? ROOT.dataset.client : '';
+  const TBL   = document.getElementById('gk-rev1-table');
+  const TBODY = TBL ? TBL.tBodies[0] : null;
+  if (!CLIENT || !TBODY) return;
+
+  // Helpers
+  const rowId    = (tr)=> tr.getAttribute('data-gk-id');
+  const byIdMap  = ()=> new Map(Array.from(TBODY.rows).map(tr => [rowId(tr), tr]));
+  const orderIds = ()=> Array.from(TBODY.rows).map(rowId);
+
+  async function saveGKOrder(){
+    try{
+      await fetch(`/charts/client/${encodeURIComponent(CLIENT)}/gk-order`, {
+        method: 'POST',
+        headers: { 'Content-Type':'application/json' },
+        body: JSON.stringify({
+          order_ids: orderIds(),      // stable ids 0..11 (or however many)
+          order: Array.from(TBODY.rows).map(tr =>
+            tr.querySelector('.rev1-gk-workout')?.value?.trim() || ''
+          )
+        })
+      });
+    }catch(e){}
+  }
+
+  async function applySavedGKOrder(){
+    try{
+      const r = await fetch(`/charts/client/${encodeURIComponent(CLIENT)}/gk-order.json`, {cache:'no-store'});
+      const j = await r.json();
+      const ids = Array.isArray(j.order_ids) ? j.order_ids : [];
+
+      if (!ids.length) return; // nothing saved yet
+
+      const map = byIdMap();
+      const used = new Set();
+
+      // append rows in saved order; skip ids that don't exist
+      ids.forEach(id => {
+        const tr = map.get(String(id));
+        if (tr && !used.has(tr)) { TBODY.appendChild(tr); used.add(tr); }
+      });
+
+      // append leftovers (e.g., if ids list shorter/changed)
+      Array.from(map.values()).forEach(tr => { if (!used.has(tr)) TBODY.appendChild(tr); });
+    }catch(e){}
+  }
+
+  function attachDragSave(){
+    if (window.Sortable && typeof window.Sortable.create === 'function'){
+      window.Sortable.create(TBODY, {
+        handle: '.drag-handle',
+        animation: 150,
+        onEnd: saveGKOrder,
+        onSort: saveGKOrder
+      });
+      return;
+    }
+    // Vanilla fallback
+    Array.from(TBODY.rows).forEach(tr => {
+      const h = tr.querySelector('.drag-handle'); if (!h) return;
+      tr.draggable = true; h.style.cursor = 'grab';
+      tr.addEventListener('dragstart', (e)=>{ tr.classList.add('dragging'); e.dataTransfer.setData('text/plain',''); });
+      tr.addEventListener('dragend', ()=>{ tr.classList.remove('dragging'); saveGKOrder(); });
+    });
+    TBODY.addEventListener('dragover', (e)=>{
+      e.preventDefault();
+      const dragging = TBODY.querySelector('tr.dragging'); if (!dragging) return;
+      const rows = Array.from(TBODY.querySelectorAll('tr:not(.dragging)'));
+      const after = rows.find(r => e.clientY <= r.getBoundingClientRect().top + r.offsetHeight/2);
+      if (!after) TBODY.appendChild(dragging); else TBODY.insertBefore(dragging, after);
+    });
+  }
+
+  // Re-apply when GK section becomes visible
+  const GKSEC = document.getElementById('gk-rev1-section');
+  if (GKSEC) {
+    const obs = new MutationObserver(() => {
+      if (GKSEC.offsetParent !== null) applySavedGKOrder();
+    });
+    obs.observe(GKSEC, {attributes:true, attributeFilter:['class','style']});
+  }
+
+  (async function init(){
+    await applySavedGKOrder();
+    attachDragSave();
+  })();
+})();
+</script>
+
+
+
+      </div>
+
+    </div>
+  </div>
+</div>
+
+
+
+  <div id="rev1-toast" class="rev1-toast"></div>
+
+<script>
+  function needsGK(type){ return /^(TO|B)\d+$/i.test(String(type||'').trim()); }
+</script>
+
+<script>
+(function () {
+  const TBL_SEL = '#gk-rev1-table';
+
+  function renumberGK() {
+    const tbody = document.querySelector(TBL_SEL + ' tbody');
+    if (!tbody) return;
+    Array.from(tbody.rows).forEach((tr, i) => {
+      let cell = tr.querySelector('td.drag-handle');
+      if (!cell) {
+        cell = tr.insertCell(0);
+        cell.className = 'drag-handle text-center font-semibold';
+        cell.title = 'Drag to reorder';
+      }
+      cell.textContent = String(i + 1);
+    });
+  }
+
+  function enableGKDrag() {
+    const tbody = document.querySelector(TBL_SEL + ' tbody');
+    if (!tbody) return;
+
+    // If SortableJS is present, use it
+    if (window.Sortable && typeof window.Sortable.create === 'function') {
+      window.Sortable.create(tbody, {
+        handle: '.drag-handle',
+        animation: 150,
+        onSort: renumberGK
+      });
+      return;
+    }
+
+    // Fallback: vanilla HTML5 drag
+    function makeRowDraggable(tr) {
+      const handle = tr.querySelector('.drag-handle');
+      if (!handle) return;
+      handle.style.cursor = 'grab';
+      tr.draggable = true;
+
+      tr.addEventListener('dragstart', (e) => {
+        tr.classList.add('dragging');
+        e.dataTransfer.setData('text/plain', '');
+      });
+      tr.addEventListener('dragend', () => {
+        tr.classList.remove('dragging');
+        renumberGK();
+      });
+    }
+
+    Array.from(tbody.rows).forEach(makeRowDraggable);
+
+    tbody.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      const dragging = tbody.querySelector('tr.dragging');
+      if (!dragging) return;
+
+      const rows = Array.from(tbody.querySelectorAll('tr:not(.dragging)'));
+      const after = rows.find(r => e.clientY <= r.getBoundingClientRect().top + r.offsetHeight / 2);
+      if (!after) tbody.appendChild(dragging);
+      else tbody.insertBefore(dragging, after);
+    });
+  }
+
+  // expose a hook to call after you programmatically add rows
+  window.updateGKRowNumbers = renumberGK;
+
+  document.addEventListener('DOMContentLoaded', () => {
+    renumberGK();
+    enableGKDrag();
+  });
+})();
+</script>
+
+
+  <!-- LATE GUARD: keep state, observe DOM, re-apply if someone resets to TO2 -->
+<script>
+(function(){
+  const root = document.getElementById('client-chart-root');
+  if(!root) return;
+
+  const client = root.dataset.client || 'unknown';
+  const ns = (k)=>`charts:${client}:workoutrev1:${k}`;
+  const rev1Tab = document.getElementById('workout-rev1');
+
+  // Always-fresh getters (in case DOM is rebuilt)
+  const $type  = () => document.getElementById('workout-rev1-type');
+  const $kg    = () => document.getElementById('workout-rev1-kg');
+  const $tools = () => document.getElementById('workout-rev1-tools');
+  const $apply = () => document.getElementById('rev1-apply');
+  const $gk    = () => document.getElementById('gk-rev1-section');
+
+  // Pick a scroll container (fallback to window)
+  const scrollPanel = document.querySelector('#chart-panel')
+                    || document.querySelector('#charts-wrapper')
+                    || document.querySelector('.tab-content.p-0')
+                    || document.scrollingElement
+                    || document.body;
+
+  function loadState(){
+    try{ const raw=localStorage.getItem(ns('state')); return raw?JSON.parse(raw):null; }catch(_){ return null; }
+  }
+  function saveState(extra={}){
+    try{
+      const sel=$type(), kg=$kg(), tools=$tools();
+      const s = {
+        type:  sel ? sel.value : null,
+        kg:    kg ? kg.value : null,
+        tools: tools ? tools.value : null,
+        scroll: (scrollPanel===document.body||scrollPanel===document.scrollingElement) ? window.scrollY : (scrollPanel?.scrollTop||0),
+        ...extra
+      };
+      localStorage.setItem(ns('state'), JSON.stringify(s));
+    }catch(_){}
+  }
+
+  // -- HARD LOCK: for ~2s after restore, any attempt to set a different value will be overridden.
+  function lockSelectValueTo(sel, desired, ms=2000){
+    if (!sel || !desired) return;
+    // ensure option exists
+    if (![...sel.options].some(o => o.value === desired)) return;
+
+    const proto = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value');
+    if (!proto || !proto.get || !proto.set) return;
+
+    const deadline = Date.now() + ms;
+    // define an instance-level accessor overriding .value
+    Object.defineProperty(sel, 'value', {
+      configurable: true,
+      enumerable:   false,
+      get: function(){ return proto.get.call(this); },
+      set: function(v){
+        // While locked, force desired
+        if (Date.now() < deadline && v !== desired) {
+          proto.set.call(this, desired);
+          // keep GK visibility correct
+const gk=$gk(); gk && gk.classList.toggle('hidden', !/^(TO|B)\d+$/i.test(desired));
+          // bubble a change so any listeners recompute
+          this.dispatchEvent(new Event('change', {bubbles:true}));
+          return;
+        }
+        proto.set.call(this, v);
+      }
+    });
+
+    // set the desired value now and fire change
+    proto.set.call(sel, desired);
+    sel.dispatchEvent(new Event('change', {bubbles:true}));
+
+    // auto-unlock after ms
+    setTimeout(()=>{ try{ delete sel.value; }catch(_){} }, ms + 50);
+  }
+
+  function ensureType(desired){
+    const sel=$type(); if(!sel || !desired) return false;
+    // if option not present yet, bail
+    if (![...sel.options].some(o=>o.value===desired)) return false;
+    if (sel.value !== desired) {
+      sel.value = desired;
+$gk() && $gk().classList.toggle('hidden', !/^(TO|B)\d+$/i.test(desired));
+      sel.dispatchEvent(new Event('change', {bubbles:true}));
+    }
+    return true;
+  }
+
+
+  
+  function restoreEarly(){
+    const s=loadState(); if(!s) return;
+    const sel=$type(); if(!sel) return;
+
+    // Lock and set type immediately
+    lockSelectValueTo(sel, s.type, 2200);
+
+    // Also restore KG/Tools now
+    const kg=$kg(), tools=$tools();
+    if (kg && typeof s.kg==='string') kg.value=s.kg;
+    if (tools && typeof s.tools==='string') tools.value=s.tools;
+  }
+
+  function applyAndScroll(){
+    const s=loadState();
+    if ($apply()) $apply().click();
+    requestAnimationFrame(()=>{
+      if (!s) return;
+      if (scrollPanel===document.body || scrollPanel===document.scrollingElement){
+        window.scrollTo(0, s.scroll||0);
+      } else if (scrollPanel) {
+        scrollPanel.scrollTop = s.scroll||0;
+      }
+    });
+  }
+
+  // Observe subtree for rebuilds (e.g., toolbar re-render)
+  if (rev1Tab) {
+    const mo = new MutationObserver(()=>{
+      const s = loadState(); if(!s) return;
+      // re-lock new select if it was recreated
+      const sel=$type();
+      if (sel && sel.value !== s.type) lockSelectValueTo(sel, s.type, 2200);
+      // once option exists and is set, apply rows
+      if (ensureType(s.type)) applyAndScroll();
+    });
+    mo.observe(rev1Tab, {childList:true, subtree:true});
+  }
+
+  // Persist on interactions
+  document.addEventListener('change', (e)=>{
+    const id=e.target && e.target.id;
+    if (id==='workout-rev1-type' || id==='workout-rev1-kg' || id==='workout-rev1-tools') saveState();
+  });
+  document.addEventListener('input', (e)=>{
+    const id=e.target && e.target.id;
+    if (id==='workout-rev1-kg' || id==='workout-rev1-tools') saveState();
+  });
+  $apply() && $apply().addEventListener('click', saveState);
+
+  // Save scroll (debounced)
+  let t; (scrollPanel||window).addEventListener('scroll', ()=>{ clearTimeout(t); t=setTimeout(saveState,150); }, {passive:true});
+
+  // Run restore: early lock + retries + apply
+  const s = loadState();
+  if (s) {
+    restoreEarly();                 // immediate lock + set
+    requestAnimationFrame(()=>ensureType(s.type));
+    setTimeout(()=>{ ensureType(s.type); applyAndScroll(); }, 120);
+    setTimeout(()=> ensureType(s.type), 250);
+  } else {
+    saveState(); // seed with current
+  }
+})();
+</script>
+
+</div>
+
+
+<!-- Nutrition (revised: inline Add Row like measures notes) -->
+<div id="nutrition" class="tab-content hidden space-y-6 p-4">
+  <h2 class="text-xl font-bold">Nutrition</h2>
+
+  <!-- Template for a new row -->
+  <template id="nutrition-row-template">
+    <div class="flex space-x-4 form-row mt-4 nutrition-row">
+      <div class="flex flex-col w-32">
+        <label class="text-sm font-medium mb-1">Date</label>
+        <input name="nutrition_date[]" type="date" class="field w-full nutrition-date"/>
+      </div>
+      <div class="flex flex-col w-32">
+        <label class="text-sm font-medium mb-1">Type</label>
+        <input name="nutrition_type[]" type="text" placeholder="Type" class="field w-full nutrition-type"/>
+      </div>
+      <div class="flex flex-col flex-1">
+        <label class="text-sm font-medium mb-1">Notes</label>
+        <textarea name="nutrition_notes[]" rows="3" placeholder="Notes" class="field w-full nutrition-notes"></textarea>
       </div>
     </div>
+  </template>
 
-  </div> <!-- /workout-rev1 -->
+  {% set nut_rows = (sheets['nutrition'].data if sheets and sheets.get('nutrition') and sheets['nutrition'].data else []) %}
+  <div id="nutrition-rows" class="card card-pad">
+    {% for row in nut_rows %}
+      <div class="flex space-x-4 form-row mt-4 nutrition-row">
+        <div class="flex flex-col w-32">
+          <label class="text-sm font-medium mb-1">Date</label>
+          <input name="nutrition_date[]" type="date" value="{{ row.get('Date','') }}" class="field w-full nutrition-date"/>
+        </div>
+        <div class="flex flex-col w-32">
+          <label class="text-sm font-medium mb-1">Type</label>
+          <input name="nutrition_type[]" type="text" value="{{ row.get('Type','') }}" class="field w-full nutrition-type"/>
+        </div>
+        <div class="flex flex-col flex-1">
+          <label class="text-sm font-medium mb-1">Notes</label>
+          <textarea name="nutrition_notes[]" rows="3" class="field w-full nutrition-notes">{{ row.get('Notes','') }}</textarea>
+        </div>
+      </div>
+    {% endfor %}
 
-  {# ===== Nutrition ===== #}
-  <div id="nutrition" class="tab-content hidden space-y-6 p-4">
-    <h2 class="text-xl font-bold">Nutrition</h2>
-
-    <template id="nutrition-row-template">
+    {% if not nut_rows %}
       <div class="flex space-x-4 form-row mt-4 nutrition-row">
         <div class="flex flex-col w-32">
           <label class="text-sm font-medium mb-1">Date</label>
@@ -304,53 +790,95 @@
           <textarea name="nutrition_notes[]" rows="3" placeholder="Notes" class="field w-full nutrition-notes"></textarea>
         </div>
       </div>
-    </template>
-
-    {% set nut_rows = (sheets['nutrition'].data if sheets and sheets.get('nutrition') and sheets['nutrition'].data else []) %}
-    <div id="nutrition-rows" class="card card-pad">
-      {% for row in nut_rows %}
-        <div class="flex space-x-4 form-row mt-4 nutrition-row">
-          <div class="flex flex-col w-32">
-            <label class="text-sm font-medium mb-1">Date</label>
-            <input name="nutrition_date[]" type="date" value="{{ row.get('Date','') }}" class="field w-full nutrition-date"/>
-          </div>
-          <div class="flex flex-col w-32">
-            <label class="text-sm font-medium mb-1">Type</label>
-            <input name="nutrition_type[]" type="text" value="{{ row.get('Type','') }}" class="field w-full nutrition-type"/>
-          </div>
-          <div class="flex flex-col flex-1">
-            <label class="text-sm font-medium mb-1">Notes</label>
-            <textarea name="nutrition_notes[]" rows="3" class="field w-full nutrition-notes">{{ row.get('Notes','') }}</textarea>
-          </div>
-        </div>
-      {% endfor %}
-
-      {% if not nut_rows %}
-        <div class="flex space-x-4 form-row mt-4 nutrition-row">
-          <div class="flex flex-col w-32">
-            <label class="text-sm font-medium mb-1">Date</label>
-            <input name="nutrition_date[]" type="date" class="field w-full nutrition-date"/>
-          </div>
-          <div class="flex flex-col w-32">
-            <label class="text-sm font-medium mb-1">Type</label>
-            <input name="nutrition_type[]" type="text" placeholder="Type" class="field w-full nutrition-type"/>
-          </div>
-          <div class="flex flex-col flex-1">
-            <label class="text-sm font-medium mb-1">Notes</label>
-            <textarea name="nutrition_notes[]" rows="3" placeholder="Notes" class="field w-full nutrition-notes"></textarea>
-          </div>
-        </div>
-      {% endif %}
-    </div>
-
-    <button id="add-nutrition" type="button" class="mt-2 btn btn-primary">+ Add Row</button>
+    {% endif %}
   </div>
 
-  {# ===== Communication ===== #}
-  <div id="communication" class="tab-content hidden space-y-6 p-4">
-    <h2 class="text-xl font-bold">Communication Log</h2>
+  <button type="button" class="mt-2 btn btn-primary"
+    onclick="(function(){
+      var host = document.getElementById('nutrition-rows');
+      if (!host) return;
 
-    <template id="comm-row-template">
+      var tpl = document.getElementById('nutrition-row-template');
+      var node = (tpl && tpl.content && tpl.content.firstElementChild)
+        ? tpl.content.firstElementChild.cloneNode(true)
+        : (function(){
+            var d = document.createElement('div');
+            d.className = 'flex space-x-4 form-row mt-4 nutrition-row';
+            d.innerHTML = ''
+              + '<div class=&quot;flex flex-col w-32&quot;>'
+              + '  <label class=&quot;text-sm font-medium mb-1&quot;>Date</label>'
+              + '  <input name=&quot;nutrition_date[]&quot; type=&quot;date&quot; class=&quot;field w-full nutrition-date&quot;/>' 
+              + '</div>'
+              + '<div class=&quot;flex flex-col w-32&quot;>'
+              + '  <label class=&quot;text-sm font-medium mb-1&quot;>Type</label>'
+              + '  <input name=&quot;nutrition_type[]&quot; type=&quot;text&quot; placeholder=&quot;Type&quot; class=&quot;field w-full nutrition-type&quot/>'
+              + '</div>'
+              + '<div class=&quot;flex flex-col flex-1&quot;>'
+              + '  <label class=&quot;text-sm font-medium mb-1&quot;>Notes</label>'
+              + '  <textarea name=&quot;nutrition_notes[]&quot; rows=&quot;3&quot; placeholder=&quot;Notes&quot; class=&quot;field w-full nutrition-notes&quot;></textarea>'
+              + '</div>';
+            return d;
+          })();
+
+      host.appendChild(node);
+
+      // Default the new row's date to today (if empty)
+      var dateInput = node.querySelector('input[type=&quot;date&quot;]');
+      if (dateInput && !dateInput.value) {
+        var t = new Date();
+        var y = t.getFullYear();
+        var m = String(t.getMonth()+1).padStart(2,'0');
+        var d = String(t.getDate()).padStart(2,'0');
+        dateInput.value = y + '-' + m + '-' + d;
+      }
+
+      // Optional autosave hook (safe if not defined)
+      window.__saveNutrition && window.__saveNutrition();
+    })()">+ Add Row</button>
+</div>
+
+<!-- Communication (mirrors Nutrition pattern) -->
+<div id="communication" class="tab-content hidden space-y-6 p-4">
+  <h2 class="text-xl font-bold">Communication Log</h2>
+
+  <!-- Template for a new row -->
+  <template id="comm-row-template">
+    <div class="flex space-x-4 form-row mt-4 comm-row">
+      <div class="flex flex-col w-32">
+        <label class="text-sm font-medium mb-1">Date</label>
+        <input name="comm_date[]" type="date" class="field w-full comm-date"/>
+      </div>
+      <div class="flex flex-col w-32">
+        <label class="text-sm font-medium mb-1">Type</label>
+        <input name="comm_type[]" type="text" placeholder="Type" class="field w-full comm-type"/>
+      </div>
+      <div class="flex flex-col flex-1">
+        <label class="text-sm font-medium mb-1">Notes</label>
+        <textarea name="comm_notes[]" rows="3" placeholder="Notes" class="field w-full comm-notes"></textarea>
+      </div>
+    </div>
+  </template>
+
+  {% set comm_rows = (sheets['communication'].data if sheets and sheets.get('communication') and sheets['communication'].data else []) %}
+  <div id="comm-rows" class="card card-pad">
+    {% for row in comm_rows %}
+      <div class="flex space-x-4 form-row mt-4 comm-row">
+        <div class="flex flex-col w-32">
+          <label class="text-sm font-medium mb-1">Date</label>
+          <input name="comm_date[]" type="date" value="{{ row.get('Date','') }}" class="field w-full comm-date"/>
+        </div>
+        <div class="flex flex-col w-32">
+          <label class="text-sm font-medium mb-1">Type</label>
+          <input name="comm_type[]" type="text" value="{{ row.get('Type','') }}" class="field w-full comm-type"/>
+        </div>
+        <div class="flex flex-col flex-1">
+          <label class="text-sm font-medium mb-1">Notes</label>
+          <textarea name="comm_notes[]" rows="3" class="field w-full comm-notes">{{ row.get('Notes','') }}</textarea>
+        </div>
+      </div>
+    {% endfor %}
+
+    {% if not comm_rows %}
       <div class="flex space-x-4 form-row mt-4 comm-row">
         <div class="flex flex-col w-32">
           <label class="text-sm font-medium mb-1">Date</label>
@@ -365,82 +893,109 @@
           <textarea name="comm_notes[]" rows="3" placeholder="Notes" class="field w-full comm-notes"></textarea>
         </div>
       </div>
-    </template>
-
-    {% set comm_rows = (sheets['communication'].data if sheets and sheets.get('communication') and sheets['communication'].data else []) %}
-    <div id="comm-rows" class="card card-pad">
-      {% for row in comm_rows %}
-        <div class="flex space-x-4 form-row mt-4 comm-row">
-          <div class="flex flex-col w-32">
-            <label class="text-sm font-medium mb-1">Date</label>
-            <input name="comm_date[]" type="date" value="{{ row.get('Date','') }}" class="field w-full comm-date"/>
-          </div>
-          <div class="flex flex-col w-32">
-            <label class="text-sm font-medium mb-1">Type</label>
-            <input name="comm_type[]" type="text" value="{{ row.get('Type','') }}" class="field w-full comm-type"/>
-          </div>
-          <div class="flex flex-col flex-1">
-            <label class="text-sm font-medium mb-1">Notes</label>
-            <textarea name="comm_notes[]" rows="3" class="field w-full comm-notes">{{ row.get('Notes','') }}</textarea>
-          </div>
-        </div>
-      {% endfor %}
-
-      {% if not comm_rows %}
-        <div class="flex space-x-4 form-row mt-4 comm-row">
-          <div class="flex flex-col w-32">
-            <label class="text-sm font-medium mb-1">Date</label>
-            <input name="comm_date[]" type="date" class="field w-full comm-date"/>
-          </div>
-          <div class="flex flex-col w-32">
-            <label class="text-sm font-medium mb-1">Type</label>
-            <input name="comm_type[]" type="text" placeholder="Type" class="field w-full comm-type"/>
-          </div>
-          <div class="flex flex-col flex-1">
-            <label class="text-sm font-medium mb-1">Notes</label>
-            <textarea name="comm_notes[]" rows="3" placeholder="Notes" class="field w-full comm-notes"></textarea>
-          </div>
-        </div>
-      {% endif %}
-    </div>
-
-    <button id="add-comm" type="button" class="mt-2 btn btn-primary">+ Add Row</button>
+    {% endif %}
   </div>
+
+  <button type="button" class="mt-2 btn btn-primary"
+    onclick="(function(){
+      var host = document.getElementById('comm-rows');
+      if (!host) return;
+
+      var tpl = document.getElementById('comm-row-template');
+      var node = (tpl && tpl.content && tpl.content.firstElementChild)
+        ? tpl.content.firstElementChild.cloneNode(true)
+        : (function(){
+            var d = document.createElement('div');
+            d.className = 'flex space-x-4 form-row mt-4 comm-row';
+            d.innerHTML = ''
+              + '<div class=&quot;flex flex-col w-32&quot;>'
+              + '  <label class=&quot;text-sm font-medium mb-1&quot;>Date</label>'
+              + '  <input name=&quot;comm_date[]&quot; type=&quot;date&quot; class=&quot;field w-full comm-date&quot/>'
+              + '</div>'
+              + '<div class=&quot;flex flex-col w-32&quot;>'
+              + '  <label class=&quot;text-sm font-medium mb-1&quot;>Type</label>'
+              + '  <input name=&quot;comm_type[]&quot; type=&quot;text&quot; placeholder=&quot;Type&quot; class=&quot;field w-full comm-type&quot/>'
+              + '</div>'
+              + '<div class=&quot;flex flex-col flex-1&quot;>'
+              + '  <label class=&quot;text-sm font-medium mb-1&quot;>Notes</label>'
+              + '  <textarea name=&quot;comm_notes[]&quot; rows=&quot;3&quot; placeholder=&quot;Notes&quot; class=&quot;field w-full comm-notes&quot;></textarea>'
+              + '</div>';
+            return d;
+          })();
+
+      host.appendChild(node);
+
+      // Default the new row's date to today (if empty)
+      var dateInput = node.querySelector('input[type=&quot;date&quot;]');
+      if (dateInput && !dateInput.value) {
+        var t = new Date();
+        var y = t.getFullYear();
+        var m = String(t.getMonth()+1).padStart(2,'0');
+        var d = String(t.getDate()).padStart(2,'0');
+        dateInput.value = y + '-' + m + '-' + d;
+      }
+
+      // Optional autosave hook (safe if not defined)
+      window.__saveCommunication && window.__saveCommunication();
+    })()">+ Add Row</button>
 </div>
 
-{# ---- JSON that survives script stripping ---- #}
+{# JSON that survives script stripping #}
 <template id="workout-blocks-json">
   {{ workout_blocks_json | tojson | safe }}
 </template>
 
-<!-- ===== Small helpers (Type stays a dropdown) ===== -->
+<!-- History Modal (in-page) -->
+<div id="rev1-history-modal" class="modal-backdrop" aria-hidden="true"
+     onclick="if(event.target===this){this.classList.remove('show');this.setAttribute('aria-hidden','true')}">
+  <div class="modal-card">
+    <div class="modal-head">
+      <strong>Workout Rev1 History — {{ client }}</strong>
+      <button type="button" class="btn"
+              onclick="(function(m){m.classList.remove('show');m.setAttribute('aria-hidden','true')})(document.getElementById('rev1-history-modal'))">
+        Close
+      </button>
+    </div>
+    <div class="modal-body" id="rev1-history-body"><!-- filled dynamically --></div>
+  </div>
+</div>
+
+<!-- tiny toast -->
+<div id="rev1-toast" class="toast" role="status" aria-live="polite"></div>
+
+
 <script>
-(function(){
-  if (window.__rev1SelectInit) return; window.__rev1SelectInit = true;
+(function () {
+  const body = document.querySelector('#gk-rev1-table tbody');
+  if (!body) return;
 
-  const typeSelect = document.getElementById('workout-rev1-type');
-  const gk = document.getElementById('gk-rev1-section');
-  const table = document.getElementById('rev1-table');
-  const compactToggle = document.getElementById('rev1-compact');
-
-  function isTO(val){ return /^TO\\d$/i.test(val||''); }
-  function updateGK(){ if (!gk || !typeSelect) return; gk.classList.toggle('hidden', !isTO(typeSelect.value)); }
-
-  // Init & bind
-  updateGK();
-  typeSelect?.addEventListener('change', updateGK);
-
-  // Compact density toggle
-  compactToggle?.addEventListener('change', e=>{
-    table?.classList.toggle('compact', e.target.checked);
-  });
-
-  // Hooks for Apply / Clear if you expose them globally
-  document.getElementById('workout-rev1-apply')?.addEventListener('click', ()=>{
-    if (window.applyWorkoutBlock) window.applyWorkoutBlock(typeSelect.value);
-  });
-  document.getElementById('workout-rev1-clear')?.addEventListener('click', ()=>{
-    if (window.clearWorkoutBlock) window.clearWorkoutBlock();
-  });
+  if (window.Sortable && typeof window.Sortable.create === 'function') {
+    window.Sortable.create(body, {
+      handle: '.drag-handle',
+      animation: 150
+      // no onEnd needed — CSS counters handle numbering
+    });
+  } else {
+    // vanilla fallback
+    Array.from(body.rows).forEach((tr) => {
+      const h = tr.querySelector('.drag-handle');
+      if (!h) return;
+      tr.draggable = true;
+      tr.addEventListener('dragstart', (e) => {
+        tr.classList.add('dragging');
+        e.dataTransfer.setData('text/plain', '');
+      });
+      tr.addEventListener('dragend', () => tr.classList.remove('dragging'));
+    });
+    body.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      const dragging = body.querySelector('tr.dragging');
+      if (!dragging) return;
+      const rows = Array.from(body.querySelectorAll('tr:not(.dragging)'));
+      const after = rows.find(r => e.clientY <= r.getBoundingClientRect().top + r.offsetHeight / 2);
+      if (!after) body.appendChild(dragging);
+      else body.insertBefore(dragging, after);
+    });
+  }
 })();
 </script>
