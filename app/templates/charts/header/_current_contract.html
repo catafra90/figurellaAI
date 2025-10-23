@@ -1,0 +1,106 @@
+{# templates/charts/header/_current_contract.html #}
+{# Expects optional "contract" dict: number, start_date, expiration_date, sessions_left, anniversary, birthday #}
+{% set _c = contract or {} %}
+
+<style>
+  @media (max-width: 1024px){
+    .contract-grid { grid-template-columns: 1fr !important; }
+    .contract-grid .field { width: 100% !important; }
+  }
+</style>
+
+<div class="mt-6">
+  <h3 class="text-sm font-semibold mb-2">Contract</h3>
+
+  <div class="grid contract-grid grid-cols-1 md:grid-cols-2 gap-3">
+    <!-- Contract # -->
+    <div class="min-w-0">
+      <label class="block text-xs text-gray-600 mb-1">Current Contract #</label>
+      <input type="text" class="field w-full px-3 py-2 border rounded-md bg-white text-gray-900"
+             value="{{ _c.get('number','') }}" readonly />
+    </div>
+
+    <!-- Contract Type (kept as provided) -->
+    <div class="min-w-0">
+      <label class="block text-xs text-gray-600 mb-1">Contract Type</label>
+      <input type="text" class="field w-full px-3 py-2 border rounded-md bg-white text-gray-900"
+             value="{{ _c.get('start_date','') }}" readonly />
+    </div>
+
+    <!-- Expiration Date -->
+    <div class="min-w-0">
+      <label class="block text-xs text-gray-600 mb-1">Expiration Date</label>
+      <input type="text" class="field w-full px-3 py-2 border rounded-md bg-white text-gray-900"
+             value="{{ _c.get('expiration_date','') }}" readonly />
+    </div>
+
+    <!-- Residual -->
+    <div class="min-w-0">
+      <label class="block text-xs text-gray-600 mb-1">Residual</label>
+      <input type="text" class="field w-full px-3 py-2 border rounded-md bg-white text-gray-900 text-center"
+             value="{{ _c.get('sessions_left','') }}" readonly />
+    </div>
+  </div>
+</div>
+
+{# === 🎂 Celebrations (editable) === #}
+<div class="mt-6">
+  <h3 class="text-sm font-semibold mb-2">Celebrations</h3>
+
+  <div class="grid contract-grid grid-cols-1 md:grid-cols-2 gap-3">
+    <div class="min-w-0">
+      <label class="block text-xs text-gray-600 mb-1">Birthday</label>
+      <input type="date" name="birthday_date"
+             class="field w-full px-3 py-2 border rounded-md bg-white text-gray-900"
+             value="{{ _c.get('birthday','') }}" />
+    </div>
+
+    <div class="min-w-0">
+      <label class="block text-xs text-gray-600 mb-1">Anniversary</label>
+      <input type="date" name="anniversary_date"
+             class="field w-full px-3 py-2 border rounded-md bg-white text-gray-900"
+             value="{{ _c.get('anniversary','') }}" />
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const card = (document.currentScript && document.currentScript.closest('.chart-card')) || null;
+  if (!card) return;
+
+  const raw = card.getAttribute('data-contract');
+  if (!raw) return;
+
+  let data = null;
+  try { data = JSON.parse(raw); } catch(_) { data = null; }
+  if (!data || typeof data !== 'object') return;
+
+  // Populate read-only Contract block
+  const root = document.currentScript.previousElementSibling.previousElementSibling;
+  if (root) {
+    const map = {
+      number:         'Current Contract #',
+      start_date:     'Contract Type',
+      expiration_date:'Expiration Date',
+      sessions_left:  'Residual',
+      anniversary:    'Anniversary',
+    };
+    root.querySelectorAll('label').forEach(lbl => {
+      const key = Object.keys(map).find(k => map[k] === lbl.textContent.trim());
+      if (!key) return;
+      const input = lbl.parentElement && lbl.parentElement.querySelector('input');
+      if (input && (key in data)) input.value = String(data[key] ?? '');
+    });
+  }
+
+  // Populate Celebrations
+  const cele = document.currentScript.previousElementSibling;
+  if (cele) {
+    const bdayInp = cele.querySelector('input[name="birthday_date"]');
+    const annvInp = cele.querySelector('input[name="anniversary_date"]');
+    if (bdayInp && ('birthday' in data))   bdayInp.value = String(data.birthday ?? '');
+    if (annvInp && ('anniversary' in data)) annvInp.value = String(data.anniversary ?? '');
+  }
+})();
+</script>

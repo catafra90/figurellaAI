@@ -1,0 +1,243 @@
+/* ===================================================================
+   tablet.css — iPad-first, clean flow for tables + Profile KV rows
+   =================================================================== */
+
+/* ---------- Base table styling ---------- */
+table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+thead th {
+  text-align: left;
+  font-weight: 700;
+  font-size: 0.95rem;
+  padding: 10px 12px;
+  background: #f9fafb;
+  color: #111827;
+  border-bottom: 1px solid #e5e7eb;
+  position: relative;
+  white-space: nowrap;
+}
+tbody td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #f1f5f9;
+  color: #0f172a;
+  vertical-align: middle;
+}
+
+/* Sticky header */
+.table-sticky thead th,
+.sticky-header thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: rgba(249,250,251,0.98);
+  backdrop-filter: saturate(110%) blur(6px);
+}
+
+/* Zebra */
+.table-zebra tbody tr:nth-child(odd) td { background: #fcfcfd; }
+
+/* Compact */
+.table-compact thead th { padding: 8px 10px; }
+.table-compact tbody td { padding: 8px 10px; }
+
+/* Prevent blowouts (global default) */
+td, th {
+  max-width: 1px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cell-wrap { white-space: normal; word-break: break-word; }
+
+/* Align */
+.td-right { text-align: right; }
+.td-center { text-align: center; }
+
+/* ---------- Profile KV rows ---------- */
+.client-modal #profile .kv-row{
+  display: grid;
+  grid-template-columns: 260px minmax(0,1fr);
+  column-gap: 12px;
+  align-items: center;
+  padding: 7px 0;
+  border-bottom: 1px solid #eef2f7;
+  min-width: 0;
+}
+.client-modal #profile .kv-row:last-child{ border-bottom: 0; }
+.client-modal #profile .kv-label{ color:#6b7280; font-weight:600; white-space:nowrap; }
+.client-modal #profile .kv-value{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.client-modal #profile .kv-value .chip,
+.client-modal #profile .kv-value .pill,
+.client-modal #profile .kv-value .flag-btn{
+  display:inline-flex; align-items:center; gap:8px;
+  min-height:36px; padding:8px 12px; margin-right:8px; margin-bottom:8px;
+  border-radius:9999px; border:1px solid #e5e7eb; background:#fff;
+}
+.client-modal #profile .kv-value .chip-row,
+.client-modal #profile .kv-value .pill-row{
+  display:flex; flex-wrap:wrap; gap:10px 12px;
+}
+.client-modal #profile .kv-value input,
+.client-modal #profile .kv-value select,
+.client-modal #profile .kv-value textarea{
+  width:100%;
+  min-height:44px;
+  font-size:16px;
+  line-height:1.3;
+  border:1px solid #e5e7eb;
+  border-radius:10px;
+  padding:8px 10px;
+  color:#0f172a;
+}
+.client-modal #profile .kv-value textarea{ min-height: 92px; }
+
+/* ---------- Responsive: phones stack ---------- */
+@media (max-width: 819px){
+  .table-stacked{
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 8px;
+  }
+  .table-stacked thead{ display: none; }
+  .table-stacked tr{
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    background:#fff;
+    border:1px solid #eee;
+    border-radius:10px;
+    padding:8px;
+  }
+  .table-stacked tr:has(td:nth-child(2):last-child){ grid-template-columns: 1fr; }
+  .table-stacked td{
+    display:flex; align-items:baseline; gap:6px;
+    padding:6px 8px; border:0 !important; min-width:0; white-space:normal;
+  }
+  .table-stacked td::before{
+    content: attr(data-label);
+    flex: 0 0 42%;
+    font-size: 12px;
+    color: #6b7280;
+    white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis;
+  }
+
+  /* Profile KV collapses */
+  .client-modal #profile .kv-row{
+    grid-template-columns: 1fr !important;
+    row-gap: 6px;
+  }
+  .client-modal #profile .kv-label{ white-space: normal; font-size: 0.9rem; }
+  .client-modal #profile .kv-value{ white-space: normal; }
+}
+
+/* ---------- Scrollable wrappers ---------- */
+.table-scroll {
+  position: relative;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  max-height: 100%;
+}
+.table-scroll table{ width:100%; }
+
+/* Utilities */
+.col-min{ width: 1%; }
+.col-xxs{ width: 60px; }
+.col-xs{  width: 100px; }
+.col-sm{  width: 160px; }
+.col-md{  width: 220px; }
+.col-lg{  width: 320px; }
+.nowrap{  white-space: nowrap !important; }
+.wrap{    white-space: normal !important; word-break: break-word !important; }
+.truncate{ overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Motion & focus */
+@media (prefers-reduced-motion: reduce){
+  *{ animation: none !important; transition: none !important; }
+}
+table a:focus-visible,
+table button:focus-visible,
+.client-modal #profile .kv-value :is(input,select,textarea):focus{
+  outline: 3px solid rgba(204,0,102,.25);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+/* Compatibility guards (desktop/iPad Pro wide) */
+@media (min-width: 820px){
+  .table-stacked thead{ display: table-header-group !important; }
+  .table-stacked tr{ display: table-row !important; }
+  .table-stacked td{ display: table-cell !important; border-bottom: 1px solid #f1f5f9 !important; }
+  .table-stacked td::before{ content: none !important; }
+  .client-modal #profile .kv-row{
+    grid-template-columns: 260px minmax(0,1fr) !important;
+  }
+}
+
+/* ===================================================================
+   iPad-specific polish (modal + profile content)
+   =================================================================== */
+@media (max-width: 1024px){
+
+  /* A) Some peers (checkboxes) were visible in Safari: hide reliably */
+  .client-modal .flag-group > input[type="checkbox"]{
+    position:absolute !important;
+    opacity:0 !important;
+    width:1px !important; height:1px !important;
+    margin:-1px !important; padding:0 !important;
+    overflow:hidden !important; clip:rect(0,0,0,0) !important;
+    white-space:nowrap !important; border:0 !important;
+    pointer-events:none !important;
+  }
+
+  /* B) Pills/flags wrap and are touch-sized */
+  .client-modal .quick-flags,
+  .client-modal .goals-pills{
+    display:flex; flex-wrap:wrap; gap:.5rem .5rem;
+  }
+  .client-modal .flag-btn{
+    display:inline-flex; align-items:center; min-height:40px;
+  }
+
+  /* C) Generic label + input rows inside modal wrap cleanly */
+  .client-modal .flex{ flex-wrap:wrap; gap:.5rem .75rem; }
+  .client-modal .flex .label{ width:100% !important; }
+
+  /* D) Inputs/textarea: fill available width; avoid iOS zoom */
+  .client-modal .field{
+    width:100% !important; max-width:100% !important;
+    min-height:44px; font-size:16px; line-height:1.3;
+  }
+  .client-modal input[type="date"].field{ width:100% !important; }
+
+  /* E) Tables inside modal: wrap text instead of forcing horizontal scroll */
+  .client-modal table{ table-layout: fixed; width: 100%; }
+  .client-modal table th,
+  .client-modal table td{
+    min-width: 0;
+    white-space: normal;
+    word-break: break-word;
+    vertical-align: top;
+  }
+
+  /* F) Solid background for sticky cells in modal */
+  .client-modal .sticky-header thead th{ background:#fff; }
+
+  /* G) Profile-specific rows that often overflow */
+  .client-modal #profile .goals-row,
+  .client-modal #profile .weights-row{
+    flex-wrap: wrap;
+    gap: .5rem .75rem;
+  }
+  .client-modal #profile .goals-row .label,
+  .client-modal #profile .weights-row .label{ width: 100% !important; }
+  .client-modal #profile .goals-row .field,
+  .client-modal #profile .weights-row .field{
+    width: 100% !important;
+    min-height: 44px;
+    font-size: 16px;
+  }
+}

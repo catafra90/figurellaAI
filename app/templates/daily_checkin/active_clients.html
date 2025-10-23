@@ -1,0 +1,310 @@
+<!-- File: app/templates/daily_checkin/active_clients.html -->
+<div class="bg-white rounded-2xl shadow flex flex-col h-[85vh]" style="height:85vh">
+
+  <!-- Toolbar -->
+  <div class="px-4 py-3 border-b flex items-center justify-between">
+    <div class="flex items-center gap-2">
+      <div class="relative">
+        <i class="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+        <input id="ac-search" type="text" placeholder="Search clients…"
+               class="pl-9 pr-3 py-2 border rounded w-72 focus:outline-none focus:ring-2 focus:ring-pink-300">
+      </div>
+      <button id="ac-refresh" type="button"
+              class="px-3 py-2 rounded bg-gray-100 hover:bg-gray-200">
+        <i class="bi bi-arrow-clockwise mr-1"></i> Refresh
+      </button>
+    </div>
+    <div class="text-sm text-gray-500" id="ac-meta"></div>
+  </div>
+
+  <!-- Table -->
+  <div class="p-4 flex-1 overflow-x-auto overflow-y-auto">
+    <table class="min-w-full border border-gray-200 text-sm">
+      <thead class="bg-gray-50 text-center">
+        <tr id="ac-head-row1">
+          <!-- Row numbers column -->
+          <th class="border px-2 py-2 w-10">#</th>
+
+          <!-- Month headers tagged for JS -->
+          <th class="border px-3 py-2" data-month="January">January</th>
+          <th class="border px-2 py-2 w-16">Bubb</th>
+
+          <th class="border px-3 py-2" data-month="February">February</th>
+          <th class="border px-2 py-2 w-16">Bubb</th>
+
+          <th class="border px-3 py-2" data-month="March">March</th>
+          <th class="border px-2 py-2 w-16">Bubb</th>
+
+          <th class="border px-3 py-2" data-month="April">April</th>
+          <th class="border px-2 py-2 w-16">Bubb</th>
+
+          <th class="border px-3 py-2" data-month="May">May</th>
+          <th class="border px-2 py-2 w-16">Bubb</th>
+
+          <th class="border px-3 py-2" data-month="June">June</th>
+          <th class="border px-2 py-2 w-16">Bubb</th>
+
+          <th class="border px-3 py-2" data-month="July">July</th>
+          <th class="border px-2 py-2 w-16">Bubb</th>
+
+          <th class="border px-3 py-2" data-month="August">August</th>
+          <th class="border px-2 py-2 w-16">Bubb</th>
+
+          <th class="border px-3 py-2" data-month="September">September</th>
+          <th class="border px-2 py-2 w-16">Bubb</th>
+
+          <th class="border px-3 py-2" data-month="October">October</th>
+          <th class="border px-2 py-2 w-16">Bubb</th>
+
+          <th class="border px-3 py-2" data-month="November">November</th>
+          <th class="border px-2 py-2 w-16">Bubb</th>
+
+          <th class="border px-3 py-2" data-month="December">December</th>
+          <th class="border px-2 py-2 w-16">Bubb</th>
+        </tr>
+      </thead>
+      <tbody id="ac-body">
+        <tr id="ac-empty">
+          <!-- 12 months * 2 + 1 row-number column = 25 -->
+          <td class="border px-3 py-4 text-center text-gray-500" colspan="25">
+            Active clients by month will appear here once loaded.
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<style>
+  /* badges under month titles */
+  .ac-badges { display:flex; gap:4px; justify-content:center; margin-top:6px; }
+  .ac-badge  { display:inline-block; min-width:1.5rem; padding:0 6px; border-radius:999px;
+               font-size:12px; line-height:1.25rem; border:1px solid transparent; }
+  .ac-badge-pink   { background:#fce7f3; color:#be185d; border-color:#f9a8d4; }   /* NEW */
+  .ac-badge-red    { background:#fee2e2; color:#b91c1c; border-color:#fecaca; }   /* DROPOFF */
+  .ac-badge-yellow { background:#fef9c3; color:#a16207; border-color:#fde68a; }   /* JOINED */
+
+  /* optional sticky first column (uncomment if you want it sticky) */
+  /*
+  td.ac-sticky, th.ac-sticky {
+    position: sticky; left: 0; z-index: 2; background: #fff;
+  }
+  */
+</style>
+
+<script>
+(() => {
+  const YEAR = 2025;
+  // Use the native endpoint (works without aliases)
+  const ENDPOINT = `/figurella-reports/ibf/frequency?year=${YEAR}`;
+
+  const $body   = document.getElementById('ac-body');
+  const $empty  = document.getElementById('ac-empty');
+  const $meta   = document.getElementById('ac-meta');
+  const $search = document.getElementById('ac-search');
+  const $head1  = document.getElementById('ac-head-row1');
+
+  const LONG = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const ABBR = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const LONG2ABBR = Object.fromEntries(LONG.map((L,i)=>[L,ABBR[i]]));
+
+  let cache = null;
+
+  function escapeHTML(s){
+    return String(s||"").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  }
+
+  // add/update badges beneath month header cells
+  function updateHeaderBadges(countsPerMonth){
+    if (!$head1) return;
+    const monthThs = Array.from($head1.querySelectorAll('th[data-month]'));
+    for (const th of monthThs){
+      const longLabel = th.getAttribute('data-month');     // e.g., "January"
+      const c = countsPerMonth[longLabel] || {pink:0, red:0, yellow:0};
+      th.innerHTML = `
+        <div>${longLabel}</div>
+        <div class="ac-badges">
+          <span class="ac-badge ac-badge-pink"   title="New this year (first appearance)">${c.pink||0}</span>
+          <span class="ac-badge ac-badge-red"    title="Drop off next month">${c.red||0}</span>
+          <span class="ac-badge ac-badge-yellow" title="Joined this month">${c.yellow||0}</span>
+        </div>
+      `;
+    }
+  }
+
+  function render(data, query=""){
+    $body.innerHTML = "";
+
+    // Expecting backend shape:
+    // { ok, months: {"Jan": #, ...}, clients: {"Jan":[{name, sessions}], ...}, from, to }
+    if (!data || !data.clients){ $body.appendChild($empty); updateHeaderBadges({}); return; }
+
+    // Build normalized per-month arrays with {name, bubb, new}
+    // Convert backend month keys (Jan/Feb/…) to LONG names
+    const months = {};
+    const q = (query||"").toLowerCase().trim();
+
+    // Build first-appearance index per client (by year)
+    const firstSeenIdx = {}; // nameLower -> monthIndex (0..11)
+    for (let i=0;i<12;i++){
+      const ab = ABBR[i];
+      const arr = Array.isArray(data.clients[ab]) ? data.clients[ab] : [];
+      for (const it of arr){
+        const nl = (it.name||"").toLowerCase();
+        if (!nl) continue;
+        if (!(nl in firstSeenIdx)) firstSeenIdx[nl] = i;
+      }
+    }
+
+    // Normalize months → LONG keys, add bubb + new, apply search filter
+    let maxLen = 0;
+    for (let i=0;i<12;i++){
+      const long = LONG[i], ab = ABBR[i];
+      const arr = Array.isArray(data.clients[ab]) ? data.clients[ab] : [];
+      const norm = arr.map(x => ({
+        name: x?.name || "",
+        bubb: (x?.sessions ?? x?.bubb ?? ""),
+        new:  ((x?.name||"") && firstSeenIdx[(x.name||"").toLowerCase()] === i)
+      }));
+      const filt = q ? norm.filter(it => String(it.name||"").toLowerCase().includes(q)) : norm;
+      months[long] = filt;
+      if (filt.length > maxLen) maxLen = filt.length;
+    }
+
+    // Sets for prev/next comparisons
+    const sets = {};
+    for (const long of LONG){
+      sets[long] = new Set(months[long].map(it => (it.name||"").toLowerCase()));
+    }
+
+    // First / last months that actually have any data
+    let firstIdxWithData = -1, lastIdxWithData = -1;
+    for (let i=0;i<12;i++){ if (months[LONG[i]].length>0){ firstIdxWithData=i; break; } }
+    for (let i=11;i>=0;i--){ if (months[LONG[i]].length>0){ lastIdxWithData=i; break; } }
+
+    // ---------- color counters under headers ----------
+    const countsPerMonth = {};
+    for (let mi=0; mi<12; mi++){
+      const long = LONG[mi];
+      const prevL = LONG[mi-1];
+      const nextL = LONG[mi+1];
+      let pink=0, red=0, yellow=0;
+
+      for (const item of months[long]){
+        const name = item.name || "";
+        if (!name) continue;
+        const nl = name.toLowerCase();
+        const inPrev = mi>0   && prevL ? sets[prevL].has(nl) : false;
+        const inNext = mi<11  && nextL ? sets[nextL].has(nl) : false;
+
+        // precedence: red → pink → yellow
+        if (mi < lastIdxWithData && !inNext){
+          red++;
+        } else if (item.new){
+          pink++;
+        } else if (mi > firstIdxWithData && !inPrev){
+          yellow++;
+        }
+      }
+      countsPerMonth[long] = {pink, red, yellow};
+    }
+    updateHeaderBadges(countsPerMonth);
+    // --------------------------------------------------
+
+    // TOP totals row (use backend counts directly; map ABBR→LONG)
+    const trTop = document.createElement('tr');
+    trTop.className = 'bg-gray-50';
+    trTop.innerHTML = `<td class="border px-2 py-1 text-center font-semibold text-gray-700">TOT</td>`;
+    for (let mi=0; mi<12; mi++){
+      const long = LONG[mi], ab = ABBR[mi];
+      const total = (data.months && typeof data.months[ab] === 'number')
+        ? data.months[ab]
+        : (months[long]?.length || '');
+      trTop.innerHTML += `
+        <td class="border px-3 py-1 text-center font-semibold text-gray-800">${total || ''}</td>
+        <td class="border px-2 py-1"></td>
+      `;
+    }
+    $body.appendChild(trTop);
+
+    if (maxLen === 0){ return; }
+
+    // data rows
+    for (let row=0; row<maxLen; row++){
+      const tr = document.createElement('tr');
+      tr.innerHTML += `<td class="border px-2 py-1 text-center text-gray-500">${row + 1}</td>`;
+
+      for (let mi=0; mi<12; mi++){
+        const long = LONG[mi];
+        const prevL = LONG[mi-1];
+        const nextL = LONG[mi+1];
+
+        const item = months[long][row] || {name:"", bubb:"", new:false};
+        const name = item.name || "";
+        const bubb = item.bubb ?? "";
+        const nl = name.toLowerCase();
+
+        let nameCls = "";
+        let bubbCls = "";
+
+        // NEW in year (pink)
+        if (item.new){
+          nameCls = 'bg-pink-50 text-pink-700 font-medium';
+          bubbCls = 'bg-pink-50 text-pink-700 font-semibold';
+        }
+
+        // JOINED THIS MONTH (yellow) — if not in previous month
+        if (mi > firstIdxWithData && name && !sets[prevL]?.has(nl)){
+          if (!item.new){
+            nameCls = 'bg-yellow-50 text-yellow-800 font-medium';
+            bubbCls = 'bg-yellow-50 text-yellow-800 font-semibold';
+          }
+        }
+
+        // DROPOFF NEXT MONTH (red)
+        if (mi < lastIdxWithData){
+          const inNext = nextL ? sets[nextL].has(nl) : true;
+          if (name && !inNext){
+            nameCls = 'bg-red-100 text-red-700 font-bold';
+            bubbCls = 'bg-red-100 text-red-700 font-bold';
+          }
+        }
+
+        tr.innerHTML += `
+          <td class="border px-3 py-1 text-left ${nameCls}">${escapeHTML(name)}</td>
+          <td class="border px-2 py-1 text-center w-16 ${bubbCls}">${escapeHTML(bubb)}</td>
+        `;
+      }
+
+      $body.appendChild(tr);
+    }
+  }
+
+  async function fetchAndRender(){
+    try{
+      const res = await fetch(ENDPOINT, {credentials:'same-origin'});
+      const data = await res.json();
+      cache = data;
+
+      // Meta line: show year or from/to
+      if (data.from || data.to) {
+        $meta.textContent = `Range ${data.from || '?'} → ${data.to || '?'}`;
+      } else {
+        $meta.textContent = `Year ${YEAR}`;
+      }
+
+      render(cache, $search?.value);
+    }catch(e){
+      const empty = Object.fromEntries(LONG.map(L => [L, []]));
+      cache = { months: Object.fromEntries(ABBR.map(a => [a, 0])), clients: Object.fromEntries(ABBR.map(a => [a, []])) };
+      $meta.textContent = 'No data';
+      render(cache);
+    }
+  }
+
+  document.getElementById('ac-refresh')?.addEventListener('click', fetchAndRender);
+  $search?.addEventListener('input', () => render(cache, $search.value));
+
+  fetchAndRender();
+})();
+</script>

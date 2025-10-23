@@ -1,0 +1,157 @@
+{% set reward_rows = pdata | selectattr('Field','equalto','Reward / Deal') | list %}
+
+<style>
+  /* --- Table layout --- */
+  #rewards-table {
+    table-layout: fixed;
+    width: 100%;
+    border-collapse: collapse;
+  }
+  #rewards-table th,
+  #rewards-table td {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  #rewards-table tbody tr:nth-child(even) {
+    background-color: rgba(243, 244, 246, 0.55);
+  }
+
+  /* Column sizing: big Reward/Deal, fixed date cols, roomy checkbox col */
+  #rewards-table colgroup col:nth-child(1) { width: 72px; }  /* Used */
+  #rewards-table colgroup col:nth-child(3) { width: 18%; }   /* Date Used */
+  #rewards-table colgroup col:nth-child(4) { width: 18%; }   /* Date Received */
+  #rewards-table td:nth-child(2) { white-space: normal; }    /* Allow wrapping */
+
+  @media (max-width:1024px){
+    #rewards-table colgroup col:nth-child(1){ width: 60px; }
+    #rewards-table colgroup col:nth-child(3),
+    #rewards-table colgroup col:nth-child(4){ width: 24%; }
+  }
+
+  /* --- Sticky action bar (always visible Add button) --- */
+  .rewards-body { position: relative; }
+  .rewards-actions {
+    position: sticky;
+    bottom: 0;
+    z-index: 3;
+    display: flex;
+    gap: .5rem;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 10px 0 calc(8px + env(safe-area-inset-bottom));
+    margin-top: .5rem;
+    background: linear-gradient(
+      to bottom,
+      rgba(250,250,250,0.6) 0%,
+      rgba(245,245,245,0.95) 40%,
+      rgba(240,240,240,1) 100%
+    );
+    backdrop-filter: blur(10px);
+    border-top: 1px solid rgba(0,0,0,0.08);
+  }
+
+  /* --- Add Row button styling --- */
+  .rewards-add-btn {
+    background-color: #cc0066;
+    color: #fff;
+    font-weight: 500;
+    padding: .45rem .9rem;
+    border-radius: .5rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+    transition: background-color .2s ease, transform .1s ease;
+  }
+  .rewards-add-btn:hover {
+    background-color: #b00059;
+    transform: translateY(-1px);
+  }
+</style>
+
+<template id="reward-row-template">
+  <tr>
+    <td class="border px-2 py-1 text-center">
+      <input type="checkbox" name="used[]" class="form-checkbox h-4 w-4 accent-pink-600"/>
+    </td>
+    <td class="border px-2 py-1" contenteditable="true">&nbsp;</td>
+    <td class="border px-2 py-1" contenteditable="true">&nbsp;</td>
+    <td class="border px-2 py-1" contenteditable="true">&nbsp;</td>
+  </tr>
+</template>
+
+<details open class="rounded-lg shadow transition-colors duration-200
+                    bg-[rgba(255,255,255,0.72)] backdrop-blur-[8px]
+                    border border-[rgba(255,255,255,0.45)]
+                    shadow-[0_8px_24px_rgba(0,0,0,0.10),inset_0_1px_0_rgba(255,255,255,0.55)]">
+  <summary class="px-6 py-4 text-lg font-semibold
+                  bg-[rgba(255,255,255,0.85)] backdrop-blur-[6px]
+                  border-b border-[rgba(255,255,255,0.55)]">
+    Rewards / Deals
+  </summary>
+
+  <div class="px-6 border-t border-gray-200 rewards-body">
+    <table id="rewards-table" class="text-sm">
+      <colgroup>
+        <col />  <!-- Used -->
+        <col />  <!-- Reward / Deal -->
+        <col />  <!-- Date Used -->
+        <col />  <!-- Date Received -->
+      </colgroup>
+      <thead class="bg-gray-100 font-semibold text-gray-700">
+        <tr>
+          <th class="border px-2 py-1 text-center">Used</th>
+          <th class="border px-2 py-1">Reward / Deal</th>
+          <th class="border px-2 py-1">Date Used</th>
+          <th class="border px-2 py-1">Date Received</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if reward_rows %}
+          {% for row in reward_rows %}
+            <tr class="{% if loop.index0 is even %}bg-gray-50{% endif %}">
+              <td class="border px-2 py-1 text-center">
+                <input type="checkbox" name="used[]" class="form-checkbox h-4 w-4 accent-pink-600"
+                       {% if row.get('Used') and row.get('Used') != 'No' %}checked{% endif %}/>
+              </td>
+              <td class="border px-2 py-1" contenteditable="true">{{ row.get('RewardDeal','') }}</td>
+              <td class="border px-2 py-1" contenteditable="true">{{ row.get('DateUsed','') }}</td>
+              <td class="border px-2 py-1" contenteditable="true">{{ row.get('RewardNotes','') }}</td>
+            </tr>
+          {% endfor %}
+        {% else %}
+          {% for i in range(4) %}
+            <tr class="{% if i is even %}bg-gray-50{% endif %}">
+              <td class="border px-2 py-1 text-center">
+                <input type="checkbox" name="used[]" class="form-checkbox h-4 w-4 accent-pink-600"/>
+              </td>
+              <td class="border px-2 py-1" contenteditable="true">&nbsp;</td>
+              <td class="border px-2 py-1" contenteditable="true">&nbsp;</td>
+              <td class="border px-2 py-1" contenteditable="true">&nbsp;</td>
+            </tr>
+          {% endfor %}
+        {% endif %}
+      </tbody>
+    </table>
+
+    <!-- Sticky action bar -->
+    <div class="rewards-actions">
+      <button type="button"
+              class="rewards-add-btn"
+              onclick="(function(){
+                var table = document.getElementById('rewards-table');
+                if(!table) return;
+                var tbody = table.tBodies[0] || table.appendChild(document.createElement('tbody'));
+                var tmpl  = document.getElementById('reward-row-template');
+                var tr    = tmpl?.content?.firstElementChild?.cloneNode(true) || document.createElement('tr');
+                if(!tmpl){
+                  tr.innerHTML = '<td class=&quot;border px-2 py-1 text-center&quot;><input type=&quot;checkbox&quot; class=&quot;form-checkbox h-4 w-4 accent-pink-600&quot;/></td><td class=&quot;border px-2 py-1&quot; contenteditable=&quot;true&quot;&gt;&nbsp;</td><td class=&quot;border px-2 py-1&quot; contenteditable=&quot;true&quot;&gt;&nbsp;</td><td class=&quot;border px-2 py-1&quot; contenteditable=&quot;true&quot;&gt;&nbsp;</td>';
+                }
+                tbody.appendChild(tr);
+                Array.from(tbody.rows).forEach(function(r,i){ r.classList.toggle('bg-gray-50', (i % 2) === 1); });
+                tr.querySelector('td[contenteditable]')?.focus();
+                tr.scrollIntoView({ block:'nearest' });
+              })()">
+        + Add Row
+      </button>
+    </div>
+  </div>
+</details>

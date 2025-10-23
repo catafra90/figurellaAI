@@ -1,0 +1,8 @@
+/* quick visual feedback when rows are filled */
+@keyframes prefillFlash {
+  0%   { background-color: rgba(204,0,102,0.18); }
+  100% { background-color: transparent; }
+}
+.prefill-pulse > td {
+  animation: prefillFlash 0.8s ease-out 1;
+}

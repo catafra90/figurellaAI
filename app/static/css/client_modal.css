@@ -1,0 +1,226 @@
+/* ===== Client Modal (anchored; layout-placed by JS) ======================= */
+.client-modal{
+  position: fixed;
+  /* Keep DOM origin at (0,0); move via CSS variables only */
+  left: 0 !important;
+  top:  0 !important;
+
+  /* Pixel offsets controlled by JS */
+  --x: 0px; --y: 0px;
+
+  /* GPU-accelerated translate (avoids iPad jitter) */
+  transform: translate3d(var(--x), var(--y), 0) !important;
+  -webkit-transform: translate3d(var(--x), var(--y), 0) !important;
+
+  /* Hint the compositor: we adjust all three during interaction */
+  will-change: transform, width, height;
+
+  /* Large defaults (positioning.js can still set inline size) */
+  width: min(1280px, 97vw);
+  height: 86vh;
+  max-height: 96vh;
+
+  /* Panel look */
+  background: #fff;
+  border: none;
+  box-shadow: none;
+  border-radius: 10px;
+
+  /* Above app chrome; layer is 4000 */
+  z-index: 4001;
+  display: none;                       /* .show/.open => flex */
+  flex-direction: column;
+  overflow: hidden;
+
+  pointer-events: auto;                /* layer has pointer-events:none */
+  box-sizing: border-box;
+
+  /* Contain layout & paint to reduce jank during resize/drag */
+  contain: layout paint;
+
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transform-origin: 0 0;
+
+  /* iOS safe areas */
+  margin-left:  max(0px, env(safe-area-inset-left, 0px));
+  margin-right: max(0px, env(safe-area-inset-right, 0px));
+
+  /* Prevent page scroll stealing during drag/resize */
+  touch-action: none;
+  overscroll-behavior: contain;
+
+  max-width: calc(100vw - 16px);
+}
+.client-modal.show, .client-modal.open { display:flex; }
+.client-modal:focus { outline: none; }
+
+/* Smooth opening growth — only when JS adds .opening briefly */
+.client-modal.opening { transition: height .22s ease, width .22s ease; }
+@media (prefers-reduced-motion: reduce){ .client-modal.opening { transition: none !important; } }
+
+/* Optional: a tiny ease on release (JS may toggle .ease-release for ~120ms) */
+.client-modal.ease-release {
+  transition: transform .12s ease-out, width .12s ease-out, height .12s ease-out;
+}
+@media (prefers-reduced-motion: reduce){ .client-modal.ease-release { transition: none !important; } }
+
+/* Disable animation while interacting (prevents jitter) */
+.client-modal.dragging,
+.client-modal.resizing { transition: none !important; }
+
+/* ===== Size variants ===== */
+.client-modal.size-xl{
+  width: min(1320px, 98vw);
+  height: 90vh;
+  max-height: 98vh;
+}
+.client-modal.size-full{
+  width: 98vw;
+  height: 96vh;
+  max-height: 96vh;
+  border-radius: 10px;
+}
+.client-modal.size-fullscreen{
+  width: 100vw !important;
+  height: 100vh !important;
+  max-width: none; max-height: none;
+  border-radius: 0;
+}
+.client-modal.size-full-under-header{
+  width: 100vw !important;
+  height: calc(var(--vh, 1vh) * 100 - var(--header-h, 64px));
+  max-height: none;
+  border-radius: 0;
+}
+
+/* ===== Header ===== */
+.client-modal .modal-header{
+  background: linear-gradient(90deg, #CC0066 0%, #AA0055 100%);
+  color:#fff;
+  display:flex; align-items:center; gap:.5rem;
+  padding:.5rem .9rem; height:56px;
+  cursor:move; user-select:none; -webkit-user-select:none;
+  /* Important on iPad: prevent scroll/zoom gestures from stealing drag */
+  touch-action:none;
+  -webkit-touch-callout: none;  /* avoid long-press callout on iOS */
+  -webkit-tap-highlight-color: transparent;
+  border-bottom:1px solid rgba(255,255,255,.25);
+  flex:0 0 56px;
+}
+.client-modal .modal-title{
+  font-weight:700; font-size:1.05rem; margin:0;
+}
+.client-modal .modal-header .modal-close{
+  margin-left:auto; display:inline-flex; align-items:center; justify-content:center;
+  width:32px; height:32px; border-radius:8px;
+  background: rgba(255,255,255,.18); color:#fff; font-size:20px; line-height:1;
+}
+.client-modal .modal-header .modal-close:hover{ background: rgba(255,255,255,.28); }
+@media (min-width: 769px){ .client-modal .modal-header .modal-close{ display:none; } }
+
+/* ===== Body (single scroller) ===== */
+.client-modal .modal-body{
+  flex:1 1 auto; display:flex; flex-direction:column; min-height:0;
+  padding:.85rem; overflow:auto; -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain; color:#0f172a;
+  scrollbar-gutter: stable both-edges;
+  contain: layout paint; /* isolate heavy tables while resizing */
+}
+.client-modal .modal-body.no-outer-scroll{ overflow:hidden; }
+.client-modal .modal-body > #client-chart-root,
+.client-modal .modal-body > .client-card{
+  flex:1 1 auto; min-height:0; display:flex; flex-direction:column;
+}
+
+/* ===== Footer ===== */
+.client-modal .modal-footer{
+  padding:.6rem .8rem; background:#fff; border-top:1px solid #eef2f7;
+  display:flex; justify-content:flex-end; gap:.5rem; flex:0 0 auto;
+  padding-bottom: calc(.6rem + env(safe-area-inset-bottom, 0px));
+}
+.client-modal .modal-footer .btn{
+  border:0; border-radius:6px; padding:.45rem .95rem; font-size:.95rem; font-weight:600; cursor:pointer;
+}
+.client-modal .modal-footer .btn.btn-dark{ background:#111827; color:#fff; }
+.client-modal .modal-footer .btn.btn-dark:hover{ background:#000; }
+
+/* ===== Resize handle ===== */
+.client-modal .resize-handle{
+  position:absolute; right:4px; bottom:4px;
+  /* Larger touch target on iPad */
+  width:28px; height:28px;
+  cursor:nwse-resize; opacity:.9;
+  touch-action:none;                /* prevent two-finger scroll during resize */
+  -webkit-user-select:none; user-select:none;
+}
+.client-modal .resize-handle::after{
+  content:""; position:absolute; right:0; bottom:0; width:100%; height:100%;
+  border-right:2px solid #9ca3af; border-bottom:2px solid #9ca3af; border-radius:2px;
+}
+
+/* ===== Tables/cards in tabs ===== */
+.client-modal .chart-tab-body{
+  flex:1 1 auto; min-height:0; display:flex; flex-direction:column; gap:.75rem; min-width:0;
+}
+.client-modal .chart-table-card{
+  flex:1 1 auto; min-height:0; display:flex; flex-direction:column; min-width:0;
+  background:#fff; border-radius:12px; border:1px solid #eef2f7;
+  box-shadow:0 8px 24px rgba(15,23,42,.06);
+  contain: layout paint; /* isolate while changing size */
+}
+.client-modal .chart-table-scroll{
+  flex:1 1 auto; min-height:0; overflow:auto; -webkit-overflow-scrolling:touch;
+  overscroll-behavior: contain;
+}
+.client-modal .chart-table-scroll table{ width:100%; max-width:100%; table-layout:auto; }
+.client-modal .chart-table-card .sticky-header th{
+  position:sticky; top:0; background:rgba(249,250,251,0.95); z-index:5;
+  background-clip: padding-box;
+}
+
+/* ===== Interaction performance tweaks ===== */
+/* Lighter visuals during interaction to reduce compositing cost */
+.client-modal.dragging,
+.client-modal.resizing{
+  box-shadow: 0 4px 12px rgba(0,0,0,.08) !important;
+}
+/* Avoid inner hit-testing during gestures (prevents scroll jank) */
+.client-modal.dragging .chart-table-scroll,
+.client-modal.resizing .chart-table-scroll{
+  pointer-events: none;
+}
+
+/* ===== Short viewports ===== */
+@media (max-height: 700px){ .client-modal{ max-height: 90vh; } }
+@media (max-height: 520px){ .client-modal{ max-height: 95vh; } }
+
+/* ===== Phones ONLY (< 820px) ===== */
+@media (max-width: 819px){
+  .client-modal{
+    width: 96vw;
+    height: auto;
+    max-height: 90vh;
+    border-radius: 10px;
+  }
+  .client-modal .modal-header{ height:52px; flex-basis:52px; }
+  .client-modal .modal-title{ font-size:1rem; }
+}
+
+/* ===== Drag/resize feedback + background lock ===== */
+.client-modal.dragging{ cursor: grabbing; -webkit-user-select: none; user-select: none; }
+.client-modal.resizing{ cursor: nwse-resize; }
+body.noscroll{ overflow: hidden !important; }
+
+/* ===== Overlay layer (must sit over the sidebar) ===== */
+#floating-modals{
+  position: fixed;
+  inset: 0;
+  z-index: 4000 !important;
+  pointer-events: none;
+}
+
+/* Disable sidebar hitbox during drag/resize so drag doesn't die */
+body.drag-active #client-sidebar,
+body.drag-active .sidebar{ pointer-events: none !important; }
+body.drag-active{ user-select:none; cursor:grabbing; }

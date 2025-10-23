@@ -1,0 +1,450 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <h1 class="text-2xl font-semibold text-white">Profit &amp; Loss — Monthly</h1>
+      <p class="text-white/80 text-sm">
+        Click any row to expand and add detailed entries per month (amount + comment). Subtotals and totals update automatically.
+      </p>
+    </div>
+    <div class="flex gap-2">
+      <button id="add-month" class="px-3 py-2 rounded-lg bg-figurella text-white font-semibold shadow hover:opacity-95">
+        <i class="bi bi-plus-lg mr-1"></i> Add Month
+      </button>
+      <button id="save-pl" class="px-3 py-2 rounded-lg bg-white/90 text-gray-900 font-semibold shadow hover:bg-white">
+        <i class="bi bi-save2 mr-1"></i> Save
+      </button>
+      <button id="reset-pl" class="px-3 py-2 rounded-lg bg-white/20 text-white font-semibold border border-white/25 hover:bg-white/10">
+        <i class="bi bi-arrow-counterclockwise mr-1"></i> Reset
+      </button>
+    </div>
+  </div>
+
+  <div class="glass p-0 overflow-x-auto">
+    <table id="pl-table" class="min-w-[980px] w-full text-sm text-gray-900">
+      <thead class="bg-white/80 sticky top-0 z-10">
+        <tr class="border-b hairline">
+          <th class="py-3 px-3 text-left w-64">Profit &amp; Loss Statement</th>
+          <!-- month headers injected by JS -->
+        </tr>
+      </thead>
+      <tbody id="pl-body">
+        <!-- ===== Revenue Section ===== -->
+        <tr class="bg-white/70">
+          <th class="py-2 px-3 text-figurella font-semibold">Revenue</th>
+        </tr>
+
+        {% for acct in ['Sales Revenue','Service Revenue','Marchandizing'] %}
+        <tr class="group hover:bg-white/70 cursor-pointer" data-row="{{ acct|replace(' ','_') }}">
+          <th class="py-2 px-3 font-medium flex items-center gap-2">
+            <i class="bi bi-chevron-right text-gray-500 transition-transform group-[.open]:rotate-90"></i>
+            {{ acct }}
+          </th>
+        </tr>
+        <tr class="hidden" data-detail="{{ acct|replace(' ','_') }}">
+          <td class="bg-white/70 py-2 px-3 text-gray-700 text-xs">Details (Amount &amp; Comment)</td>
+          <!-- detail month cells injected -->
+        </tr>
+        {% endfor %}
+
+        <tr class="border-t hairline bg-white/80" data-total="revenue_total">
+          <th class="py-2 px-3 font-semibold">Total Revenue</th>
+        </tr>
+
+        <!-- ===== Expenses Section ===== -->
+        <tr>
+          <th class="py-3 px-3 text-figurella font-semibold">Expenses</th>
+        </tr>
+
+        {% set expenses = [
+          'Advertising & Marketing','Delivery/Freight Expense','Depreciation','Insurance',
+          'Interest','Office Supplies','Rent/Less','Maintenance and Repairs','Travel',
+          'Wages','Utilities/Internet Expenses','Other Expenses'
+        ] %}
+
+        {% for acct in expenses %}
+        <tr class="group hover:bg-white/70 cursor-pointer" data-row="{{ acct|replace(' ','_')|replace('/','_')|replace('&','and') }}">
+          <th class="py-2 px-3 font-medium flex items-center gap-2">
+            <i class="bi bi-chevron-right text-gray-500 transition-transform group-[.open]:rotate-90"></i>
+            {{ acct }}
+          </th>
+        </tr>
+        <tr class="hidden" data-detail="{{ acct|replace(' ','_')|replace('/','_')|replace('&','and') }}">
+          <td class="bg-white/70 py-2 px-3 text-gray-700 text-xs">Details (Amount &amp; Comment)</td>
+          <!-- detail month cells injected -->
+        </tr>
+        {% endfor %}
+
+        <tr class="border-t hairline bg-white/80" data-total="expense_total">
+          <th class="py-2 px-3 font-semibold">Total Expenses</th>
+        </tr>
+
+        <tr class="bg-white/70" data-total="net_profit">
+          <th class="py-2 px-3 font-semibold">Net Profit (Loss)</th>
+        </tr>
+
+        <tr data-row="income_before_tax" class="group hover:bg-white/70 cursor-pointer">
+          <th class="py-2 px-3 font-medium flex items-center gap-2">
+            <i class="bi bi-chevron-right text-gray-500 transition-transform group-[.open]:rotate-90"></i>
+            Income before tax
+          </th>
+        </tr>
+        <tr class="hidden" data-detail="income_before_tax">
+          <td class="bg-white/70 py-2 px-3 text-gray-700 text-xs">Override net profit before tax (optional)</td>
+        </tr>
+
+        <tr data-row="tax" class="group hover:bg-white/70 cursor-pointer">
+          <th class="py-2 px-3 font-medium flex items-center gap-2">
+            <i class="bi bi-chevron-right text-gray-500 transition-transform group-[.open]:rotate-90"></i>
+            Tax
+          </th>
+        </tr>
+        <tr class="hidden" data-detail="tax">
+          <td class="bg-white/70 py-2 px-3 text-gray-700 text-xs">Enter tax per month</td>
+        </tr>
+
+        <tr class="border-t hairline bg-white/90" data-total="profit_after_tax">
+          <th class="py-2 px-3 font-extrabold">Profit after tax</th>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p class="text-white/75 text-xs mt-3">
+    Tip: Add multiple lines per account and month. We’ll sum them and keep your comments.
+  </p>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+(function(){
+  /* Make the page scrollable even though base sets overflow-hidden on <main> */
+  (function(){
+    const m = document.querySelector('main');
+    if (m) { m.classList.remove('overflow-hidden'); m.classList.add('overflow-auto'); }
+  })();
+
+  const KEY = 'pl_monthly_items_v1';
+
+  const table = document.getElementById('pl-table');
+  const thead = table.querySelector('thead tr');
+  const body  = document.getElementById('pl-body');
+
+  const addBtn   = document.getElementById('add-month');
+  const saveBtn  = document.getElementById('save-pl');
+  const resetBtn = document.getElementById('reset-pl');
+
+  // helpers
+  const fmtC = (n)=> '$' + (Math.round(n*100)/100).toLocaleString();
+  const num  = (v)=> { const n = parseFloat(v); return isFinite(n) ? n : 0; };
+
+  function defaultMonths() {
+    const now = new Date();
+    const ym = (d) => d.toISOString().slice(0,7);
+    const prev = new Date(now.getFullYear(), now.getMonth()-1, 1);
+    return [ym(prev), ym(now)];
+  }
+
+  function rowKeys(){ return [...body.querySelectorAll('tr[data-row]')].map(tr => tr.dataset.row); }
+
+  // STORAGE SHAPE:
+  // { months: ["2025-08","2025-09"], items: { rowKey: { monthId: [ {amount: 120, note:""}, ... ] } }, overrides:{ ibt:{monthId: value}, tax:{monthId:value}} }
+  let DATA = { months: [], items: {}, overrides: { ibt:{}, tax:{} } };
+
+  function ensureColumn(monthId, labelText) {
+    // header
+    let th = thead.querySelector(`th[data-month="${monthId}"]`);
+    if (!th) {
+      th = document.createElement('th');
+      th.dataset.month = monthId;
+      th.className = 'py-3 px-3 text-right whitespace-nowrap';
+      th.innerHTML = `
+        <div class="flex items-center justify-end gap-2">
+          <span class="font-semibold">${labelText || monthId}</span>
+          <button class="text-gray-500 hover:text-red-600" title="Remove month" data-remove-month="${monthId}">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>`;
+      thead.appendChild(th);
+    }
+
+    // main rows cells (show total only; initialize as $0)
+    [...body.querySelectorAll('tr[data-row]')].forEach(tr => {
+      const rowKey = tr.dataset.row;
+      let td = tr.querySelector(`td[data-month="${monthId}"]`);
+      if (!td) {
+        td = document.createElement('td');
+        td.dataset.month = monthId;
+        td.className = 'py-2 px-2 text-right';
+        td.innerHTML = `<span data-total="${rowKey}:${monthId}" class="font-medium min-w-[72px] inline-block">$0</span>`;
+        tr.appendChild(td);
+      }
+    });
+
+    // detail rows cells (item lists + subtotal)
+    [...body.querySelectorAll('tr[data-detail]')].forEach(tr => {
+      const drow = tr.dataset.detail;
+      let td = tr.querySelector(`td[data-month="${monthId}"]`);
+      if (!td) {
+        td = document.createElement('td');
+        td.dataset.month = monthId;
+        td.className = 'bg-white/70 py-2 px-2 align-top';
+        td.innerHTML = `
+          <div class="space-y-1" data-list="${drow}:${monthId}"></div>
+          <div class="mt-1 flex items-center justify-between">
+            <button class="text-xs px-2 py-1 rounded bg-white border border-gray-300 hover:bg-gray-50"
+                    data-add="${drow}:${monthId}"><i class="bi bi-plus-lg"></i> Add entry</button>
+            <div class="text-xs text-gray-600" data-subtotal="${drow}:${monthId}">Subtotal: $0</div>
+          </div>`;
+        tr.appendChild(td);
+      }
+    });
+
+    // totals rows cells
+    [...body.querySelectorAll('tr[data-total]')].forEach(tr => {
+      let td = tr.querySelector(`td[data-month="${monthId}"]`);
+      if (!td) {
+        td = document.createElement('td');
+        td.dataset.month = monthId;
+        td.className = 'py-2 px-3 text-right font-semibold';
+        td.textContent = '$0';
+        tr.appendChild(td);
+      }
+    });
+  }
+
+  function addMonthColumn() {
+    const id = prompt('Enter month (YYYY-MM):', new Date().toISOString().slice(0,7));
+    if (!id || !/^\d{4}-\d{2}$/.test(id)) return;
+    if (!DATA.months.includes(id)) DATA.months.push(id);
+    ensureColumn(id, id);
+    // after adding a month, recompute all visible totals
+    renderAllItemTotals();
+    recalcSectionTotals();
+    save();
+  }
+
+  function getItems(rowKey, monthId){
+    if (!DATA.items[rowKey]) DATA.items[rowKey] = {};
+    if (!Array.isArray(DATA.items[rowKey][monthId])) DATA.items[rowKey][monthId] = [];
+    return DATA.items[rowKey][monthId];
+  }
+
+  function addItem(rowKey, monthId, amount = '', note = ''){
+    const list = getItems(rowKey, monthId);
+    list.push({ amount: amount === '' ? '' : +amount, note: note || '' });
+  }
+
+  function removeItem(rowKey, monthId, idx){
+    const list = getItems(rowKey, monthId);
+    list.splice(idx, 1);
+  }
+
+  function writeSubtotal(rowKey, monthId){
+    const sub = body.querySelector(`[data-subtotal="${rowKey}:${monthId}"]`);
+    if (!sub) return;
+    const val = sumRowMonth(rowKey, monthId) || 0;
+    sub.textContent = 'Subtotal: ' + fmtC(val);
+  }
+
+  // Renders only the list inside one cell (doesn't touch other inputs)
+  function renderListCell(rowKey, monthId){
+    const listEl = body.querySelector(`[data-list="${rowKey}:${monthId}"]`);
+    if (!listEl) return;
+
+    const list = getItems(rowKey, monthId);
+    listEl.innerHTML = '';
+
+    list.forEach((it, idx) => {
+      const row = document.createElement('div');
+      row.className = 'flex items-center gap-2';
+      row.innerHTML = `
+        <input inputmode="decimal" class="w-24 text-right border rounded-md px-2 py-1"
+               value="${it.amount === '' ? '' : it.amount}">
+        <input class="flex-1 border rounded-md px-2 py-1" placeholder="Comment" value="${it.note || ''}">
+        <button class="text-red-600 hover:text-red-800" title="Remove"><i class="bi bi-x-lg"></i></button>`;
+
+      const [amt, note, del] = row.children;
+
+      // update model + cell totals; do not re-render on each keypress
+      amt.addEventListener('input', ()=>{
+        it.amount = amt.value === '' ? '' : num(amt.value);
+        updateItemTotals(rowKey, monthId);
+      });
+      note.addEventListener('input', ()=>{ it.note = note.value; save(); });
+      del.addEventListener('click', ()=>{
+        removeItem(rowKey, monthId, idx);
+        renderListCell(rowKey, monthId);
+        updateItemTotals(rowKey, monthId);
+      });
+
+      listEl.appendChild(row);
+    });
+
+    // write subtotal after rendering list
+    writeSubtotal(rowKey, monthId);
+  }
+
+  function sumRowMonth(rowKey, monthId){
+    if (rowKey === 'income_before_tax') {
+      const v = DATA.overrides.ibt?.[monthId];
+      return (v === undefined || v === null || v === '') ? null : num(v);
+    }
+    if (rowKey === 'tax') {
+      const v = DATA.overrides.tax?.[monthId];
+      return (v === undefined || v === null || v === '') ? 0 : num(v);
+    }
+    return getItems(rowKey, monthId).reduce((a,b)=> a + (b.amount === '' ? 0 : num(b.amount)), 0);
+  }
+
+  /* --------- Per-item totals in the right cells --------- */
+
+  function setRightCellTotal(rowKey, monthId, value){
+    const span = body.querySelector(`[data-total="${rowKey}:${monthId}"]`);
+    if (span) span.textContent = fmtC(num(value || 0));
+  }
+
+  function renderAllItemTotals(){
+    DATA.months.forEach(m => {
+      rowKeys().forEach(k => {
+        if (k === 'income_before_tax' || k === 'tax') return;
+        setRightCellTotal(k, m, sumRowMonth(k, m) || 0);
+      });
+    });
+  }
+
+  function updateItemTotals(rowKey, monthId){
+    // update right cell + subtotal + section totals (revenue/expenses/etc.)
+    setRightCellTotal(rowKey, monthId, sumRowMonth(rowKey, monthId) || 0);
+    writeSubtotal(rowKey, monthId);
+    recalcSectionTotals();
+    save();
+  }
+
+  /* --------- Section totals (revenue, expenses, net, profit after tax) --------- */
+
+  function recalcSectionTotals(){
+    const months = DATA.months;
+    months.forEach(m => {
+      // revenue total
+      let rev = 0;
+      ['Sales_Revenue','Service_Revenue','Marchandizing']
+        .forEach(key => { rev += num(sumRowMonth(key, m) || 0); });
+      body.querySelector(`tr[data-total="revenue_total"] td[data-month="${m}"]`).textContent = fmtC(rev);
+
+      // expenses total
+      let exp = 0;
+      [
+        'Advertising_and_Marketing','Delivery_Freight_Expense','Depreciation','Insurance',
+        'Interest','Office_Supplies','Rent_Less','Maintenance_and_Repairs','Travel',
+        'Wages','Utilities_Internet_Expenses','Other_Expenses'
+      ].forEach(key => { exp += num(sumRowMonth(key, m) || 0); });
+      body.querySelector(`tr[data-total="expense_total"] td[data-month="${m}"]`).textContent = fmtC(exp);
+
+      const net = rev - exp;
+      body.querySelector(`tr[data-total="net_profit"] td[data-month="${m}"]`).textContent = fmtC(net);
+
+      // income before tax default = net (unless overridden)
+      let ibt = sumRowMonth('income_before_tax', m);
+      if (ibt === null) ibt = net;
+      setRightCellTotal('income_before_tax', m, ibt);
+
+      // tax override (editable in detail)
+      const taxVal = sumRowMonth('tax', m);
+      setRightCellTotal('tax', m, taxVal);
+
+      // profit after tax
+      const after = ibt - taxVal;
+      body.querySelector(`tr[data-total="profit_after_tax"] td[data-month="${m}"]`).textContent = fmtC(after);
+    });
+  }
+
+  /* ---------- Build / Load / Events ---------- */
+
+  function ensureMonths(months){
+    months.forEach(m => ensureColumn(m, m));
+  }
+
+  function save(){ localStorage.setItem(KEY, JSON.stringify(DATA)); }
+
+  function load(){
+    let saved = null;
+    try { saved = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch(e){}
+    DATA = saved && saved.months ? saved : { months: defaultMonths(), items:{}, overrides:{ibt:{}, tax:{}} };
+    ensureMonths(DATA.months);
+
+    // build lists once
+    DATA.months.forEach(m => rowKeys().forEach(k => renderListCell(k, m)));
+
+    // then compute right-side per-item totals + section totals
+    renderAllItemTotals();
+    recalcSectionTotals();
+    save();
+  }
+
+  // Expand/collapse behavior (left chevron only)
+  body.addEventListener('click', (e)=>{
+    const tr = e.target.closest('tr[data-row]');
+    if (!tr) return;
+    if (e.target.closest('td')) return; // ignore clicks on right totals
+    const key = tr.dataset.row;
+    const detail = body.querySelector(`tr[data-detail="${key}"]`);
+    if (!detail) return;
+    const isHidden = detail.classList.contains('hidden');
+    detail.classList.toggle('hidden', !isHidden);
+    tr.classList.toggle('open', isHidden);
+  });
+
+  // Add entry (adds to detail list only; keeps focus)
+  table.addEventListener('click', (e)=>{
+    const add = e.target.closest('[data-add]');
+    if (!add) return;
+    const [rowKey, monthId] = add.dataset.add.split(':');
+    addItem(rowKey, monthId, '', '');
+    renderListCell(rowKey, monthId);      // render just this list
+    updateItemTotals(rowKey, monthId);    // update right cell + totals
+    // focus the new amount input
+    const listEl = body.querySelector(`[data-list="${rowKey}:${monthId}"]`);
+    listEl?.querySelector('input[inputmode="decimal"]:last-of-type')?.focus();
+  });
+
+  // Remove month
+  thead.addEventListener('click', (e)=>{
+    const btn = e.target.closest('[data-remove-month]');
+    if (!btn) return;
+    const monthId = btn.dataset.removeMonth;
+    if (!confirm(`Remove month ${monthId}?`)) return;
+    thead.querySelector(`th[data-month="${monthId}"]`)?.remove();
+    [...body.querySelectorAll(`td[data-month="${monthId}"]`)].forEach(td => td.remove());
+    Object.keys(DATA.items).forEach(k => { if (DATA.items[k]) delete DATA.items[k][monthId]; });
+    if (DATA.overrides.ibt) delete DATA.overrides.ibt[monthId];
+    if (DATA.overrides.tax) delete DATA.overrides.tax[monthId];
+    DATA.months = DATA.months.filter(m => m !== monthId);
+    renderAllItemTotals();
+    recalcSectionTotals();
+    save();
+  });
+
+  addBtn.addEventListener('click', addMonthColumn);
+  saveBtn.addEventListener('click', save);
+  resetBtn.addEventListener('click', ()=>{
+    if (!confirm('Clear all P&L data for this browser?')) return;
+    localStorage.removeItem(KEY);
+    // clean dynamic cells
+    [...thead.querySelectorAll('th[data-month]')].forEach(th => th.remove());
+    [...body.querySelectorAll('tr')].forEach(tr => {
+      [...tr.querySelectorAll('td[data-month]')].forEach(td => td.remove());
+    });
+    load();
+  });
+
+  // init
+  load();
+})();
+</script>
+{% endblock %}

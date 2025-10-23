@@ -1,0 +1,12 @@
+<style>
+  @media (max-width:1024px){
+    .goals-row { flex-wrap: wrap; gap: .5rem .75rem; }
+    .goals-row .label { width: 100% !important; }
+    .goals-row .field { width: 100% !important; min-height: 44px; }
+  }
+</style>
+
+<div class="flex items-center space-x-4 mt-2 goals-row">
+  <span class="label font-medium w-1/4 min-w-[160px]">Focus Body Areas:</span>
+  <textarea name="goals" class="field w-80 h-16 resize-none">{{ goals }}</textarea>
+</div>

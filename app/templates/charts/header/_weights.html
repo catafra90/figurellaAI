@@ -1,0 +1,27 @@
+<style>
+  @media (max-width:1024px){
+    .weights-row { flex-wrap: wrap; gap: .5rem .75rem; }
+    .weights-row .label { width: 100% !important; }
+    .weights-row .field { width: 100% !important; min-height: 44px; }
+  }
+</style>
+
+<div class="space-y-4">
+  <div class="flex items-center space-x-4 weights-row">
+    <span class="label font-medium w-1/4 min-w-[160px]">Initial Weight</span>
+    <input type="date"  name="init_date"    value="{{ init_date }}"   class="field w-48"/>
+    <input type="text"  name="init_weight"  value="{{ init_weight }}" class="field w-32" placeholder="Weight"/>
+  </div>
+
+  <div class="flex items-center space-x-4 weights-row">
+    <span class="label font-medium w-1/4 min-w-[160px]">Lowest Weight</span>
+    <input type="date"  name="lowest_date"   value="{{ lowest_date }}"   class="field w-48"/>
+    <input type="text"  name="lowest_weight" value="{{ lowest_weight }}" class="field w-32" placeholder="Weight"/>
+  </div>
+
+  <div class="flex items-center space-x-4 weights-row">
+    <span class="label font-medium w-1/4 min-w-[160px]">Target Weight</span>
+    <input type="date"  name="target_date"   value="{{ target_date }}"   class="field w-48"/>
+    <input type="text"  name="target_weight" value="{{ target_weight }}" class="field w-32" placeholder="Weight"/>
+  </div>
+</div>

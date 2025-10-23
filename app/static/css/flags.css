@@ -1,0 +1,50 @@
+/* ===== Flag ON-state colors (forced via data-flag attribute) ===== */
+.flag-group[data-flag="nutrition"]  input:checked + .flag-btn {
+  background-color:#16a34a; /* green-600 */
+  border-color:#15803d;     /* green-700 */
+  color:#fff;
+}
+.flag-group[data-flag="focus"]      input:checked + .flag-btn {
+  background-color:#dc2626; /* red-600 */
+  border-color:#b91c1c;     /* red-700 */
+  color:#fff;
+}
+/* Goal must be GREEN when checked */
+.flag-group[data-flag="goal"]       input:checked + .flag-btn {
+  background-color:#16a34a; /* green-600 */
+  border-color:#15803d;     /* green-700 */
+  color:#fff;
+}
+
+/* (Optional) nicer focus ring for keyboard users */
+.flag-group .flag-btn:focus-visible {
+  outline: 2px solid rgba(204,0,102,.35);
+  outline-offset: 2px;
+  border-radius: 9999px;
+}
+
+/* ===== Pulse animations (optional visual feedback) ===== */
+@keyframes pulseGreen {
+  0%   { box-shadow:0 0 0 0 rgba(34,197,94,.6); }
+  70%  { box-shadow:0 0 0 12px rgba(34,197,94,0); }
+  100% { box-shadow:0 0 0 0 rgba(34,197,94,0); }
+}
+@keyframes pulseRed {
+  0%   { box-shadow:0 0 0 0 rgba(239,68,68,.6); }
+  70%  { box-shadow:0 0 0 12px rgba(239,68,68,0); }
+  100% { box-shadow:0 0 0 0 rgba(239,68,68,0); }
+}
+@keyframes pulsePink {
+  0%   { box-shadow:0 0 0 0 rgba(236,72,153,.6); }
+  70%  { box-shadow:0 0 0 12px rgba(236,72,153,0); }
+  100% { box-shadow:0 0 0 0 rgba(236,72,153,0); }
+}
+
+.pulse-green { animation: pulseGreen .8s ease-out; }
+.pulse-red   { animation: pulseRed   .8s ease-out; }
+.pulse-pink  { animation: pulsePink  .8s ease-out; }
+
+/* Respect user motion preference */
+@media (prefers-reduced-motion: reduce){
+  .pulse-green, .pulse-red, .pulse-pink { animation: none !important; }
+}

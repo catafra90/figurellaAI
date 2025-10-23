@@ -1,0 +1,66 @@
+{# app/templates/figurella_reports/ibf_wide.html #}
+{% extends "base.html" %}
+{% block content %}
+<div class="h-screen flex flex-col bg-gray-50">
+  <!-- Header -->
+  <div class="flex-shrink-0 flex justify-between items-center px-4 py-3 bg-white shadow">
+    <h1 class="text-xl font-semibold text-figurella">{{ title }}</h1>
+    <a href="{{ url_for('reports_bp.reports_home') }}" class="px-3 py-1 rounded bg-gray-100 hover:bg-gray-200">← Back to Reports</a>
+  </div>
+
+  <!-- Body -->
+  <div class="flex-1 overflow-hidden">
+    <div class="h-full p-4">
+      <div class="bg-white rounded shadow flex flex-col h-full">
+
+        <!-- Search -->
+        <div class="p-3">
+          <input id="search" placeholder="Search…" class="w-full border rounded px-3 py-2" oninput="filterTable(this.value)">
+        </div>
+
+        <!-- Table -->
+        <div class="table-wrap" style="overflow:auto; flex:1; border:1px solid #e5e7eb; border-radius:.5rem;">
+          <table id="ibf-wide" style="width:100%; border-collapse:collapse;">
+            <thead>
+              <tr>
+                {% for c in columns %}
+                  <th style="position:sticky; top:0; z-index:10; background:#f9fafb; padding:.5rem; border-bottom:1px solid #e5e7eb; text-align:left; white-space:nowrap;">
+                    {{ c }}
+                  </th>
+                {% endfor %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in rows %}
+                <tr>
+                  {% for cell in row %}
+                    {# cells may contain <br>; render safely #}
+                    <td class="preline" style="padding:.5rem; border-bottom:1px solid #e5e7eb; white-space:nowrap; text-align:left;">
+                      {{ cell|safe }}
+                    </td>
+                  {% endfor %}
+                </tr>
+              {% endfor %}
+              {% if rows|length == 0 %}
+                <tr><td colspan="{{ columns|length }}" class="p-3 text-gray-500">No rows.</td></tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function filterTable(q){
+  q = (q || "").toLowerCase();
+  const rows = document.querySelectorAll("#ibf-wide tbody tr");
+  rows.forEach(tr=>{
+    const txt = tr.innerText.toLowerCase();
+    tr.style.display = txt.indexOf(q) >= 0 ? "" : "none";
+  });
+}
+</script>
+{% endblock %}

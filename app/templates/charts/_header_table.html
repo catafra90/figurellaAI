@@ -1,0 +1,131 @@
+{# ─── templates/charts/_header_table.html ─── #}
+
+{# Safe access + shared prep (available to all includes) #}
+{% set prof = sheets.get('profile') or {'data': []} %}
+{% set data = prof.data or [] %}
+{% set pdata = data %}
+
+{# Pull rows for goals & weights #}
+{% set row0 = data[0] if data|length > 0 else {} %}
+{% set row1 = data[1] if data|length > 1 else {} %}
+{% set row2 = data[2] if data|length > 2 else {} %}
+{% set row3 = data[3] if data|length > 3 else {} %}
+
+{% set goals         = row0.get('Value','') %}
+{% set init_date     = row1.get('Date','') %}
+{% set init_weight   = row1.get('Weight','') %}
+{% set lowest_date   = row2.get('Date','') %}
+{% set lowest_weight = row2.get('Weight','') %}
+{% set target_date   = row3.get('Date','') %}
+{% set target_weight = row3.get('Weight','') %}
+
+{# Month keys (DB canonical / legacy label) #}
+{% set months = [
+  ('Jan','Jan.'), ('Feb','Feb.'), ('Mar','Mar.'), ('Apr','Apr.'),
+  ('May','May'), ('June','June'), ('July','July'),
+  ('Aug','Aug.'), ('Sept','Sept.'), ('Oct','Oct.'), ('Nov','Nov.'), ('Dec','Dec.')
+] %}
+
+{# Frequency + session rows #}
+{% set freq_row = (data | selectattr('Field','equalto','Frequency') | list | first) or {} %}
+{% set exp_row  = (data | selectattr('Field','equalto','Expiration / Remaining') | list | first) or {} %}
+{% set expiration = exp_row.get('Value','') %}
+
+{# First Session (legacy & new) #}
+{% set ls_row =
+  (data | selectattr('Field','equalto','First Session Date') | list | first)
+  or (data | selectattr('Field','equalto','First Session Date (Current Package)') | list | first)
+  or {}
+%}
+{% set last_session = ls_row.get('Value','') %}
+
+{# Quick flags current state #}
+{% set qf_nutrition = (pdata | selectattr('Field','equalto','Nutrition Flag') | list | first) or {} %}
+{% set qf_focus     = (pdata | selectattr('Field','equalto','Focus Case Flag') | list | first) or {} %}
+{% set nutri_on     = (qf_nutrition.get('Flag', False) and qf_nutrition.get('Flag') != 'No') %}
+{% set focus_on     = (qf_focus.get('Flag', False) and qf_focus.get('Flag') != 'No') %}
+{% set goal_row     = (pdata | selectattr('Field','equalto','Goal Achieved') | list | first) or {} %}
+{% set goal_on      = (goal_row.get('Flag', False) and goal_row.get('Flag') != 'No') %}
+
+{# Useful name for the frequency partial #}
+{% set freq_client = client_name|default(client_full_name)|default((client.first_name ~ ' ' ~ client.last_name) if client is defined else '') %}
+
+{# ---- Current Contract extraction (best-effort) ---- #}
+{% set cnum_row   = (data | selectattr('Field','equalto','Contract Number')           | list | first) or {} %}
+{% set cstart_row = (data | selectattr('Field','equalto','Contract Start Date')       | list | first) or {} %}
+{% set cexp_row   = (data | selectattr('Field','equalto','Contract Expiration Date')  | list | first) or {} %}
+{% set stot_row   = (data | selectattr('Field','equalto','Sessions Total')            | list | first) or {} %}
+{% set sdone_row  = (data | selectattr('Field','equalto','Sessions Done')             | list | first) or {} %}
+{% set sleft_row  = (data | selectattr('Field','equalto','Sessions Available')        | list | first) or {} %}
+
+{% set contract = {
+  'number':         cnum_row.get('Value',''),
+  'start_date':     cstart_row.get('Value',''),
+  'expiration_date': (cexp_row.get('Value','') or expiration),
+  'sessions_total': stot_row.get('Value',''),
+  'sessions_done':  sdone_row.get('Value',''),
+  'sessions_left':  sleft_row.get('Value','')
+} %}
+
+{# ─── Wrapper with data-attrs used to restore state on reopen ─── #}
+<div class="chart-card"
+     data-client="{{ client_full_name|default(client_name)|default(freq_client) }}"
+     data-flag-nutrition="{{ '1' if nutri_on else '0' }}"
+     data-flag-focus="{{ '1' if focus_on else '0' }}"
+     data-flag-goal="{{ '1' if goal_on else '0' }}"
+     data-contract='{{ contract | tojson }}'>
+
+  {# Stack layout: one section after another #}
+  <section id="profile" class="pi-shell">
+
+    {# === Overview === #}
+    <details open class="rounded-lg shadow transition-colors duration-200
+                        bg-[rgba(255,255,255,0.72)] backdrop-blur-[8px]
+                        border border-[rgba(255,255,255,0.45)]
+                        shadow-[0_8px_24px_rgba(0,0,0,0.10),inset_0_1px_0_rgba(255,255,255,0.55)]">
+      <summary class="px-6 py-4 text-lg font-semibold
+                      bg-[rgba(255,255,255,0.85)] backdrop-blur-[6px]
+                      border-b border-[rgba(255,255,255,0.55)]">
+        Overview
+      </summary>
+
+      <div class="px-6 pb-6 space-y-6 border-t border-gray-200">
+        {% include 'charts/header/_quick_flags.html' %}
+        {% include 'charts/header/_goals_pills.html' %}
+        {% include 'charts/header/_goals_textarea.html' %}
+        {% include 'charts/header/_weights.html' %}
+        {% include 'charts/_frequency.html' %}
+        {% include 'charts/header/_current_contract.html' %}
+      </div>
+    </details>
+
+    {# === Health / Injuries === #}
+    {% include 'charts/header/_health_injuries.html' %}
+
+    {# === Rewards / Deals === #}
+    {% include 'charts/header/_rewards.html' %}
+
+    {# === Friends === #}
+    {% include 'charts/header/_friends.html' %}
+
+    {# Minimal scoped styles used by multiple pieces (UI only) #}
+    <style>
+      details summary { list-style: none; cursor: pointer; }
+      details summary::-webkit-details-marker, details summary::marker { display: none; }
+      .flag-btn { transition: transform .05s ease, box-shadow .2s ease; }
+      .flag-btn:hover { transform: translateY(-1px); }
+      .flag-btn.on { box-shadow: 0 6px 18px rgba(236,72,153,.35); }
+
+      /* ── NEW: force single-column stack on all screens ───────────── */
+      #profile.pi-shell{
+        display: grid !important;
+        grid-template-columns: 1fr !important;
+        gap: 1rem;
+      }
+      #profile.pi-shell > *{ grid-column: 1 / -1; width: 100%; }
+    </style>
+
+    {# UI-only helpers (no saving here) — keep name as you have it #}
+    {% include 'charts/header/_profile_collector_js.html' %}
+  </section>
+</div>

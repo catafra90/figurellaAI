@@ -1,0 +1,62 @@
+{# templates/charts/header/_goals_pills.html — revised safe scoped version #}
+
+<style>
+  /* ========== GOALS PILL STYLES ========== */
+  .goals-scope .goals-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 0.5rem;
+  }
+
+  .goals-scope .flag-btn {
+    transition: background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease;
+    min-height: 40px;
+  }
+
+  /* Active (clicked) goal pills → black background, white text */
+  .goals-scope .flag-group input:checked + .flag-btn {
+    background-color: #000 !important;
+    border-color: #000 !important;
+    color: #fff !important;
+  }
+
+  .goals-scope .flag-group input:checked + .flag-btn > span {
+    color: #fff !important;
+  }
+
+  /* On hover (unselected state) */
+  .goals-scope .flag-btn:hover {
+    background-color: #e5e5e5;
+  }
+
+  @media (max-width:1024px) {
+    .goals-scope .goals-pills {
+      gap: 0.5rem 0.5rem;
+    }
+    .goals-scope .flag-btn {
+      min-height: 42px;
+      flex: 1 1 calc(50% - 0.5rem);
+      justify-content: center;
+      text-align: center;
+    }
+  }
+</style>
+
+<div class="mt-4 goals-scope">
+  <h3 class="text-sm font-semibold mb-2">Goals</h3>
+  <div class="goals-pills">
+    {% for g in ['Weight Loss','Toning','Energy','Posture','Strength','Mobility','Healthy Lifestyle'] %}
+      {% set gid = 'goal_' + g|lower|replace(' ','_') %}
+      <div class="flag-group inline-flex items-center gap-2 min-w-0">
+        <input id="{{ gid }}" type="checkbox" name="goals[]" value="{{ g }}"
+               class="peer sr-only" {% if goals and g in goals %}checked{% endif %}/>
+        <label for="{{ gid }}"
+               class="flag-btn inline-flex items-center gap-2 px-4 py-2 rounded-full border text-sm cursor-pointer
+                      bg-gray-100 border-gray-300 text-gray-700
+                      font-medium select-none">
+          <span class="transition-colors duration-200">{{ g }}</span>
+        </label>
+      </div>
+    {% endfor %}
+  </div>
+</div>

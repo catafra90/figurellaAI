@@ -1,0 +1,11 @@
+<script>
+(function () {
+  // No-op collectors while Client Mgmt saving is disabled
+  window.collectProfile = function () { return []; };
+
+  window.Core = window.Core || {};
+  Core.collectProfileFromCard = function () {
+    return { data: [] };
+  };
+})();
+</script>

@@ -1,0 +1,184 @@
+{# templates/charts/_sidebar.html (SERVER-SIDE FILTERED, robust form submit) #}
+<aside id="client-sidebar" class="sidebar" data-state="expanded" aria-label="Clients sidebar">
+  <!-- Top bar: toggle + title -->
+  <div class="sidebar-top flex items-center gap-2 px-2 py-2">
+    <button id="sidebar-toggle" class="icon-btn" type="button" aria-label="Toggle sidebar" title="Toggle sidebar">
+      <i class="bi bi-layout-sidebar-inset"></i>
+    </button>
+    <h1 class="sidebar-title text-2xl font-bold text-figurella ml-1 m-0">Clients Mgmt</h1>
+  </div>
+
+  <!-- Controls: search + status selector (server reload via form GET) -->
+  <div class="sidebar-controls px-4 pb-2 flex items-center gap-2">
+    <input id="clientSearch" placeholder="Search…" class="w-full h-6 text-xs placeholder-gray-400 border border-gray-300 rounded px-2 focus:outline-none focus:ring-1 focus:ring-figurella" autocomplete="off">
+
+    <form id="statusForm" method="get"
+          action="{{ status_action_url|default(url_for('clients.clients')) }}">
+      <select name="status" id="statusSelect"
+              class="h-6 text-xs border border-gray-300 rounded px-1 bg-white"
+              title="Filter scope (server-side)"
+              onchange="this.form.submit()">
+        {% set _mode = (default_status or 'current') %}
+        <option value="current" {{ 'selected' if _mode=='current' else '' }}>Current</option>
+        <option value="all"     {{ 'selected' if _mode=='all' else '' }}>All</option>
+      </select>
+      {# If you need to preserve other query params, add hidden inputs here. Example:
+         <input type="hidden" name="client" value="{{ filter_client|default('') }}">
+      #}
+    </form>
+  </div>
+
+  <!-- Scrollable list area (already filtered by server) -->
+  <div class="list-wrap overflow-y-auto" style="flex:1; position:relative;">
+    {% set _cols = columns if columns is defined and columns else ['Name'] %}
+    {% set _data = data    if data    is defined and data    else [] %}
+
+    {% if not _data %}
+      <div style="padding:.75rem; color:#6b7280; font-size:.9rem;">
+        No clients found for this view.
+      </div>
+    {% else %}
+      <table>
+        <thead>
+          <tr>{% for col in _cols %}<th class="col-{{ loop.index0 }}">{{ col }}</th>{% endfor %}</tr>
+        </thead>
+        <tbody>
+          {% for row in _data|sort(attribute=_cols[0]) %}
+            {% set status_raw = (row.get('Status') or '') %}
+            {% set status_lc  = status_raw|lower %}
+            <tr class="client-row hover:bg-white/40 cursor-pointer"
+                data-status="{{ status_lc }}"
+                data-name="{{ row[_cols[0]] }}"
+                data-info='{{ row|tojson }}'
+                onclick="window.openClientChart && window.openClientChart(this)">
+              {% for col in _cols %}
+                {% if loop.first %}
+                  <td class="client-name text-figurella truncate">
+                    <span class="client-name-text">{{ row[col] }}</span>
+                  </td>
+                {% else %}
+                  <td class="col-{{ loop.index0 }}">{{ row[col] }}</td>
+                {% endif %}
+              {% endfor %}
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% endif %}
+  </div>
+
+  <!-- Drag handle for resizing -->
+  <div id="sidebar-resizer" class="sidebar-resizer" title="Drag to resize" aria-hidden="true"></div>
+</aside>
+
+<!-- Styles -->
+<style>
+  :root{
+    --sidebar-collapsed-w: 22px;
+    --sidebar-expanded-w: 340px;
+    --sidebar-rail: linear-gradient(180deg,#CC0066 0%, #EA4AA0 40%, #8034A3 100%);
+  }
+
+  #charts-wrapper { --sidebar-w: var(--sidebar-expanded-w); }
+  #charts-wrapper.with-panel { grid-template-columns: var(--sidebar-w) 1fr; }
+
+  .sidebar{
+    width: var(--sidebar-width, var(--sidebar-expanded-w));
+    min-width: var(--sidebar-width, var(--sidebar-expanded-w));
+    max-width: var(--sidebar-width, var(--sidebar-expanded-w));
+    display:flex; flex-direction:column;
+    transition: width .18s ease, min-width .18s ease, max-width .18s ease, background .18s ease;
+    backdrop-filter: saturate(120%) blur(8px);
+    position: relative;
+  }
+  .sidebar table{ width:100%; border-collapse: collapse; }
+  .sidebar thead { position: sticky; top: 0; background: rgba(255,255,255,.85); backdrop-filter: saturate(120%) blur(6px); }
+  .sidebar th, .sidebar td{ text-align:left; padding:.35rem .5rem; border-bottom:1px solid #f1f5f9; font-size:.92rem; }
+
+  .sidebar[data-state="collapsed"]{
+    --sidebar-width: var(--sidebar-collapsed-w);
+    background: var(--sidebar-rail);
+    border-right: none;
+    box-shadow: 0 0 8px rgba(0,0,0,.3);
+    overflow: hidden;
+  }
+  .sidebar[data-state="collapsed"] .sidebar-title,
+  .sidebar[data-state="collapsed"] .sidebar-controls,
+  .sidebar[data-state="collapsed"] .list-wrap,
+  .sidebar[data-state="collapsed"] thead,
+  .sidebar[data-state="collapsed"] tbody,
+  .sidebar[data-state="collapsed"] .sidebar-resizer{
+    display: none !important;
+  }
+
+  .sidebar[data-state="collapsed"] #sidebar-toggle{
+    position: absolute; top: 6px; left: 3px;
+    width: 16px; height: 16px; border-radius: 3px;
+    padding: 0; border: 0;
+    background: #fff; color: #111;
+    box-shadow: 0 1px 2px rgba(0,0,0,.25);
+  }
+  .sidebar[data-state="collapsed"] #sidebar-toggle i{ display:none; }
+  .sidebar[data-state="collapsed"]::after{
+    content:""; position:absolute; top: 28px; left: 50%; transform: translateX(-50%);
+    width: 6px; height: 6px; border-radius: 50%;
+    background:#fff;
+  }
+  .sidebar[data-state="collapsed"] *::-webkit-scrollbar{ display:none; }
+  .sidebar[data-state="collapsed"] *{ scrollbar-width: none; }
+
+  .icon-btn{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:32px; height:32px; border-radius:8px; border:1px solid #e5e7eb;
+    background:#fff; color:#0f172a;
+  }
+  .icon-btn:hover{ background:#f8fafc; }
+
+  #charts-wrapper.sidebar-collapsed{ --sidebar-w: var(--sidebar-collapsed-w); }
+
+  .sidebar[data-state="collapsed"] .sidebar-resizer{ display:none; }
+  .sidebar-resizer{
+    position:absolute; right:0; top:0; bottom:0; width:6px; cursor:col-resize; opacity:.2;
+  }
+</style>
+
+<!-- Minimal JS: collapse + search (status uses plain form submit) -->
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const sidebar   = document.getElementById('client-sidebar');
+  const toggleBtn = document.getElementById('sidebar-toggle');
+  const wrapper   = document.getElementById('charts-wrapper');
+  const KEY = 'chartsSidebarState';
+
+  // Collapse state
+  const saved = localStorage.getItem(KEY);
+  const initial = (saved === 'collapsed') ? 'collapsed' : 'expanded';
+  sidebar.setAttribute('data-state', initial);
+  if (wrapper) wrapper.classList.toggle('sidebar-collapsed', initial === 'collapsed');
+
+  toggleBtn?.addEventListener('click', () => {
+    const now = sidebar.getAttribute('data-state') === 'collapsed' ? 'expanded' : 'collapsed';
+    sidebar.setAttribute('data-state', now);
+    localStorage.setItem(KEY, now);
+    if (wrapper) wrapper.classList.toggle('sidebar-collapsed', now === 'collapsed');
+  });
+
+  // Search within server-filtered set
+  const searchInput = document.getElementById('clientSearch');
+  function rows() {
+    const tbody = document.querySelector('#client-sidebar .list-wrap tbody');
+    return tbody ? Array.from(tbody.querySelectorAll('tr.client-row')) : [];
+  }
+  function applySearch() {
+    const q = (searchInput?.value || '').trim().toLowerCase();
+    rows().forEach(tr => {
+      const name = (tr.dataset.name || tr.textContent || '').toLowerCase();
+      tr.style.display = !q || name.includes(q) ? '' : 'none';
+    });
+  }
+  searchInput?.addEventListener('input', applySearch);
+});
+</script>
+
+<link rel="stylesheet" href="{{ url_for('static', filename='css/client_modal.css') }}">
+<script defer src="{{ url_for('static', filename='js/charts/client_modal.js') }}"></script>

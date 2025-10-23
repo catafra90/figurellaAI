@@ -1,0 +1,439 @@
+<!-- templates/charts/_measures_table_a.html -->
+<style>
+  :root{
+    --mW: 140px;   /* Measure column width */
+    --hW:  90px;   /* Height input width */
+    --aW: 110px;   /* As of input width   */
+    --dW: 128px;   /* Date input width    */
+    --cellH: 34px;
+    --splitGap: 4px; /* vertical gap between stacked inputs */
+  }
+  @media (max-width:1024px){
+    :root{ --mW: 120px; --hW: 82px; --aW: 100px; --dW: 118px; }
+  }
+
+  .measures-root{ width:100%; text-align:left; }
+
+  .measures-bar{
+    display:flex; justify-content:flex-start; align-items:center; gap:.75rem;
+    margin:.25rem 0 .5rem 0;
+  }
+  .btn-add{
+    display:inline-flex; align-items:center; gap:.4rem;
+    padding:.45rem .9rem; background:#cc0066; color:#fff; font-weight:600;
+    border:none; border-radius:8px; cursor:pointer; transition:background .2s;
+  }
+  .btn-add:hover{ background:#b00059; }
+  .btn-add svg{ width:18px; height:18px; stroke-width:2; }
+
+  /* Scrollable container */
+  .measures-scroller{
+    width:100%; overflow-x:auto; overflow-y:hidden;
+    -webkit-overflow-scrolling:touch; padding-bottom:8px;
+  }
+
+  /* Table layout */
+  .measures-scroller table{
+    display:inline-table; width:auto !important; table-layout:auto !important;
+    border-collapse:collapse; border-spacing:0; padding-right:12px;
+  }
+  .measures-scroller th, .measures-scroller td{
+    max-width:none !important; overflow:visible !important;
+    white-space:nowrap !important; vertical-align:middle; padding:10px 12px;
+    background:#fff;
+  }
+
+  /* Base columns */
+  .cell-measure{ text-align:left; width:var(--mW);  min-width:var(--mW); }
+  .cell-height { text-align:center; width:calc(var(--hW) + 20px); }
+  .cell-asof   { text-align:center; width:calc(var(--aW) + 20px); }
+  .cell-date   { text-align:center; width:calc(var(--dW) + 20px); }
+
+  /* Sticky columns: Measure, Height, As of */
+  .sticky-measure{ position:sticky; left:0; z-index:15; box-shadow:1px 0 0 rgba(0,0,0,.08); }
+  .sticky-height { position:sticky; left:var(--mW); z-index:14; box-shadow:1px 0 0 rgba(0,0,0,.08); }
+  .sticky-asof   { position:sticky; left:calc(var(--mW) + var(--hW) + 20px); z-index:13; box-shadow:1px 0 0 rgba(0,0,0,.08); }
+
+  /* Header label widths */
+  .h-title{ width:var(--hW); display:inline-block; text-align:center; }
+  .a-title{ width:var(--aW); display:inline-block; text-align:center; }
+
+  /* Inputs */
+  .h-input, .a-input, .d-input, .d-header-input{
+    height:var(--cellH); text-align:center;
+    border:1px solid #e5e7eb; border-radius:8px;
+    background:#fff; font-size:14px; padding:0 .4rem;
+    transition: border-color .15s ease, color .15s ease, box-shadow .15s ease, background .15s ease;
+  }
+  .h-input{ width:var(--hW); }
+  .a-input{ width:var(--aW); }
+  .d-input{ width:var(--dW); }
+  .d-header-input{ width:var(--dW); font-weight:500; }
+
+  .h-input:focus, .a-input:focus, .d-input:focus, .d-header-input:focus{
+    outline:3px solid rgba(204,0,102,.25); outline-offset:2px; border-color:#cc0066;
+  }
+
+  /* Two-stacked inputs in DATE cells (for rows with data-split="1") */
+  .d-split{
+    display:flex; flex-direction:column; align-items:stretch; justify-content:center;
+    width:var(--dW); gap:var(--splitGap);
+  }
+  .d-split .d-input{
+    height:calc((var(--cellH) * 2 + var(--splitGap)) / 2);
+    width:var(--dW);
+  }
+
+  /* Two-stacked inputs in AS-OF cells */
+  .a-split{
+    display:flex; flex-direction:column; align-items:stretch; justify-content:center;
+    width:var(--aW); gap:var(--splitGap);
+  }
+  .a-split .a-input{
+    height:calc((var(--cellH) * 2 + var(--splitGap)) / 2);
+    width:var(--aW);
+  }
+
+  /* Coloring states for date comparisons (with light background tints) */
+  .val-up{
+    border-color:#e11d48 !important;   /* red border */
+    color:#b91c1c;                      /* red text */
+    background:#ffe8ec !important;      /* light red */
+    box-shadow:0 0 0 2px rgba(225,29,72,.08) inset;
+  }
+  .val-down{
+    border-color:#16a34a !important;    /* green border */
+    color:#065f46;                      /* green text */
+    background:#e9f9ee !important;      /* light green */
+    box-shadow:0 0 0 2px rgba(22,163,74,.08) inset;
+  }
+  .d-input.val-up:focus,
+  .d-input.val-down:focus,
+  .a-input.val-up:focus,
+  .a-input.val-down:focus{
+    background:inherit !important;
+    box-shadow:
+      0 0 0 2px currentColor inset,
+      0 0 0 3px rgba(204,0,102,.25);
+  }
+
+  /* Zebra for non-sticky cells */
+  .measures-scroller tbody tr:nth-child(even) td:not(.sticky-measure):not(.sticky-height):not(.sticky-asof){
+    background:#fafafa;
+  }
+</style>
+
+<div id="measuresRoot" class="measures-root">
+  <div class="measures-bar">
+    <button type="button" id="addDateBtn" class="btn-add">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+      </svg>
+      Add Date
+    </button>
+  </div>
+
+  <div class="measures-scroller">
+    <table id="measuresGrid" class="text-sm">
+      <thead>
+        <tr id="hdrRow">
+          <th class="cell-measure sticky-measure">Measure</th>
+          <th class="cell-height  sticky-height"><span class="h-title">Height</span></th>
+          <!-- As-of header shows the last NON-EMPTY date -->
+          <th class="cell-asof    sticky-asof">
+            <span class="a-title">As of <span id="asofLabel">—</span></span>
+          </th>
+          <!-- Dynamic date columns injected here -->
+        </tr>
+      </thead>
+
+      <tbody id="tbodyRows">
+        <!-- Single As-of input rows -->
+        <tr data-key="chest"><td class="cell-measure sticky-measure">Chest</td><td class="cell-height sticky-height"><input class="h-input"></td><td class="cell-asof sticky-asof"><input class="a-input" placeholder="" readonly></td></tr>
+        <tr data-key="torso"><td class="cell-measure sticky-measure">Torso</td><td class="cell-height sticky-height"><input class="h-input"></td><td class="cell-asof sticky-asof"><input class="a-input" placeholder="" readonly></td></tr>
+        <tr data-key="waist"><td class="cell-measure sticky-measure">Waist</td><td class="cell-height sticky-height"><input class="h-input"></td><td class="cell-asof sticky-asof"><input class="a-input" placeholder="" readonly></td></tr>
+        <tr data-key="stomac"><td class="cell-measure sticky-measure">Stomac</td><td class="cell-height sticky-height"><input class="h-input"></td><td class="cell-asof sticky-asof"><input class="a-input" placeholder="" readonly></td></tr>
+        <tr data-key="hips"><td class="cell-measure sticky-measure">Hips</td><td class="cell-height sticky-height"><input class="h-input"></td><td class="cell-asof sticky-asof"><input class="a-input" placeholder="" readonly></td></tr>
+
+        <!-- From Thighs down: SPLIT As-of (Left/Right) + SPLIT Date cells -->
+        <tr data-key="thighs" data-split="1">
+          <td class="cell-measure sticky-measure">Thighs</td>
+          <td class="cell-height sticky-height"><input class="h-input"></td>
+          <td class="cell-asof sticky-asof">
+            <div class="a-split">
+              <input class="a-input" name="thighs_asof_a" placeholder="Left"  readonly>
+              <input class="a-input" name="thighs_asof_b" placeholder="Right" readonly>
+            </div>
+          </td>
+        </tr>
+        <tr data-key="knees" data-split="1">
+          <td class="cell-measure sticky-measure">Knees</td>
+          <td class="cell-height sticky-height"><input class="h-input"></td>
+          <td class="cell-asof sticky-asof">
+            <div class="a-split">
+              <input class="a-input" name="knees_asof_a" placeholder="Left"  readonly>
+              <input class="a-input" name="knees_asof_b" placeholder="Right" readonly>
+            </div>
+          </td>
+        </tr>
+        <tr data-key="calves" data-split="1">
+          <td class="cell-measure sticky-measure">Calves</td>
+          <td class="cell-height sticky-height"><input class="h-input"></td>
+          <td class="cell-asof sticky-asof">
+            <div class="a-split">
+              <input class="a-input" name="calves_asof_a" placeholder="Left"  readonly>
+              <input class="a-input" name="calves_asof_b" placeholder="Right" readonly>
+            </div>
+          </td>
+        </tr>
+        <tr data-key="arms" data-split="1">
+          <td class="cell-measure sticky-measure">Arms</td>
+          <td class="cell-height sticky-height"><input class="h-input"></td>
+          <td class="cell-asof sticky-asof">
+            <div class="a-split">
+              <input class="a-input" name="arms_asof_a" placeholder="Left"  readonly>
+              <input class="a-input" name="arms_asof_b" placeholder="Right" readonly>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+(function(){
+  const root = document.getElementById('measuresRoot');
+  const btn  = root.querySelector('#addDateBtn');
+  const head = root.querySelector('#hdrRow');
+  const body = root.querySelector('#tbodyRows');
+  const asofLabelEl = root.querySelector('#asofLabel');
+
+  function nextIndex(){ return head.querySelectorAll('th.cell-date').length + 1; }
+  function isSplitRow(tr){ return tr.getAttribute('data-split') === '1'; }
+
+  function formatDateInputValue(val){
+    if (!val) return '—';
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(val);
+    return m ? `${m[2]}/${m[3]}/${m[1]}` : val;
+  }
+
+  /* --------- NEW helpers: pick first/last NON-EMPTY date cells/values --------- */
+  function getHeaderLastNonEmpty(){
+    const headers = [...head.querySelectorAll('th.cell-date')].sort((a,b)=>(+a.dataset.dateIndex)-(+b.dataset.dateIndex));
+    for (let i = headers.length - 1; i >= 0; i--){
+      const v = headers[i].querySelector('.d-header-input')?.value || '';
+      if (v) return v;
+    }
+    return '';
+  }
+
+  function getFirstFilledTd(dateTds, side){ // side: undefined | 0 | 1
+    for (let i = 0; i < dateTds.length; i++){
+      const ins = dateTds[i].querySelectorAll('input.d-input');
+      const val = side==null ? ins[0]?.value : ins[side]?.value;
+      if (val != null && String(val).trim() !== '') return dateTds[i];
+    }
+    return null;
+  }
+  function getLastFilledTd(dateTds, side){
+    for (let i = dateTds.length - 1; i >= 0; i--){
+      const ins = dateTds[i].querySelectorAll('input.d-input');
+      const val = side==null ? ins[0]?.value : ins[side]?.value;
+      if (val != null && String(val).trim() !== '') return dateTds[i];
+    }
+    return null;
+  }
+
+  /* --------- UPDATED: header shows right-most NON-EMPTY date --------- */
+  function updateAsOfHeader(){
+    const v = getHeaderLastNonEmpty();
+    asofLabelEl.textContent = v ? formatDateInputValue(v) : '—';
+  }
+
+  function createDateHeader(idx){
+    const th = document.createElement('th');
+    th.className = 'cell-date';
+    th.dataset.dateIndex = idx;
+    th.innerHTML = `<input type="date" class="d-header-input" name="header_date_${idx}">`;
+    return th;
+  }
+
+  function createDateCell(tr, idx){
+    const key = tr.dataset.key;
+    const td  = document.createElement('td');
+    td.className = 'cell-date';
+    td.dataset.dateIndex = idx;
+
+    if (isSplitRow(tr)) {
+      td.innerHTML = `
+        <div class="d-split">
+          <input type="text" class="d-input" name="${key}_date_${idx}_a" placeholder="Left"  inputmode="decimal">
+          <input type="text" class="d-input" name="${key}_date_${idx}_b" placeholder="Right" inputmode="decimal">
+        </div>`;
+    } else {
+      td.innerHTML = `<input type="text" class="d-input" name="${key}_date_${idx}" placeholder="" inputmode="decimal">`;
+    }
+    return td;
+  }
+
+  function addDateColumn(){
+    const idx = nextIndex();
+    head.appendChild(createDateHeader(idx));
+    body.querySelectorAll('tr[data-key]').forEach(tr=>{
+      tr.appendChild(createDateCell(tr, idx));
+    });
+    updateAsOfHeader();
+    // Evaluate all rows (per-cell colors + per-row delta)
+    body.querySelectorAll('tr[data-key]').forEach(tr=>{
+      evaluateRow(tr);
+      updateRowDelta(tr);
+    });
+  }
+
+  // Parse numeric value safely (accepts comma decimals)
+  function num(val){
+    if (val==null) return NaN;
+    const t = String(val).replace(',', '.').trim();
+    const n = parseFloat(t);
+    return Number.isFinite(n) ? n : NaN;
+  }
+
+  function setState(input, diff){ // >0 up/red, <0 down/green
+    if (!input) return;
+    input.classList.remove('val-up','val-down');
+    if (!Number.isFinite(diff)) return;
+    if (diff > 0) input.classList.add('val-up');
+    else if (diff < 0) input.classList.add('val-down');
+  }
+
+  function clearTd(td){
+    td.querySelectorAll('input.d-input').forEach(inp=>inp.classList.remove('val-up','val-down'));
+  }
+
+  // Per-cell comparison coloring across date columns
+  function evaluateRow(tr){
+    const dateTds = [...tr.querySelectorAll('td.cell-date')].sort((a,b)=>(+a.dataset.dateIndex)-(+b.dataset.dateIndex));
+    for (let i = 0; i < dateTds.length; i++){
+      const td = dateTds[i];
+      const prev = dateTds[i-1];
+      if (!prev){ clearTd(td); continue; }
+
+      if (isSplitRow(tr)){
+        const [aNow,bNow]   = td.querySelectorAll('input.d-input');
+        const [aPrev,bPrev] = prev.querySelectorAll('input.d-input');
+        setState(aNow, Number.isFinite(num(aNow?.value)) && Number.isFinite(num(aPrev?.value)) ? num(aNow.value) - num(aPrev.value) : NaN);
+        setState(bNow, Number.isFinite(num(bNow?.value)) && Number.isFinite(num(bPrev?.value)) ? num(bNow.value) - num(bPrev.value) : NaN);
+      } else {
+        const now  = td.querySelector('input.d-input');
+        const prevI= prev.querySelector('input.d-input');
+        setState(now, Number.isFinite(num(now?.value)) && Number.isFinite(num(prevI?.value)) ? num(now.value) - num(prevI.value) : NaN);
+      }
+    }
+  }
+
+  // UPDATED: Compute overall delta using FIRST & LAST NON-EMPTY values only
+  function updateRowDelta(tr){
+    const asofTd = tr.querySelector('td.cell-asof');
+    if (!asofTd) return;
+
+    const dateTds = [...tr.querySelectorAll('td.cell-date')].sort((a,b)=>(+a.dataset.dateIndex)-(+b.dataset.dateIndex));
+    if (dateTds.length === 0){
+      asofTd.querySelectorAll('input.a-input').forEach(i=>{ i.value=''; i.classList.remove('val-up','val-down'); });
+      return;
+    }
+
+    if (isSplitRow(tr)){
+      const firstA = getFirstFilledTd(dateTds, 0);
+      const lastA  = getLastFilledTd(dateTds, 0);
+      const firstB = getFirstFilledTd(dateTds, 1);
+      const lastB  = getLastFilledTd(dateTds, 1);
+
+      const [aOut, bOut] = asofTd.querySelectorAll('input.a-input');
+
+      if (aOut){
+        let dA = null;
+        if (firstA && lastA){
+          const fA = num(firstA.querySelectorAll('input.d-input')[0]?.value);
+          const lA = num(lastA .querySelectorAll('input.d-input')[0]?.value);
+          if (Number.isFinite(fA) && Number.isFinite(lA)) dA = lA - fA;
+        }
+        aOut.value = dA==null ? '' : (dA>0?`+${dA}`:`${dA}`);
+        aOut.classList.remove('val-up','val-down');
+        if (dA!=null && dA!==0) aOut.classList.add(dA>0?'val-up':'val-down');
+      }
+
+      if (bOut){
+        let dB = null;
+        if (firstB && lastB){
+          const fB = num(firstB.querySelectorAll('input.d-input')[1]?.value);
+          const lB = num(lastB .querySelectorAll('input.d-input')[1]?.value);
+          if (Number.isFinite(fB) && Number.isFinite(lB)) dB = lB - fB;
+        }
+        bOut.value = dB==null ? '' : (dB>0?`+${dB}`:`${dB}`);
+        bOut.classList.remove('val-up','val-down');
+        if (dB!=null && dB!==0) bOut.classList.add(dB>0?'val-up':'val-down');
+      }
+    } else {
+      const first = getFirstFilledTd(dateTds);
+      const last  = getLastFilledTd(dateTds);
+      const out   = asofTd.querySelector('input.a-input');
+
+      if (out){
+        let d = null;
+        if (first && last){
+          const f = num(first.querySelector('input.d-input')?.value);
+          const l = num(last .querySelector('input.d-input')?.value);
+          if (Number.isFinite(f) && Number.isFinite(l)) d = l - f;
+        }
+        out.value = d==null ? '' : (d>0?`+${d}`:`${d}`);
+        out.classList.remove('val-up','val-down');
+        if (d!=null && d!==0) out.classList.add(d>0?'val-up':'val-down');
+      }
+    }
+  }
+
+  // Delegate input events:
+  root.addEventListener('input', (e)=>{
+    const t = e.target;
+
+    if (t.classList.contains('d-input')){
+      const tr = t.closest('tr[data-key]');
+      if (tr){
+        evaluateRow(tr);
+        updateRowDelta(tr);
+      }
+    }
+
+    if (t.classList.contains('d-header-input')){
+      updateAsOfHeader(); // now uses right-most NON-EMPTY header date
+    }
+  });
+
+  function reevaluateAll(){
+    body.querySelectorAll('tr[data-key]').forEach(tr=>{
+      evaluateRow(tr);
+      updateRowDelta(tr);
+    });
+  }
+
+  btn.addEventListener('click', ()=>{
+    addDateColumn();
+  });
+
+  window.addEventListener('load', ()=>{
+    updateAsOfHeader();
+    reevaluateAll();
+  });
+
+  function addDateColumn(){
+    const idx = nextIndex();
+    head.appendChild(createDateHeader(idx));
+    body.querySelectorAll('tr[data-key]').forEach(tr=>{
+      tr.appendChild(createDateCell(tr, idx));
+    });
+    updateAsOfHeader();
+    reevaluateAll();
+  }
+})();
+</script>

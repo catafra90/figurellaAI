@@ -1,0 +1,301 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="max-w-4xl mx-auto p-4">
+
+  <h1 class="text-2xl font-bold mb-3">Franchisor Calendar (External)</h1>
+  <p class="text-gray-600 mb-4">
+    Create appointments directly on the franchisor portal. This does not affect your internal calendar.
+  </p>
+
+  <!-- ────────────────── Availability Webview (NEW) ────────────────── -->
+  <div class="mb-6 bg-white rounded-xl shadow">
+    <div class="flex items-center justify-between px-4 py-3 border-b">
+      <div class="flex items-center gap-3">
+        <span class="text-lg font-semibold">Check Availability</span>
+        <span id="avail-status" class="text-xs px-2 py-1 rounded bg-gray-100 text-gray-700 hidden"></span>
+      </div>
+      <button id="avail-toggle" class="text-sm px-3 py-1 rounded border hover:bg-gray-50">
+        Hide
+      </button>
+    </div>
+
+    <div id="avail-body" class="p-4 space-y-3">
+      <div class="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
+        <div class="md:col-span-2">
+          <label class="block text-sm font-medium">Date</label>
+          <input type="date" id="avail-date" class="border px-3 py-2 rounded w-full" />
+        </div>
+
+        <div class="md:col-span-3">
+          <label class="block text-sm font-medium">Columns (optional)</label>
+          <div class="flex flex-wrap gap-2">
+            <!-- Adjust defaults as needed -->
+            <label class="inline-flex items-center gap-2">
+              <input type="checkbox" class="colpick" value="Consultation"> <span>Consultation</span>
+            </label>
+            <label class="inline-flex items-center gap-2">
+              <input type="checkbox" class="colpick" value="Bubble 1"> <span>Bubble 1</span>
+            </label>
+            <label class="inline-flex items-center gap-2">
+              <input type="checkbox" class="colpick" value="Bubble 2"> <span>Bubble 2</span>
+            </label>
+            <label class="inline-flex items-center gap-2">
+              <input type="checkbox" class="colpick" value="Bubble 3"> <span>Bubble 3</span>
+            </label>
+            <label class="inline-flex items-center gap-2">
+              <input type="checkbox" class="colpick" value="Bubble 4"> <span>Bubble 4</span>
+            </label>
+            <label class="inline-flex items-center gap-2">
+              <input type="checkbox" class="colpick" value="Cellushape"> <span>Cellushape</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="md:col-span-1">
+          <button id="avail-check"
+                  class="w-full bg-gray-800 text-white px-3 py-2 rounded hover:bg-black">
+            Check
+          </button>
+        </div>
+      </div>
+
+      <div id="avail-results" class="overflow-auto border rounded-lg hidden"></div>
+      <div class="text-xs text-gray-500">
+        Tip: click any open time to fill the form below automatically.
+      </div>
+    </div>
+  </div>
+  <!-- ──────────────────────────────────────────────────────────────── -->
+
+  <!-- Existing Create Form -->
+  <form id="fr-form" class="grid grid-cols-1 md:grid-cols-6 gap-3 items-end bg-white p-4 rounded-xl shadow">
+    <div class="md:col-span-2">
+      <label class="block text-sm font-medium">Date</label>
+      <input type="date" id="fr-date" class="border px-3 py-2 rounded w-full" required />
+    </div>
+
+    <div class="md:col-span-2">
+      <label class="block text-sm font-medium">Column</label>
+      <select id="fr-col" class="border px-3 py-2 rounded w-full" required>
+        <option>Consultation</option>
+        <option>Bubble 1</option>
+        <option>Bubble 2</option>
+        <option>Bubble 3</option>
+        <option>Bubble 4</option>
+        <option>Cellushape</option>
+      </select>
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium">Time</label>
+      <input id="fr-time" placeholder="11:30 am" class="border px-3 py-2 rounded w-full" required />
+    </div>
+
+    <div class="md:col-span-3">
+      <label class="block text-sm font-medium">Customer (full name as in portal)</label>
+      <input id="fr-customer" placeholder="e.g., Perez Capotosto Melissa" class="border px-3 py-2 rounded w-full" required />
+    </div>
+
+    <div class="md:col-span-3">
+      <label class="block text-sm font-medium">Memo (optional)</label>
+      <input id="fr-memo" class="border px-3 py-2 rounded w-full" />
+    </div>
+
+    <div class="md:col-span-3 flex items-center gap-2">
+      <input id="fr-sync" type="checkbox" class="h-4 w-4">
+      <label for="fr-sync" class="text-sm">Run inline (debug)</label>
+    </div>
+
+    <div class="md:col-span-6 flex items-center gap-3">
+      <button class="bg-pink-600 text-white px-4 py-2 rounded hover:bg-pink-700 inline-flex items-center gap-2" id="fr-submit">
+        <svg id="fr-spin" class="animate-spin h-4 w-4 hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke-width="4"></circle>
+          <path class="opacity-75" d="M4 12a8 8 0 018-8" stroke-width="4"></path>
+        </svg>
+        <span>Create on Franchisor Portal</span>
+      </button>
+
+      <span id="fr-status"
+            class="text-sm px-2 py-1 rounded transition-colors duration-200"></span>
+    </div>
+  </form>
+
+  <div class="mt-4 text-xs text-gray-500">
+    Tip: <b>Column</b> and <b>Time</b> must match the portal exactly (e.g., “Bubble 2”, “11:30 am”).
+  </div>
+</div>
+
+<script>
+(function(){
+  const $  = id => document.getElementById(id);
+  const qs = (sel, root=document) => root.querySelector(sel);
+  const qsa= (sel, root=document) => Array.from(root.querySelectorAll(sel));
+
+  // ───────── Availability UI helpers ─────────
+  const availStatus = $('avail-status');
+  function availSetStatus(text, kind){ // 'ok' | 'error' | 'info'
+    if(!text){ availStatus.classList.add('hidden'); return; }
+    availStatus.textContent = text;
+    availStatus.classList.remove('hidden','bg-green-100','text-green-800','bg-red-100','text-red-800','bg-gray-100','text-gray-700');
+    if(kind==='ok'){ availStatus.classList.add('bg-green-100','text-green-800'); }
+    else if(kind==='error'){ availStatus.classList.add('bg-red-100','text-red-800'); }
+    else { availStatus.classList.add('bg-gray-100','text-gray-700'); }
+  }
+
+  function toParams(obj){
+    const p = new URLSearchParams();
+    Object.entries(obj).forEach(([k,v])=>{
+      if(Array.isArray(v)) v.forEach(x=>p.append(k,x));
+      else if(v!=null && v!=="") p.append(k,v);
+    });
+    return p.toString();
+  }
+
+  async function fetchAvailability(){
+    const date = $('avail-date').value;
+    if(!date){ availSetStatus('Pick a date', 'error'); return; }
+    const cols = qsa('.colpick:checked').map(cb=>cb.value);
+    availSetStatus('Checking…','info');
+    $('avail-results').classList.add('hidden');
+    const qs = toParams({date, ...(cols.length ? {col: cols} : {})});
+    const res = await fetch(`/franchisor/availability/check?${qs}`);
+    const j = await res.json();
+    if(!j.ok){ availSetStatus(j.error || 'Failed', 'error'); return; }
+    renderAvailability(j.slots || {});
+    availSetStatus('Loaded', 'ok');
+  }
+
+  function renderAvailability(slots){
+    const root = $('avail-results');
+    const cols = Object.keys(slots);
+    if(!cols.length){ root.innerHTML = '<div class="p-3 text-gray-600">No columns found.</div>'; root.classList.remove('hidden'); return; }
+    let html = `<table class="min-w-full text-sm">
+      <thead><tr>`;
+    cols.forEach(c => { html += `<th class="border-b px-3 py-2 text-left bg-gray-50">${c}</th>`; });
+    html += `</tr></thead><tbody><tr>`;
+    cols.forEach(c => {
+      const times = slots[c] || [];
+      if(!times.length){
+        html += `<td class="align-top px-3 py-2 text-gray-500">No open slots</td>`;
+      }else{
+        html += `<td class="align-top px-3 py-2">
+          <div class="flex flex-wrap gap-2">` +
+          times.map(t=>`<button class="slot-btn px-2 py-1 rounded border hover:bg-gray-50"
+                                 data-col="${c}" data-time="${t}">${t}</button>`).join('') +
+          `</div></td>`;
+      }
+    });
+    html += `</tr></tbody></table>`;
+    root.innerHTML = html;
+    root.classList.remove('hidden');
+
+    // Click to fill the form
+    qsa('.slot-btn', root).forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        $('fr-date').value = $('avail-date').value;
+        $('fr-col').value  = btn.dataset.col;
+        $('fr-time').value = btn.dataset.time;
+        // Smooth scroll to the form
+        $('fr-form').scrollIntoView({behavior:'smooth', block:'start'});
+      });
+    });
+  }
+
+  // Defaults for availability date: today
+  const now = new Date(), pad = n => String(n).padStart(2,'0');
+  $('avail-date').value = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
+  $('avail-check').addEventListener('click', fetchAvailability);
+
+  // Collapse / expand
+  $('avail-toggle').addEventListener('click', ()=>{
+    const body = $('avail-body');
+    const hidden = body.classList.toggle('hidden');
+    $('avail-toggle').textContent = hidden ? 'Show' : 'Hide';
+  });
+
+  // ───────── Existing Create Form logic (unchanged) ─────────
+  const status = $('fr-status');
+  const btn    = $('fr-submit');
+  const spin   = $('fr-spin');
+
+  function setStatus(text, kind){ // 'ok' | 'error' | 'info'
+    status.textContent = text || "";
+    status.classList.remove('bg-green-100','text-green-800','bg-red-100','text-red-800','bg-gray-100','text-gray-700');
+    if(kind === 'ok'){
+      status.classList.add('bg-green-100','text-green-800');
+    }else if(kind === 'error'){
+      status.classList.add('bg-red-100','text-red-800');
+    }else{
+      status.classList.add('bg-gray-100','text-gray-700');
+    }
+  }
+
+  const m = now.getMinutes(), rounded = new Date(now.getTime()); rounded.setMinutes(m < 30 ? 30 : 60, 0, 0);
+  const to12h = h => ((h + 11) % 12) + 1;
+  $('fr-date').value = $('avail-date').value; // keep same default as webview
+  $('fr-time').value = `${to12h(rounded.getHours())}:${pad(rounded.getMinutes())} ${rounded.getHours()>=12?'pm':'am'}`;
+
+  function normalizeTime(raw){
+    if(!raw) return raw;
+    let s = String(raw).trim().toLowerCase().replace(/\./g,'').replace(/\s+/g,' ');
+    const compact = s.match(/^(\d{1,2})(\d{2})(am|pm)$/);
+    if (compact) s = `${compact[1]}:${compact[2]} ${compact[3]}`;
+    return s.replace(/(\d)(am|pm)$/,'$1 $2');
+  }
+
+  async function create(body){
+    const r = await fetch('/franchisor/create', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(body)
+    });
+    return r.json();
+  }
+
+  $('fr-form').addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    setStatus("", "info");
+
+    const body = {
+      date:     $('fr-date').value,
+      column:   $('fr-col').value,
+      time:     normalizeTime($('fr-time').value),
+      customer: $('fr-customer').value.trim(),
+      memo:     $('fr-memo').value || "",
+      sync:     $('fr-sync').checked
+    };
+
+    if(!body.date || !body.column || !body.time || !body.customer){
+      setStatus("Please fill Date, Column, Time, and Customer.", "error");
+      return;
+    }
+
+    btn.disabled = true; spin.classList.remove('hidden');
+    const old = btn.querySelector('span').textContent;
+    btn.querySelector('span').textContent = body.sync ? "Creating…" : "Queuing…";
+
+    try {
+      const j = await create(body);
+
+      if (j.queued === true) {
+        setStatus(j.message || "Queued. A browser window will handle creation.", "info");
+      } else if (j.ok) {
+        setStatus(j.message || "Created on franchisor portal.", "ok");
+        $('fr-memo').value = "";
+        $('fr-customer').value = "";
+      } else {
+        setStatus(j.message || j.error || "Failed to create appointment.", "error");
+      }
+    } catch(err){
+      setStatus("Error: " + (err && err.message ? err.message : String(err)), "error");
+    } finally {
+      btn.disabled = false; spin.classList.add('hidden');
+      btn.querySelector('span').textContent = old;
+    }
+  });
+
+  // Optional: auto-run availability on load
+  fetchAvailability().catch(()=>{});
+})();
+</script>
+{% endblock %}

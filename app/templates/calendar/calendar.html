@@ -1,0 +1,461 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="p-4 space-y-3">
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <!-- Removed the Calendar title -->
+    <!-- <h1 class="text-2xl font-bold">Calendar</h1> -->
+
+    <div class="flex flex-wrap items-center gap-2">
+      <input id="fc-search" type="text" placeholder="Search title/desc/location"
+             class="border border-gray-300 rounded-lg px-3 py-1.5 w-64" />
+      <select id="fc-assignee" class="border border-gray-300 rounded-lg px-3 py-1.5">
+        <option value="__all__">All assignees</option>
+      </select>
+      <button id="fc-new"
+              class="px-3 py-1.5 rounded-lg shadow bg-figurella text-white hover:opacity-90"
+              type="button">＋ New Event</button>
+    </div>
+  </div>
+
+  <div id="fc-error" class="hidden bg-red-100 text-red-800 p-3 rounded"></div>
+
+
+  <!-- Scroll wrapper for month/year -->
+  <div id="calendar-wrap" class="bg-white rounded-xl shadow overflow-auto" style="height:72vh">
+    <div id="calendar"></div>
+  </div>
+</div>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.css">
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js" defer></script>
+
+<style>
+  /* status dot */
+  .fc-status-dot{ width:8px; height:8px; border-radius:9999px; display:inline-block; margin-right:6px; flex:0 0 auto; }
+  .fc .fc-event-main{ display:flex; align-items:center; gap:6px; }
+  .fc .fc-timegrid-event .fc-status-dot{ position:absolute; top:4px; left:4px; margin-right:0; }
+
+  /* done style */
+  .fc .fc-daygrid-block-event.fc-is-done .fc-event-main,
+  .fc .fc-timegrid-event.fc-is-done .fc-event-main { background: transparent !important; }
+  .fc .fc-daygrid-block-event.fc-is-done,
+  .fc .fc-timegrid-event.fc-is-done { border: 1px solid #e5e7eb !important; }
+
+  /* ensure the grid is clickable even if parent wrappers add filters/overlays */
+  #calendar { pointer-events: auto; }
+</style>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const err = document.getElementById("fc-error");
+  const showError = (msg) => { err.textContent = msg; err.classList.remove("hidden"); };
+
+  try {
+    if (!window.FullCalendar) { showError("FullCalendar failed to load."); return; }
+
+    const calendarEl = document.getElementById("calendar");
+    const searchEl   = document.getElementById("fc-search");
+    const assigneeEl = document.getElementById("fc-assignee");
+    const newBtn     = document.getElementById("fc-new");
+
+    /* ---------------- grab modal elements ---------------- */
+    const modalEl   = document.getElementById("event-modal");
+    const modalClose= document.getElementById("modal-close");
+    const modalCancel = document.getElementById("modal-cancel");
+    const modalDelete = document.getElementById("modal-delete");
+    const modalSave   = document.getElementById("modal-save");
+    const mHeading = document.getElementById("modal-heading");
+    const mTitle   = document.getElementById("modal-title");
+    const mAllDay  = document.getElementById("modal-allDay");
+    const mStart   = document.getElementById("modal-start");
+    const mEnd     = document.getElementById("modal-end");
+    const mDesc    = document.getElementById("modal-desc");
+    const mLoc     = document.getElementById("modal-location");
+    const mAssignee= document.getElementById("modal-assignee");
+    const backdrop = modalEl?.querySelector("[data-close]");
+
+    /* ---------------- DONE cache helpers (read fresh each time) ---------------- */
+    const DONE_STORE_KEY = 'fc_done_occurrences_v1';
+    function isLocalDone(series, token) {
+      if (!token) return false;
+      try {
+        const arr = JSON.parse(localStorage.getItem(DONE_STORE_KEY) || '[]');
+        const set = new Set(arr);
+        const keyExact = String(series) + '|' + token;
+        const keyDay   = String(series) + '|' + token.slice(0, 10);
+        return set.has(keyExact) || set.has(keyDay);
+      } catch { return false; }
+    }
+
+    const state = { search:"", assignee:"__all__", colorMap:{}, current:null, occurrenceStart:null };
+
+    const pad = (n) => String(n).padStart(2,"0");
+    function toLocalInputValue(d){
+      if(!d) return "";
+      const dt = new Date(d);
+      return dt.getFullYear()+"-"+pad(dt.getMonth()+1)+"-"+pad(dt.getDate())+"T"+pad(dt.getHours())+":"+pad(dt.getMinutes());
+    }
+    const fromLocalInputValue = (v) => v ? new Date(v) : null;
+    const isoOrNull = (d) => d ? new Date(d).toISOString() : null;
+
+    function colorForAssignee(a){
+      const palette=["#ef476f","#ffd166","#06d6a0","#118ab2","#073b4c","#c084fc","#a3e635","#f59e0b","#f43f5e","#22c55e"];
+      const key=(a||"unassigned").trim().toLowerCase();
+      if(!state.colorMap[key]) state.colorMap[key]=palette[Object.keys(state.colorMap).length % palette.length];
+      return state.colorMap[key];
+    }
+    function passesFilters(ev){
+      const q=state.search.trim().toLowerCase();
+      const selected=state.assignee;
+      const ep=ev.extendedProps||{};
+      const ass=(ep.assignee||"").toLowerCase();
+      if(selected!=="__all__" && ass!==selected.toLowerCase()) return false;
+      if(!q) return true;
+      const hay=[ev.title||"",ep.description||"",ep.location||"",ep.assignee||""].join(" ").toLowerCase();
+      return hay.indexOf(q)>=0;
+    }
+    function updateAssigneeOptionsFrom(events){
+      const set={}; events.forEach(e => { const a=(e.extendedProps&&e.extendedProps.assignee)||""; if(a.trim()) set[a.trim()]=true; });
+      const opts=Object.keys(set).sort();
+      const cur=assigneeEl.value;
+      let html='<option value="__all__">All assignees</option>';
+      for(const o of opts) html += `<option value="${o}">${o}</option>`;
+      assigneeEl.innerHTML=html;
+      if(opts.includes(cur) || cur==="__all__") assigneeEl.value=cur;
+    }
+
+    /* ---------------- DONE detection (server + local) ---------------- */
+    function isOccurrenceDone(event) {
+      const ep = event.extendedProps || {};
+      const start = event.start ? new Date(event.start) : null;
+      const occISO = start ? start.toISOString() : null;
+      const occDay = occISO ? occISO.slice(0,10) : null;
+
+      const rawList = Array.isArray(ep.completedOn) ? ep.completedOn
+                   : Array.isArray(ep.completed_on) ? ep.completed_on : [];
+      const normalized = rawList.map(s => { try { return new Date(s).toISOString(); } catch { return String(s); } });
+
+      const serverExact = occISO ? normalized.includes(occISO) : false;
+      const serverDay   = occDay ? normalized.some(s => typeof s === 'string' && s.slice(0,10) === occDay) : false;
+      const serverDone  = !!ep.completed || serverExact || serverDay;
+
+      const fullId = String(event.id || "");
+      const series = fullId.split(":")[0] || fullId;
+      const localDone = isLocalDone(series, occISO) || isLocalDone(series, occDay);
+
+      return serverDone || localDone;
+    }
+
+    /* ---------------- modal helpers ---------------- */
+    function openEventModal(evt, occStart){
+      state.current = evt || null;
+      state.occurrenceStart = occStart || null;
+      if (!modalEl) return;
+
+      mHeading.textContent = evt?.id ? "Edit Event" : "New Event";
+      mTitle.value   = evt?.title || "";
+      mAllDay.checked= !!evt?.allDay;
+      mStart.value   = toLocalInputValue(evt?.start || new Date());
+      mEnd.value     = toLocalInputValue(evt?.end || "");
+      mDesc.value    = evt?.description || "";
+      mLoc.value     = evt?.location || "";
+      mAssignee.value= evt?.assignee || "";
+
+      modalEl.classList.remove("hidden");
+    }
+    function closeEventModal(){
+      if (!modalEl) return;
+      modalEl.classList.add("hidden");
+      state.current = null;
+      state.occurrenceStart = null;
+    }
+
+    /* ---------------- Build the calendar ---------------- */
+    const calendar = new FullCalendar.Calendar(calendarEl, {
+      initialView: "dayGridMonth",
+      headerToolbar: { left: "prev,next today", center: "title", right: "multiMonthYear,dayGridMonth,timeGridWeek,timeGridDay,listWeek" },
+
+      height: "auto",
+      handleWindowResize: true,
+      scrollTime: "08:00:00",
+      slotMinTime: "05:00:00",
+      slotMaxTime: "22:00:00",
+
+      weekNumbers: true,
+      navLinks: true,
+      selectable: true,
+      editable: true,
+      nowIndicator: true,
+      dayMaxEventRows: true,
+      stickyHeaderDates: true,
+
+      viewDidMount: (ctx)=> setHeightForView(ctx.view.type),
+      datesSet:     (ctx)=> setHeightForView(ctx.view.type),
+
+      /* month/year custom content with status dot */
+      eventContent: function(arg){
+        const t = arg.view.type;
+        if (t !== 'dayGridMonth' && t !== 'multiMonthYear') return true;
+
+        const done = isOccurrenceDone(arg.event);
+        const dot = document.createElement('span');
+        dot.className = 'fc-status-dot';
+        dot.style.backgroundColor = done ? '#22c55e' : '#ef4444';
+
+        const wrap = document.createElement('div');
+        wrap.className = 'flex items-center gap-1';
+        wrap.appendChild(dot);
+
+        if (arg.timeText) {
+          const tt = document.createElement('span');
+          tt.className = 'fc-event-time';
+          tt.textContent = arg.timeText;
+          wrap.appendChild(tt);
+        }
+
+        const title = document.createElement('span');
+        title.className = 'fc-event-title';
+        title.textContent = arg.event.title || '(Untitled)';
+        if (done) { title.style.opacity = '0.7'; title.style.textDecoration = 'line-through'; }
+        wrap.appendChild(title);
+
+        return { domNodes: [wrap] };
+      },
+
+      /* week/day: tweak appearance and inject dot */
+      eventDidMount: function(info){
+        const ep = info.event.extendedProps || {};
+        const loc=ep.location ? " @ "+ep.location : "";
+        const desc=ep.description ? "\n"+ep.description : "";
+        info.el.title=(info.event.title||"")+loc+desc;
+
+        const done = isOccurrenceDone(info.event);
+        const main = info.el.querySelector(".fc-event-main") || info.el;
+
+        const old = info.el.querySelector(".fc-status-dot"); if (old) old.remove();
+        const dot = document.createElement("span");
+        dot.className = "fc-status-dot";
+        dot.style.backgroundColor = done ? '#22c55e' : '#ef4444';
+        main.prepend(dot);
+
+        if (done) {
+          info.el.classList.add('fc-is-done'); info.el.classList.remove('fc-is-pending');
+          info.el.style.opacity="0.7"; info.el.style.textDecoration="line-through";
+        } else {
+          info.el.classList.remove('fc-is-done'); info.el.classList.add('fc-is-pending');
+          info.el.style.opacity=""; info.el.style.textDecoration="";
+        }
+      },
+
+      events: function(info, success, failure){
+        const qs=new URLSearchParams({ start:info.startStr, end:info.endStr });
+        fetch("/calendar/api/events?"+qs, { credentials: "same-origin" })
+          .then(r=>r.json()).then(function(data){
+            updateAssigneeOptionsFrom(data);
+            const filtered=data.filter(passesFilters);
+            for(const ev of filtered){
+              const ep=ev.extendedProps||{};
+              ev.color=colorForAssignee(ep.assignee);
+            }
+            success(filtered);
+          }).catch(function(e){ console.error(e); failure(e); showError("Failed to load events."); });
+      },
+
+      /* day click/drag → create */
+      select: function(info){
+        openEventModal({
+          id:null, title:"", description:"", location:"", assignee:"",
+          start: info.start, end: info.end, allDay: info.allDay
+        }, null);
+        calendar.unselect();
+      },
+
+      eventDrop: handleMoveOrResize,
+      eventResize: handleMoveOrResize,
+
+      /* event click → edit */
+      eventClick: function(info){
+        fetch("/calendar/api/events/"+info.event.id, { credentials: "same-origin" })
+          .then(r=>r.json()).then(function(detail){
+            openEventModal({
+              id:Number(detail.id),
+              title:detail.title||"",
+              description:detail.description||"",
+              location:detail.location||"",
+              assignee:detail.assignee||"",
+              start:detail.start, end:detail.end, allDay:!!detail.allDay
+            }, detail.occurrence_start||null);
+          });
+      }
+    });
+
+    calendar.render();
+    window.addEventListener("load", ()=> setTimeout(()=> calendar.updateSize(), 50));
+    window.addEventListener("resize", ()=> calendar.updateSize());
+
+    function setHeightForView(viewType){
+      if (viewType === "timeGridWeek" || viewType === "timeGridDay") {
+        calendar.setOption("height", 680);
+      } else {
+        calendar.setOption("height", "auto");
+      }
+    }
+
+    async function handleMoveOrResize(info){
+      try{
+        const payload={ start: info.event.start?info.event.start.toISOString():null,
+                        end:   info.event.end?info.event.end.toISOString():null,
+                        allDay: !!info.event.allDay };
+        await fetch("/calendar/api/events/"+info.event.id, {
+          method:"PATCH", headers:{"Content-Type":"application/json"}, credentials:"same-origin",
+          body: JSON.stringify(payload)
+        });
+      }catch(e){ console.error(e); showError("Failed to update event."); }
+    }
+
+    /* ---------- modal bindings ---------- */
+    function bindModalButtons(){
+      if (!modalEl) return;
+
+      const doSave = async () => {
+        const payload = {
+          title: (mTitle.value || "(Untitled)").trim(),
+          description: mDesc.value || "",
+          location: mLoc.value || "",
+          assignee: mAssignee.value || "",
+          allDay: !!mAllDay.checked,
+          start: isoOrNull(fromLocalInputValue(mStart.value)),
+          end:   isoOrNull(fromLocalInputValue(mEnd.value)),
+        };
+        try{
+          if (state.current?.id) {
+            const id = String(state.current.id); // series id
+            await fetch(`/calendar/api/events/${id}`, {
+              method:"PATCH", headers:{ "Content-Type":"application/json" }, credentials:"same-origin",
+              body: JSON.stringify(payload)
+            });
+          } else {
+            await fetch(`/calendar/api/events`, {
+              method:"POST", headers:{ "Content-Type":"application/json" }, credentials:"same-origin",
+              body: JSON.stringify(payload)
+            });
+          }
+          closeEventModal();
+          calendar.refetchEvents();
+        }catch(e){ console.error(e); alert("Save failed"); }
+      };
+
+      const doDelete = async () => {
+        if (!state.current?.id) { closeEventModal(); return; }
+        if (!confirm("Delete this event?")) return;
+        const seriesId = String(state.current.id).split(":")[0];
+        try{
+          await fetch(`/calendar/api/events/${seriesId}`, { method:"DELETE", credentials:"same-origin" });
+          closeEventModal();
+          calendar.refetchEvents();
+        }catch(e){ console.error(e); alert("Delete failed"); }
+      };
+
+      modalClose?.addEventListener("click", closeEventModal);
+      modalCancel?.addEventListener("click", closeEventModal);
+      backdrop?.addEventListener("click", closeEventModal);
+      modalSave?.addEventListener("click", doSave);
+      modalDelete?.addEventListener("click", doDelete);
+    }
+    bindModalButtons();
+
+    /* ---------- “＋ New Event” button ---------- */
+    newBtn?.addEventListener("click", () => {
+      const now = new Date();
+      const end = new Date(now.getTime() + 60*60*1000);
+      openEventModal({
+        id:null, title:"", description:"", location:"", assignee:"",
+        start: now.toISOString(), end: end.toISOString(), allDay:false
+      }, null);
+    });
+
+    /* 🔔 Live-refresh:
+       - when Home (other tab) writes to localStorage
+       - when this tab regains focus
+       - when Home (same tab) dispatches 'calendar:refresh'
+    */
+    window.addEventListener('storage', (ev) => {
+      if (ev.key === 'fc_done_occurrences_v1') {
+        calendar.refetchEvents();
+      }
+    });
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        calendar.refetchEvents();
+      }
+    });
+    window.addEventListener('calendar:refresh', () => {
+      calendar.refetchEvents();
+    });
+
+  } catch (e) {
+    console.error(e);
+    showError(String(e));
+  }
+});
+</script>
+
+<!-- Event Modal -->
+<div id="event-modal" class="fixed inset-0 z-[60] hidden">
+  <div class="absolute inset-0 bg-black/30" data-close></div>
+  <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[560px] max-w-[96vw]
+              bg-white rounded-2xl shadow-xl p-4">
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="text-lg font-semibold" id="modal-heading">Event</h2>
+      <button id="modal-close" class="text-gray-500 hover:text-gray-700" aria-label="Close">✕</button>
+    </div>
+
+    <div class="grid grid-cols-2 gap-3">
+      <label class="col-span-2 text-sm">
+        <span class="block text-gray-600">Title</span>
+        <input id="modal-title" class="w-full border rounded px-2 py-1.5" />
+      </label>
+
+      <label class="text-sm">
+        <span class="block text-gray-600">All-day</span>
+        <input id="modal-allDay" type="checkbox" />
+      </label>
+
+      <div></div>
+
+      <label class="text-sm">
+        <span class="block text-gray-600">Start</span>
+        <input id="modal-start" type="datetime-local" class="w-full border rounded px-2 py-1.5" />
+      </label>
+
+      <label class="text-sm">
+        <span class="block text-gray-600">End</span>
+        <input id="modal-end" type="datetime-local" class="w-full border rounded px-2 py-1.5" />
+      </label>
+
+      <label class="text-sm">
+        <span class="block text-gray-600">Location</span>
+        <input id="modal-location" class="w-full border rounded px-2 py-1.5" />
+      </label>
+
+      <label class="text-sm">
+        <span class="block text-gray-600">Assignee</span>
+        <input id="modal-assignee" class="w-full border rounded px-2 py-1.5" />
+      </label>
+
+      <label class="col-span-2 text-sm">
+        <span class="block text-gray-600">Notes</span>
+        <textarea id="modal-desc" rows="3" class="w-full border rounded px-2 py-1.5"></textarea>
+      </label>
+    </div>
+
+    <div class="mt-4 flex items-center justify-between">
+      <button id="modal-delete" class="px-3 py-1.5 rounded border text-red-600 border-red-300">Delete</button>
+      <div class="space-x-2">
+        <button id="modal-cancel" class="px-3 py-1.5 rounded border">Cancel</button>
+        <button id="modal-save" class="px-3 py-1.5 rounded bg-figurella text-white">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

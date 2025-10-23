@@ -1,0 +1,258 @@
+<style>
+/* ===== Base canvas ===== */
+html, body { margin:0; padding:0; height:100%; overflow:hidden; }
+#charts-main{ position:absolute; top:64px; bottom:44px; left:0; right:0; display:flex; overflow:hidden; }
+
+/* ===== Sidebar sizing variables (used by JS) ===== */
+:root{
+  --sidebar-min: 220px;
+  --sidebar-max: 520px;
+  --sidebar-width: 380px;   /* default width; JS updates this on drag */
+  --sidebar-collapsed: 52px;/* collapsed rail (desktop) */
+}
+
+/* ── GRID MODES ────────────────────────────────────────────
+   Default = SIDEBAR ONLY (no right box).
+   Add .with-panel to #charts-wrapper to enable the chart column. */
+#charts-wrapper{
+  display:grid;
+  grid-template-columns: var(--sidebar-width);
+  column-gap:0;
+  position:relative; width:100%; height:100%; overflow:hidden;
+}
+#charts-wrapper.with-panel{ grid-template-columns: var(--sidebar-width) 1fr; }
+
+/* ===== Generic glass panel (for generic cards only) ===== */
+.panel{
+  background: rgba(255,255,255,0.68);
+  -webkit-backdrop-filter: saturate(120%) blur(10px);
+  backdrop-filter: saturate(120%) blur(10px);
+  border: 1px solid rgba(255,255,255,0.55);
+  border-radius: .75rem;
+  box-shadow: 0 10px 30px rgba(0,0,0,.12), inset 0 1px 0 rgba(255,255,255,.6);
+  padding: 1rem; height: 100%; overflow: auto; box-sizing: border-box;
+}
+#chart-panel.panel{ padding:0; }
+
+/* ===== Sidebar (client list block) =====
+   Support BOTH old (#client-panel) and new (#client-sidebar) IDs. */
+#client-panel,
+#client-sidebar.sidebar{
+  position: relative;
+  display:flex; flex-direction:column;
+  height:100%;
+  width: var(--sidebar-width);
+  min-width: var(--sidebar-min);
+  max-width: var(--sidebar-max);
+  padding:.5rem .5rem .75rem;
+  border-radius:.75rem;
+  border: 1px solid rgba(255,255,255,.45);
+  box-shadow: 0 8px 24px rgba(0,0,0,.10);
+  background: rgba(255,255,255,.82);
+  -webkit-backdrop-filter: saturate(120%) blur(8px);
+  backdrop-filter: saturate(120%) blur(8px);
+  z-index:10;
+  overflow:hidden;
+}
+
+/* Neutralize generic .panel bg if old markup still includes it */
+#client-panel{ background: rgba(255,255,255,.82) !important; }
+
+/* ---- Collapse/Hide states driven by sidebar.js ---- */
+#client-sidebar.sidebar[data-state="collapsed"]{
+  width: var(--sidebar-collapsed) !important;
+  min-width: var(--sidebar-collapsed) !important;
+}
+#client-sidebar.sidebar[data-state="collapsed"] .title,
+#client-sidebar.sidebar[data-state="collapsed"] .px-4,
+#client-sidebar.sidebar[data-state="collapsed"] .filter-row,
+#client-sidebar.sidebar[data-state="collapsed"] thead,
+#client-sidebar.sidebar[data-state="collapsed"] .client-name-text,
+#client-sidebar.sidebar[data-state="collapsed"] .client-flags{
+  display:none !important;
+}
+
+/* Off-canvas on mobile */
+@media (max-width:900px){
+  #client-sidebar.sidebar{
+    position:absolute; left:0; top:0; bottom:0;
+    transform: translateX(0); transition: transform .22s ease;
+  }
+  #client-sidebar.sidebar[data-state="hidden"]{
+    transform: translateX(calc(-1 * var(--sidebar-width)));
+  }
+}
+
+/* ---- Resizer handle (drag to resize) ---- */
+.sidebar-resizer{
+  position:absolute; top:0; right:-6px; width:12px; height:100%;
+  cursor: ew-resize; background: transparent;
+}
+
+/* ---- Optional toggle button look ---- */
+.sidebar-top .icon-btn{
+  display:inline-flex; align-items:center; justify-content:center;
+  width:32px; height:32px; border-radius:8px;
+  border:1px solid #e5e7eb; background:#fff; cursor:pointer;
+}
+
+/* Keep header + filters fixed; scroll only the table */
+#client-panel .overflow-y-auto,
+#client-sidebar .list-wrap{
+  position:relative;
+  flex:1 1 auto;
+  overflow-y:auto;
+  margin-top:.5rem;
+}
+
+/* Sidebar table */
+#client-panel table,
+#client-sidebar table{
+  width:100%; border-collapse:collapse; margin:0; table-layout:fixed;
+}
+#client-panel thead, #client-sidebar thead{ display:none; }
+#client-panel td, #client-sidebar td{
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  padding:.45rem .5rem; cursor:pointer;
+}
+#client-panel tbody tr:hover td,
+#client-sidebar tbody tr:hover td{ background: rgba(255,255,255,0.55); }
+
+/* Hide Date Created (2), Email (4), Phone (5) in the narrow block */
+#client-panel th:nth-child(2), #client-panel td:nth-child(2),
+#client-panel th:nth-child(4), #client-panel td:nth-child(4),
+#client-panel th:nth-child(5), #client-panel td:nth-child(5),
+#client-sidebar th:nth-child(2), #client-sidebar td:nth-child(2),
+#client-sidebar th:nth-child(4), #client-sidebar td:nth-child(4),
+#client-sidebar th:nth-child(5), #client-sidebar td:nth-child(5){ display:none; }
+
+/* ===== Divider (never shown) ===== */
+.sidebar-divider{ display:none !important; pointer-events:none !important; }
+
+/* ===== Chart area ===== (right side hidden by default) */
+#chart-panel{
+  display:none; grid-column: 2 / 3; grid-row: 1 / 2;
+  align-items:flex-start; overflow:hidden; box-sizing:border-box;
+}
+#charts-wrapper.with-panel #chart-panel{ display:flex; }
+
+/* ===== Chart cards (inside chart-panel) ===== */
+/* Scoped to #chart-panel so it doesn’t affect modal cards */
+#chart-panel .chart-card{
+  position:relative; flex:1 1 0; min-width:0; display:flex; flex-direction:column;
+  background: rgba(255,255,255,0.55);
+  -webkit-backdrop-filter: saturate(110%) blur(4px);
+  backdrop-filter: saturate(110%) blur(4px);
+  border: 1px solid rgba(255,255,255,0.55);
+  border-radius:.75rem;
+  box-shadow: 0 10px 30px rgba(0,0,0,.12), inset 0 1px 0 rgba(255,255,255,.6);
+  overflow:hidden; box-sizing:border-box;
+}
+
+/* Scaling shells (if used) */
+.scale-target{ transform-origin:top left; width:100%; height:100%; }
+.scale-content{ display:flex; flex-direction:column; width:100%; height:100%; }
+
+.chart-header{
+  background:#1f2937; color:#fff; display:flex; justify-content:space-between; align-items:center;
+  padding:.5rem 1rem; flex-shrink:0;
+}
+.chart-close{ background:none; border:none; color:#fff; font-size:1.25rem; cursor:pointer; }
+.chart-body{ flex:1; display:flex; flex-direction:column; overflow:auto; }
+.chart-card.editing .chart-body{ outline:2px dashed #ec4899; outline-offset:-4px; }
+@keyframes headerFlash { 0%{background:#f59e0b;} 100%{background:#1f2937;} }
+.chart-header.flash{ animation: headerFlash .8s ease; }
+
+.client-flags{ margin-left:.25rem; } .client-flags > span{ margin-left:.1rem; }
+.hide-scrollbar{ -ms-overflow-style:none; scrollbar-width:none; }
+.hide-scrollbar::-webkit-scrollbar{ display:none; }
+
+/* Pink pill states */
+.flag-group .flag-btn.btn-on{
+  background:#ec4899 !important; color:#fff !important;
+  box-shadow:0 6px 16px rgba(236,72,153,.35) !important;
+}
+.flag-group .flag-btn.btn-off{ background:#e5e7eb !important; color:#111827 !important; box-shadow:none !important; }
+
+/* Sticky toolbar under tabs (workout) */
+#workout-rev1 .rev1-toolbar-wrap{
+  position: sticky; top: 0; z-index: 25;
+  display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap;
+  background: rgba(255,255,255,0.85);
+  -webkit-backdrop-filter: saturate(120%) blur(8px);
+  backdrop-filter: saturate(120%) blur(8px);
+  padding:.25rem 0; border-bottom:1px solid rgba(255,255,255,0.55);
+}
+
+/* Table headers inside Rev1 */
+#workout-rev1 .sticky-header thead th{
+  position:sticky; top: var(--wr1-stick-top, 0px);
+  background: rgba(249,250,251,0.90) !important; z-index:10;
+}
+
+/* Drag visuals for workout rows */
+.row-grip{ position:absolute; inset:0; opacity:0; cursor:grab; user-select:none; }
+.row-grip:active{ cursor:grabbing; }
+#workout-rev1 table tbody tr, #gk-rev1-section table tbody tr{
+  transition: transform .08s ease, box-shadow .12s ease; will-change: transform;
+}
+#workout-rev1 table tbody tr.dragging, #gk-rev1-section table tbody tr.dragging{
+  position: relative; z-index: 50; transform: scale(1.01);
+  box-shadow: 0 12px 24px rgba(0,0,0,.16); background:#fff;
+}
+#workout-rev1 table tbody tr.dragging td, #gk-rev1-section table tbody tr.dragging td{ background:#fff !important; }
+#workout-rev1 table tbody tr.drag-over-top,    #gk-rev1-section table tbody tr.drag-over-top{    box-shadow: inset 0 2px 0 #cc0066; }
+#workout-rev1 table tbody tr.drag-over-bottom, #gk-rev1-section table tbody tr.drag-over-bottom{ box-shadow: inset 0 -2px 0 #cc0066; }
+
+/* ---------- OVERRIDES ---------- */
+#chart-panel .card{
+  background: rgba(255,255,255,0.80) !important;
+  -webkit-backdrop-filter: saturate(120%) blur(8px);
+  backdrop-filter: saturate(120%) blur(8px);
+  border: 1px solid rgba(255,255,255,0.45);
+  box-shadow: 0 8px 24px rgba(0,0,0,.10);
+  border-radius: .75rem;
+}
+#chart-panel table.clean thead th{ background: rgba(255,255,255,0.90) !important; }
+#chart-panel .chart-body{ background: transparent !important; }
+
+/* ========= Text color fixes for readability ========= */
+#chart-panel, #chart-panel *{ color:#111827 !important; }
+#chart-panel table tbody td, #chart-panel table tbody th{ color:#000 !important; }
+
+/* ===== Floatable (drag + resize) card chrome) ===== */
+.floatable{ position:relative; }
+.floatable.is-floating{
+  position:fixed; top:88px; left:300px; max-height:calc(100vh - 140px);
+  overflow:auto; z-index:70; box-shadow:0 18px 48px rgba(0,0,0,.18);
+}
+.float-handle{
+  position:sticky; top:0; display:flex; align-items:center; gap:.5rem;
+  background:rgba(249,250,251,.92); border-bottom:1px solid #e5e7eb;
+  padding:.4rem .6rem; cursor:move; z-index:1;
+}
+.float-handle .btn-xs{
+  font-size:.75rem; line-height:1rem; padding:.25rem .5rem;
+  border-radius:.375rem; border:1px solid rgba(0,0,0,.10); background:#fff;
+}
+.float-resize-grip{
+  position:sticky; bottom:0; right:0; margin-left:auto; width:16px; height:16px;
+  cursor:se-resize; opacity:.55;
+  background-image:
+    linear-gradient(135deg,transparent 0 33%,#cbd5e1 33% 66%,transparent 66%),
+    linear-gradient(135deg,transparent 50%,#cbd5e1 50%),
+    linear-gradient(135deg,#cbd5e1 0 0);
+  background-size:100% 100%,10px 10px,4px 4px; background-repeat:no-repeat;
+}
+
+/* ===== Responsive sidebar width ===== */
+@media (max-width: 1280px){
+  :root{ --sidebar-width: 350px; }
+}
+@media (max-width: 1024px){
+  :root{ --sidebar-width: 320px; }
+}
+@media (max-width: 840px){
+  :root{ --sidebar-width: 300px; }
+}
+</style>

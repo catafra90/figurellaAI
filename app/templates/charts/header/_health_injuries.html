@@ -1,0 +1,122 @@
+{# Safe pulls #}
+{% set row_diabetes   = (pdata | selectattr('Field','equalto','Diabetes') | list | first) or {} %}
+{% set row_bp         = (pdata | selectattr('Field','equalto','Blood Pressure Issues') | list | first) or {} %}
+{% set row_vertigo    = (pdata | selectattr('Field','equalto','Dizziness / Vertigo') | list | first) or {} %}
+{% set row_thyroid    = (pdata | selectattr('Field','equalto','Thyroid Imbalances') | list | first) or {} %}
+{% set row_heart      = (pdata | selectattr('Field','equalto','Heart Disease') | list | first) or {} %}
+{% set row_spine      = (pdata | selectattr('Field','equalto','Back / Neck Issues') | list | first) or {} %}
+{% set row_hips       = (pdata | selectattr('Field','equalto','Hips Issues') | list | first) or {} %}
+{% set row_legs       = (pdata | selectattr('Field','equalto','Legs Issues') | list | first) or {} %}
+{% set row_arms       = (pdata | selectattr('Field','equalto','Arms Issues') | list | first) or {} %}
+{% set row_vascular   = (pdata | selectattr('Field','equalto','Vascular Pathologies') | list | first) or {} %}
+{% set row_irregular  = (pdata | selectattr('Field','equalto','Irregular Menstrual Period / Hormonal Issues') | list | first) or {} %}
+{% set row_menopause  = (pdata | selectattr('Field','equalto','Menopause – # of Years') | list | first) or {} %}
+{% set row_blood      = (pdata | selectattr('Field','equalto','Blood Work Alterations') | list | first) or {} %}
+{% set row_others     = (pdata | selectattr('Field','equalto','Others') | list | first) or {} %}
+
+{% macro flag_input(field_label, flag_name, checked) -%}
+  <label class="inline-flex items-center min-w-0">
+    <input type="checkbox" name="{{ flag_name }}" class="form-checkbox h-5 w-5 text-pink-600"
+           {% if checked and checked != 'No' %}checked{% endif %}/>
+    <span class="ml-2">{{ field_label }}</span>
+  </label>
+{%- endmacro %}
+
+<style>
+  .inj-list li { min-width: 0; }
+  .inj-list .field { min-width: 0; }
+  @media (max-width:1024px){
+    .inj-list li { flex-wrap: wrap; align-items: flex-start; }
+    .inj-list input.field { width: 100% !important; }
+  }
+</style>
+
+<details open class="rounded-lg shadow transition-colors duration-200
+                    bg-[rgba(255,255,255,0.72)] backdrop-blur-[8px]
+                    border border-[rgba(255,255,255,0.45)]
+                    shadow-[0_8px_24px_rgba(0,0,0,0.10),inset_0_1px_0_rgba(255,255,255,0.55)]">
+  <summary class="px-6 py-4 text-lg font-semibold
+                  bg-[rgba(255,255,255,0.85)] backdrop-blur-[6px]
+                  border-b border-[rgba(255,255,255,0.55)]">
+    Health / Injuries
+  </summary>
+
+  <div class="px-6 pt-4 pb-8 border-t border-pink-200 min-h-[300px]">
+    <p class="text-sm text-gray-600 mb-4">
+      Figurella has no contradictions; we ask about your medical values to improve your experience.
+    </p>
+
+    <ul class="inj-list list-none space-y-2">
+      <li class="flex items-center gap-3 min-w-0">
+        {{ flag_input('Diabetes','flag_diabetes', row_diabetes.get('Flag')) }}
+        <input type="text" name="comment_diabetes" value="{{ row_diabetes.get('Comment','') }}"
+               placeholder="Comment" class="field w-96"/>
+      </li>
+      <li class="flex items-center gap-3 min-w-0">
+        {{ flag_input('Blood Pressure Issues','flag_bp', row_bp.get('Flag')) }}
+        <input type="text" name="comment_bp" value="{{ row_bp.get('Comment','') }}"
+               placeholder="Comment" class="field w-96"/>
+      </li>
+      <li class="flex items-center gap-3 min-w-0">
+        {{ flag_input('Dizziness / Vertigo','flag_vertigo', row_vertigo.get('Flag')) }}
+        <input type="text" name="comment_vertigo" value="{{ row_vertigo.get('Comment','') }}"
+               placeholder="Comment" class="field w-96"/>
+      </li>
+      <li class="flex items-center gap-3 min-w-0">
+        {{ flag_input('Thyroid Imbalances','flag_thyroid', row_thyroid.get('Flag')) }}
+        <input type="text" name="comment_thyroid" value="{{ row_thyroid.get('Comment','') }}"
+               placeholder="Comment" class="field w-96"/>
+      </li>
+      <li class="flex items-center gap-3 min-w-0">
+        {{ flag_input('Heart Disease','flag_heart', row_heart.get('Flag')) }}
+        <input type="text" name="comment_heart" value="{{ row_heart.get('Comment','') }}"
+               placeholder="Comment" class="field w-96"/>
+      </li>
+      <li class="flex items-center gap-3 min-w-0">
+        {{ flag_input('Back / Neck Issues','flag_spine', row_spine.get('Flag')) }}
+        <input type="text" name="comment_spine" value="{{ row_spine.get('Comment','') }}"
+               placeholder="Comment" class="field w-96"/>
+      </li>
+      <li class="flex items-center gap-3 min-w-0">
+        {{ flag_input('Hips Issues','flag_hips', row_hips.get('Flag')) }}
+        <input type="text" name="comment_hips" value="{{ row_hips.get('Comment','') }}"
+               placeholder="Comment" class="field w-96"/>
+      </li>
+      <li class="flex items-center gap-3 min-w-0">
+        {{ flag_input('Legs Issues','flag_legs', row_legs.get('Flag')) }}
+        <input type="text" name="comment_legs" value="{{ row_legs.get('Comment','') }}"
+               placeholder="Comment" class="field w-96"/>
+      </li>
+      <li class="flex items-center gap-3 min-w-0">
+        {{ flag_input('Arms Issues','flag_arms', row_arms.get('Flag')) }}
+        <input type="text" name="comment_arms" value="{{ row_arms.get('Comment','') }}"
+               placeholder="Comment" class="field w-96"/>
+      </li>
+      <li class="flex items-center gap-3 min-w-0">
+        {{ flag_input('Vascular Pathologies','flag_vascular', row_vascular.get('Flag')) }}
+        <input type="text" name="comment_vascular" value="{{ row_vascular.get('Comment','') }}"
+               placeholder="Comment" class="field w-96"/>
+      </li>
+      <li class="flex items-center gap-3 min-w-0">
+        {{ flag_input('Irregular Menstrual Period / Hormonal Issues','flag_irregular_period', row_irregular.get('Flag')) }}
+        <input type="text" name="comment_irregular_period" value="{{ row_irregular.get('Comment','') }}"
+               placeholder="Comment" class="field w-96"/>
+      </li>
+      <li class="flex items-center gap-3 min-w-0">
+        {{ flag_input('Menopause – # of Years','flag_menopause_years', row_menopause.get('Flag')) }}
+        <input type="text" name="comment_menopause_years" value="{{ row_menopause.get('Comment','') }}"
+               placeholder="Comment" class="field w-96"/>
+      </li>
+      <li class="flex items-center gap-3 min-w-0">
+        {{ flag_input('Blood Work Alterations','flag_blood_work', row_blood.get('Flag')) }}
+        <input type="text" name="comment_blood_work" value="{{ row_blood.get('Comment','') }}"
+               placeholder="Comment" class="field w-96"/>
+      </li>
+      <li class="flex items-center gap-3 min-w-0">
+        <label class="inline-flex items-center"><span class="ml-2 font-medium">Others</span></label>
+        <input type="text" name="comment_others" value="{{ row_others.get('Comment','') }}"
+               placeholder="Add any other notes…" class="field w-96"/>
+      </li>
+    </ul>
+  </div>
+</details>

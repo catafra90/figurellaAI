@@ -1,0 +1,82 @@
+{# templates/charts/charts.html (revised) #}
+{% extends "base.html" %}
+
+{% block extra_head %}
+  {% include "charts/_charts_styles.html" %}
+  <script defer src="{{ url_for('static', filename='js/charts/core.js') }}"></script>
+  <script defer src="{{ url_for('static', filename='js/charts/loader.js') }}"></script>
+  <script defer src="{{ url_for('static', filename='js/charts/autosave.js') }}"></script>
+  <script defer src="{{ url_for('static', filename='js/charts/ibf.js') }}"></script>
+  <script defer src="{{ url_for('static', filename='js/charts/workout_rev1.js') }}"></script>
+
+  <style>
+    /* Fill the parent <main id="app-main"> height */
+    #charts-main { height: 100%; }
+
+    /* Grid shell: sidebar + optional right panel */
+    #charts-wrapper {
+      display: grid;
+      grid-template-columns: 380px 1fr;  /* sidebar + panel */
+      gap: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;                  /* internal scrollers handle overflow */
+    }
+    #charts-wrapper.sidebar-only { grid-template-columns: 380px; }
+
+    /* Make the sidebar scroll independently */
+    .sidebar-scroll {
+      height: 100%;
+      overflow: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* Divider */
+    .sidebar-divider {
+      width: 10px;
+      flex: 0 0 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #64748b;
+    }
+
+    /* Right panel host: the card host becomes the scroller */
+    #card-host {
+      height: 100%;
+      overflow: auto;
+      -webkit-overflow-scrolling: touch;
+      min-width: 0;                      /* prevent flex/grid overflow */
+    }
+
+    /* Responsive: stack on small screens, keep both areas scrollable */
+    @media (max-width: 1024px) {
+      #charts-wrapper { grid-template-columns: 320px 1fr; }
+    }
+    @media (max-width: 768px) {
+      #charts-wrapper.with-panel { grid-template-columns: 1fr; }  /* collapse: sidebar off-canvas pattern optional */
+    }
+  </style>
+{% endblock %}
+
+{% block content %}
+{# Toggle via query param: ?show=1 will render the right panel; default is sidebar-only #}
+{% set SHOW_CARD = (request.args.get('show') == '1') %}
+
+<div id="charts-main">
+  <div id="charts-wrapper" class="{{ 'with-panel' if SHOW_CARD else 'sidebar-only' }}">
+    <div class="sidebar-scroll">
+      {% include "charts/_sidebar.html" %}
+    </div>
+
+    {% if SHOW_CARD %}
+      <div class="sidebar-divider"><i class="bi bi-grip-horizontal"></i></div>
+      <div id="card-host">
+        {% include "charts/_card_host.html" %}
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}{% endblock %}

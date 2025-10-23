@@ -1,0 +1,51 @@
+{# app/templates/auth/login.html #}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>{{ title or "Sign in" }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root { --pink:#CC0066; --ink:#0f172a; --muted:#6b7280; }
+    *{box-sizing:border-box} html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:linear-gradient(135deg,#0b1c3a,#7a49a8 55%,#f6d3e8);}
+    .wrap{min-height:100%;display:grid;place-items:center;padding:24px}
+    .card{width:100%;max-width:420px;background:#fff;border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.20);padding:28px}
+    h1{margin:0 0 6px 0;font-size:22px;color:var(--ink)}
+    p.sub{margin:0 0 18px 0;color:var(--muted);font-size:14px}
+    .field{margin:12px 0}
+    label{display:block;font-size:13px;color:#111827;margin-bottom:6px}
+    input{width:100%;padding:11px 12px;border:1px solid #e5e7eb;border-radius:10px;font-size:14px}
+    .btn{width:100%;margin-top:14px;padding:11px 14px;border:0;border-radius:12px;background:var(--pink);color:#fff;font-weight:600;cursor:pointer}
+    .alert{background:#fee2e2;border:1px solid #fecaca;color:#991b1b;padding:10px 12px;border-radius:10px;font-size:14px;margin-bottom:10px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <form class="card" method="post" action="{{ url_for('auth.login', next=request.args.get('next')) }}">
+      <h1>Welcome</h1>
+      <p class="sub">Sign in to continue to Figurella Platform</p>
+
+      {% with msgs = get_flashed_messages(with_categories=true) %}
+        {% if msgs %}
+          {% for cat, msg in msgs %}
+            <div class="alert">{{ msg }}</div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      <div class="field">
+        <label for="username">Username</label>
+        <input id="username" name="username" autocomplete="username" required />
+      </div>
+      <div class="field">
+        <label for="password">Password</label>
+        <input id="password" type="password" name="password" autocomplete="current-password" required />
+      </div>
+      <button class="btn" type="submit">Sign in</button>
+    </form>
+  </div>
+</body>
+</html>

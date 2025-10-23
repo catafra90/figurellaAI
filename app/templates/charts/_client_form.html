@@ -1,0 +1,66 @@
+{# app/templates/charts/_client_form.html — unified with modal but keeps page styles/right rail #}
+<div class="space-y-6 lg:pr-72" id="client-chart-root"
+     data-client="{{ client }}"
+     data-workout-blocks='{{ workout_blocks_json | tojson }}'>
+
+  <style>
+  :root{
+    --fig-pink:#CC0066; --fig-pink-600:#AA0055; --ink:#0f172a; --muted:#6b7280;
+    --line:#e5e7eb; --panel: rgba(255,255,255,0.80); --head:  rgba(249,250,251,0.90);
+    --zebra: rgba(243,244,246,0.70); --hover: rgba(238,242,247,0.70);
+    --ring:#d1d5db; --rev1-num:56px; --rev1-rings:132px;
+    --rev1-workout:clamp(240px,22vw,420px); --rev1-notes:clamp(560px,58vw,1100px);
+  }
+
+  /* UNIVERSAL AUTO-FIT for page cards */
+  @media (min-width:1024px){ #client-chart-root{ padding-right:0 !important; } }
+  #client-chart-root{ --shell-gutter: 32px; --shell-max: 1400px; }
+  #client-chart-root .card,
+  #client-chart-root .scrollable-table{
+    width: min(var(--shell-max), calc(100% - var(--shell-gutter)*2)) !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+  }
+  #client-chart-root .card.card-pad{ padding:1.25rem !important; }
+  @media (max-width:1024px){ #client-chart-root{ --shell-gutter: 12px; } }
+  </style>
+
+  {# Use the shared core (tabs + content) #}
+  {% include 'charts/_client_card_core.html' %}
+
+  {# toast used by workout partial (kept for page too) #}
+  <div id="rev1-toast" class="toast" role="status" aria-live="polite"></div>
+</div>
+
+{# JSON for blocks — kept where your page expected it #}
+<template id="workout-blocks-json">
+  {{ workout_blocks_json | tojson | safe }}
+</template>
+
+{# Right rail (unchanged) #}
+{% if clients_right_rail %}
+<aside id="right-rail"
+       class="hidden lg:block fixed top-20 right-2 bottom-14 w-64 right-rail p-3 overflow-auto z-30">
+  <div class="mb-2">
+    <input id="client-filter" type="text" placeholder="Filter…"
+           class="w-full field" oninput="
+      (function(inp){
+        var q=(inp.value||'').toLowerCase().trim();
+        document.querySelectorAll('#right-rail li').forEach(function(li){
+          var t=li.getAttribute('data-name')||'';
+          li.style.display = !q || t.indexOf(q)>-1 ? '' : 'none';
+        });
+      })(this)">
+  </div>
+  <ul class="space-y-1 text-sm">
+    {% for name in clients_right_rail %}
+      <li data-name="{{ name|lower }}">
+        <a href="{{ url_for('charts.client_chart', client=name) }}"
+           class="block px-2 py-1 rounded {% if name == client %} bg-figurella text-white {% else %} hover:bg-gray-100 {% endif %}">
+          {{ name }}
+        </a>
+      </li>
+    {% endfor %}
+  </ul>
+</aside>
+{% endif %}

@@ -1,0 +1,127 @@
+{% set friend_rows = pdata | selectattr('Field','equalto','Friend') | list %}
+
+<style>
+  /* --- Table layout --- */
+  #friends-table{ table-layout:fixed; width:100%; border-collapse:collapse; }
+  #friends-table th,#friends-table td{
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  #friends-table tbody tr:nth-child(even){ background:rgba(243,244,246,.55); }
+
+  /* Allow wrapping on the second column by default (locations can be long) */
+  #friends-table td:nth-child(2){ white-space:normal; }
+
+  /* iPad tweaks */
+  @media (max-width:1024px){
+    #friends-table th,#friends-table td{
+      min-width:0;
+      white-space:normal;
+      word-break:break-word;
+      vertical-align:top;
+    }
+    /* Balanced columns */
+    #friends-table th:nth-child(1), #friends-table td:nth-child(1){ width:48%; }
+    #friends-table th:nth-child(2), #friends-table td:nth-child(2){ width:52%; }
+
+    /* Touch-friendly editable cells and button */
+    #friends-table td[contenteditable]{ min-height:38px; line-height:1.3; }
+    .friends-add-btn{ min-height:40px; padding:.5rem .9rem; }
+  }
+
+  /* --- Sticky action bar like Rewards --- */
+  .friends-body{ position:relative; }
+  .friends-actions{
+    position:sticky; bottom:0; z-index:3;
+    display:flex; gap:.5rem; align-items:center;
+    padding:10px 0 calc(8px + env(safe-area-inset-bottom));
+    margin-top:.5rem;
+    background:linear-gradient(
+      to bottom,
+      rgba(250,250,250,.6) 0%,
+      rgba(245,245,245,.95) 40%,
+      rgba(240,240,240,1) 100%
+    );
+    backdrop-filter:blur(10px);
+    border-top:1px solid rgba(0,0,0,.08);
+  }
+  .friends-add-btn{
+    background:#cc0066; color:#fff; font-weight:500;
+    padding:.45rem .9rem; border-radius:.5rem;
+    box-shadow:0 2px 4px rgba(0,0,0,.15);
+    transition:background-color .2s ease, transform .1s ease;
+  }
+  .friends-add-btn:hover{ background:#b00059; transform:translateY(-1px); }
+</style>
+
+<template id="friend-row-template">
+  <tr>
+    <td class="border px-2 py-1" contenteditable="true">&nbsp;</td>
+    <td class="border px-2 py-1" contenteditable="true">&nbsp;</td>
+  </tr>
+</template>
+
+<details open class="rounded-lg shadow transition-colors duration-200
+                    bg-[rgba(255,255,255,0.72)] backdrop-blur-[8px]
+                    border border-[rgba(255,255,255,0.45)]
+                    shadow-[0_8px_24px_rgba(0,0,0,0.10),inset_0_1px_0_rgba(255,255,255,0.55)]">
+  <summary class="px-6 py-4 text-lg font-semibold
+                  bg-[rgba(255,255,255,0.85)] backdrop-blur-[6px]
+                  border-b border-[rgba(255,255,255,0.55)]">
+    Friends
+  </summary>
+
+  <div class="px-6 border-t border-gray-200 friends-body">
+    <table id="friends-table" class="table-auto w-full text-sm">
+      <thead class="bg-gray-100 font-semibold text-gray-700">
+        <tr>
+          <th class="border px-2 py-1">Name</th>
+          <th class="border px-2 py-1">Location</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if friend_rows %}
+          {% for row in friend_rows %}
+            <tr class="{% if loop.index0 is even %}bg-gray-50{% endif %}">
+              <td class="border px-2 py-1" contenteditable="true">{{ row.get('FriendName','') }}</td>
+              <td class="border px-2 py-1" contenteditable="true">{{ row.get('FriendNotes','') }}</td>
+            </tr>
+          {% endfor %}
+        {% else %}
+          {% for i in range(4) %}
+            <tr class="{% if i is even %}bg-gray-50{% endif %}">
+              <td class="border px-2 py-1" contenteditable="true">&nbsp;</td>
+              <td class="border px-2 py-1" contenteditable="true">&nbsp;</td>
+            </tr>
+          {% endfor %}
+        {% endif %}
+      </tbody>
+    </table>
+
+    <!-- Sticky action bar -->
+    <div class="friends-actions">
+      <button type="button"
+              class="friends-add-btn"
+              onclick="(function(){
+                var table = document.getElementById('friends-table');
+                if(!table) return;
+                var tbody = table.tBodies[0] || table.appendChild(document.createElement('tbody'));
+                var tmpl  = document.getElementById('friend-row-template');
+                var tr    = (tmpl && tmpl.content && tmpl.content.firstElementChild)
+                            ? tmpl.content.firstElementChild.cloneNode(true)
+                            : document.createElement('tr');
+                if(!tmpl){
+                  tr.innerHTML = '<td class=&quot;border px-2 py-1&quot; contenteditable=&quot;true&quot;>&nbsp;</td>'
+                               + '<td class=&quot;border px-2 py-1&quot; contenteditable=&quot;true&quot;>&nbsp;</td>';
+                }
+                tbody.appendChild(tr);
+                Array.from(tbody.rows).forEach(function(r,i){
+                  r.classList.toggle('bg-gray-50', (i % 2) === 1);
+                });
+                (tr.querySelector('td[contenteditable]') || tr).focus();
+                tr.scrollIntoView({ block:'nearest', inline:'nearest' });
+              })()">
+        + Add Row
+      </button>
+    </div>
+  </div>
+</details>

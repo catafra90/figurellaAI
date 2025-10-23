@@ -1,0 +1,269 @@
+{# ========= MULTI Nutritional Consultations (no icon, 1:1 meal columns) ========= #}
+{% set _nc_list = (sheets.get('nc_list') if sheets and sheets.get('nc_list') else []) %}
+
+<style>
+  /* Use grid + gap so spacing never collapses (fixes iPad Safari) */
+  #ncon-list{
+    display:grid;
+    grid-auto-rows:minmax(min-content, max-content);
+    row-gap:1rem;
+    margin-top:1.75rem;  /* space from "Full Nutritional Consultation" */
+  }
+  @media (max-width:1024px){
+    #ncon-list{ row-gap:1.25rem; }   /* iPad/tablet ≈20 px */
+  }
+
+  /* Section box cleanup */
+  #ncon-list .ncon-item{ margin:0 !important; border-radius:1rem; }
+
+  /* ======= 1:1 header/data alignment for meal tables ======= */
+  .meal-wrap{ min-width:880px; }
+  .meal-grid{
+    display:grid;
+    grid-template-columns:
+      110px                 /* TIME */
+      minmax(220px, 1.5fr)  /* WHAT */
+      90px                  /* Q.TY */
+      1fr                   /* ADDITION */
+      1fr                   /* DRINK */
+      130px;                /* COOKED/OUT */
+    align-items:stretch;
+  }
+  @media (max-width:1024px){
+    .meal-grid{
+      grid-template-columns:
+        100px
+        minmax(200px,1.4fr)
+        80px
+        1fr
+        1fr
+        120px;
+    }
+  }
+  .meal-cell{ padding:.5rem .75rem; }
+  .meal-input,.meal-textarea,.meal-select{ width:100%; height:100%; }
+  .meal-textarea{
+    resize:vertical;
+    overflow:hidden; /* works with auto-expand JS */
+    min-height:2rem;
+  }
+
+  /* Small styling for header timestamp */
+  .ncon-ts{
+    font-size: .75rem;          /* text-xs */
+    color: #6b7280;             /* gray-500 */
+    white-space: nowrap;
+    margin-left: .75rem;
+  }
+</style>
+
+<div id="ncon-list">
+
+  {# ---- Meal sub-table macro (embedded per consultation) ---- #}
+  {% macro meal_block(idx, key, label, row) -%}
+    {% set day = (row.get('daylog', {}).get(key, {}) if row else {}) %}
+    <section class="border border-gray-200 rounded-lg overflow-hidden">
+      <header class="px-3 py-2 bg-gray-200 text-sm font-semibold uppercase">{{ label }}</header>
+
+      <div class="overflow-x-auto">
+        <div class="meal-wrap">
+          <!-- Header row uses the SAME grid template as the data row -->
+          <div class="meal-grid bg-gray-200 text-[12px] font-bold tracking-wide">
+            <div class="meal-cell">TIME</div>
+            <div class="meal-cell">WHAT</div>
+            <div class="meal-cell">Q.TY</div>
+            <div class="meal-cell">ADDITION</div>
+            <div class="meal-cell">DRINK</div>
+            <div class="meal-cell">COOKED/OUT</div>
+          </div>
+
+          <!-- Data row (1:1 with header) -->
+          <div class="meal-grid border-t border-gray-200">
+            <div class="meal-cell">
+              <input name="ncon_list[{{idx}}][daylog][{{key}}][time]" type="time" class="field meal-input" value="{{ day.get('time','') }}">
+            </div>
+            <div class="meal-cell">
+              <textarea name="ncon_list[{{idx}}][daylog][{{key}}][what]" class="field meal-textarea auto-expand" rows="1" placeholder="Food / meal">{{ day.get('what','') }}</textarea>
+            </div>
+            <div class="meal-cell">
+              <input name="ncon_list[{{idx}}][daylog][{{key}}][qty]" type="text" class="field meal-input" placeholder="Qty" value="{{ day.get('qty','') }}">
+            </div>
+            <div class="meal-cell">
+              <textarea name="ncon_list[{{idx}}][daylog][{{key}}][addition]" class="field meal-textarea auto-expand" rows="1" placeholder="Extras / sides">{{ day.get('addition','') }}</textarea>
+            </div>
+            <div class="meal-cell">
+              <textarea name="ncon_list[{{idx}}][daylog][{{key}}][drink]" class="field meal-textarea auto-expand" rows="1" placeholder="Drink">{{ day.get('drink','') }}</textarea>
+            </div>
+            <div class="meal-cell">
+              {% set sel = day.get('cooked_out','') %}
+              <select name="ncon_list[{{idx}}][daylog][{{key}}][cooked_out]" class="field meal-select">
+                <option value=""></option>
+                <option value="Cooked" {{ 'selected' if sel=='Cooked' else '' }}>Cooked</option>
+                <option value="Out"     {{ 'selected' if sel=='Out' else '' }}>Out</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  {%- endmacro %}
+
+  {# ---- A whole consultation block (accordion, no icon) ---- #}
+  {% macro consultation_block(idx, row) -%}
+    {% set name  = row.get('name','') %}
+    {% set date  = row.get('date','') %}
+    {% set w0    = row.get('initial_weight','') %}
+    {% set w1    = row.get('actual_weight','') %}
+    {% set goal  = row.get('goal','') %}
+    {% set plan  = row.get('current_plan','') %}
+    {% set created_at = row.get('created_at','') %}
+
+    {% set body_id = 'ncon-body-' ~ idx %}
+    <div class="border rounded-xl overflow-hidden ncon-item" id="ncon-{{idx}}">
+      <!-- Header -->
+      <button
+        type="button"
+        class="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 leading-none"
+        data-acc-target="#{{ body_id }}"
+        aria-controls="{{ body_id }}"
+        aria-expanded="false"
+        onclick="(function(btn){
+          const id = btn.getAttribute('data-acc-target');
+          const body = document.querySelector(id);
+          if(!body) return;
+          body.classList.toggle('hidden');
+          const expanded = !body.classList.contains('hidden');
+          btn.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+        })(this)">
+        <span class="text-base font-semibold">
+          Nutritional Consultation #<span class="ncon-num">{{ idx }}</span>
+        </span>
+        <!-- Timestamp on the right -->
+        <span class="ncon-ts">{{ created_at }}</span>
+      </button>
+
+      <!-- Body -->
+      <div id="{{ body_id }}" class="p-4 space-y-8 hidden">
+        <!-- Hidden field to persist the created_at value -->
+        <input type="hidden" name="ncon_list[{{idx}}][created_at]" value="{{ created_at }}" class="ncon-ts-input">
+
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div>
+            <label class="block text-sm font-medium mb-1">Name</label>
+            <input name="ncon_list[{{idx}}][name]" type="text" class="field w-full" value="{{ name }}">
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">Date</label>
+            <input name="ncon_list[{{idx}}][date]" type="date" class="field w-full" value="{{ date }}">
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">Initial Weight</label>
+            <input name="ncon_list[{{idx}}][initial_weight]" type="text" class="field w-full" value="{{ w0 }}" placeholder="e.g., 150 lb">
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">Actual Weight</label>
+            <input name="ncon_list[{{idx}}][actual_weight]" type="text" class="field w-full" value="{{ w1 }}" placeholder="e.g., 143 lb">
+          </div>
+        </div>
+
+        <div>
+          <div class="text-sm font-medium mb-1">Goal</div>
+          <div class="flex flex-wrap gap-6">
+            <label class="inline-flex items-center gap-2">
+              <input type="radio" name="ncon_list[{{idx}}][goal]" value="gain"   class="accent-[#cc0066]" {{ 'checked' if goal=='gain' else '' }}>
+              <span>A - Weight Gain</span>
+            </label>
+            <label class="inline-flex items-center gap-2">
+              <input type="radio" name="ncon_list[{{idx}}][goal]" value="stable" class="accent-[#cc0066]" {{ 'checked' if goal=='stable' else '' }}>
+              <span>B - Stable Weight</span>
+            </label>
+            <label class="inline-flex items-center gap-2">
+              <input type="radio" name="ncon_list[{{idx}}][goal]" value="loss"   class="accent-[#cc0066]" {{ 'checked' if goal=='loss' else '' }}>
+              <span>C - Weight Loss</span>
+            </label>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium mb-1">1. Current nutrition plan</label>
+          <textarea name="ncon_list[{{idx}}][current_plan]" rows="2" class="field w-full" placeholder="Describe the current nutrition plan…">{{ plan }}</textarea>
+        </div>
+
+        {{ meal_block(idx, 'breakfast',        'Breakfast',        row) }}
+        {{ meal_block(idx, 'morning_snack',    'Morning Snack',    row) }}
+        {{ meal_block(idx, 'lunch',            'Lunch',            row) }}
+        {{ meal_block(idx, 'afternoon_snack',  'Afternoon Snack',  row) }}
+        {{ meal_block(idx, 'dinner',           'Dinner',           row) }}
+        {{ meal_block(idx, 'after_dinner',     'After Dinner',     row) }}
+      </div>
+    </div>
+  {%- endmacro %}
+
+  {% if _nc_list and _nc_list|length > 0 %}
+    {% for row in _nc_list %}
+      {{ consultation_block(loop.index, row) }}
+    {% endfor %}
+  {% else %}
+    {{ consultation_block(1, {}) }}
+  {% endif %}
+</div>
+
+<div class="mt-3">
+  <button type="button" class="btn btn-primary" id="btn-add-ncon">+ Add Consultation</button>
+</div>
+
+<template id="ncon-template">
+  {{ consultation_block('__IDX__', {}) }}
+</template>
+
+<script>
+  // Auto-expand textareas
+  document.addEventListener('input',e=>{
+    if(e.target.classList && e.target.classList.contains('auto-expand')){
+      e.target.style.height='auto';
+      e.target.style.height=e.target.scrollHeight+'px';
+    }
+  });
+  window.addEventListener('load',()=>{
+    document.querySelectorAll('.auto-expand').forEach(t=>{
+      t.style.height='auto';
+      t.style.height=t.scrollHeight+'px';
+    });
+  });
+
+  // Format timestamp as "YYYY-MM-DD HH:mm"
+  function formatTimestamp(d){
+    const pad = n => String(n).padStart(2,'0');
+    const yyyy = d.getFullYear();
+    const mm   = pad(d.getMonth()+1);
+    const dd   = pad(d.getDate());
+    const HH   = pad(d.getHours());
+    const MM   = pad(d.getMinutes());
+    return `${yyyy}-${mm}-${dd} ${HH}:${MM}`;
+  }
+
+  // Add new consultation (counts only outer .ncon-item)
+  document.addEventListener('click',e=>{
+    const addBtn=e.target.closest('#btn-add-ncon');
+    if(!addBtn)return;
+
+    const container=document.getElementById('ncon-list');
+    const tpl=document.getElementById('ncon-template');
+    if(!container||!tpl)return;
+
+    const nextIdx=container.querySelectorAll('.ncon-item').length+1;
+    const html=tpl.innerHTML.replace(/__IDX__/g,String(nextIdx)).trim();
+    const wrap=document.createElement('div');
+    wrap.innerHTML=html;
+    const node=wrap.firstElementChild;
+
+    // ⏰ Set timestamp in header + hidden input
+    const ts = formatTimestamp(new Date());
+    const tsSpan = node.querySelector('.ncon-ts');
+    if(tsSpan) tsSpan.textContent = ts;
+    const tsInput = node.querySelector('.ncon-ts-input');
+    if(tsInput) tsInput.value = ts;
+
+    container.appendChild(node);
+  });
+</script>

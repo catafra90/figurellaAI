@@ -1,0 +1,158 @@
+{# templates/charts/_frequency.html #}
+{# expects: months, freq_row, and freq_client (string) #}
+
+<div class="overflow-x-auto">
+  <table id="frequency-table" class="min-w-full border-collapse text-sm text-center">
+    <caption class="text-lg font-semibold mb-2">
+      Frequency
+      <span id="current-client" class="ml-2 text-xs px-2 py-0.5 rounded border border-gray-200 text-gray-700"></span>
+      <span id="freq-status" class="ml-2 text-xs text-gray-500"></span>
+    </caption>
+
+    <thead class="font-semibold bg-[rgba(249,250,251,0.85)]">
+      <tr>
+        {% for short, label in months %}
+          <th class="border px-2 py-1">{{ label }}</th>
+        {% endfor %}
+      </tr>
+    </thead>
+
+    <tbody>
+      <tr>
+        {% for short, label in months %}
+          {# Prefill from saved profile sheet (if present) #}
+          {% set cell_val = freq_row.get(short) or freq_row.get(label) or '' %}
+          <td class="border px-2 py-2" data-month="{{ short }}" contenteditable="true">{{ cell_val }}</td>
+        {% endfor %}
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+{# Hidden config (endpoint + client) #}
+<div id="freq-filters"
+     data-fetch-url="{{ url_for('ibf_bp.ibf_frequency') }}"
+     data-client="{{ freq_client|default('') }}">
+</div>
+
+<script>
+(function () {
+  const card = (document.currentScript && document.currentScript.closest('.chart-card')) || null;
+  if (!card) { console.debug('[IBF] no .chart-card'); return; }
+
+  const TBL = card.querySelector('#frequency-table');
+  const CFG = card.querySelector('#freq-filters');
+  if (!TBL || !CFG) { console.debug('[IBF] table or cfg missing'); return; }
+
+  const base   = (CFG.getAttribute('data-fetch-url') || '').trim();   // /figurella-reports/ibf/frequency
+  const client = (CFG.getAttribute('data-client') || card.getAttribute('data-client') || '').trim();
+  if (!base || !client) { console.debug('[IBF] base or client missing', { base, client }); return; }
+
+  const badge  = card.querySelector('#current-client');
+  const status = card.querySelector('#freq-status');
+  if (badge)  badge.textContent  = client;
+  if (status) status.textContent = 'loading…';
+
+  const MONTH_KEYS = Array.from(TBL.querySelectorAll('tbody td[data-month]')).map(td => td.dataset.month);
+
+  // Make blanks visibly 0 so we know the script ran (and color them)
+  MONTH_KEYS.forEach(k => {
+    const td = TBL.querySelector(`td[data-month="${k}"]`);
+    if (!td) return;
+    if (!td.textContent.trim()) td.textContent = '0';
+  });
+  if (typeof window.applyFrequencyColors === 'function') window.applyFrequencyColors();
+
+  const normalizeKey = (k) => {
+    if (!k) return '';
+    k = String(k).trim().replace(/\.$/, '');
+    const cap = k[0].toUpperCase() + k.slice(1).toLowerCase();
+    const map = {
+      Jan:'Jan', Feb:'Feb', Mar:'Mar', Apr:'Apr', May:'May',
+      Jun:'June', June:'June', Jul:'July', July:'July',
+      Aug:'Aug', Sep:'Sept', Sept:'Sept', Oct:'Oct', Nov:'Nov', Dec:'Dec'
+    };
+    return map[cap] || cap;
+  };
+
+  function render(monthMap) {
+    const norm = {};
+    if (monthMap) Object.keys(monthMap).forEach(k => { norm[normalizeKey(k)] = monthMap[k]; });
+
+    MONTH_KEYS.forEach((m) => {
+      const td = TBL.querySelector(`td[data-month="${m}"]`);
+      if (!td) return;
+      const v = Number(norm[m] ?? 0);
+      td.textContent = String(v);
+    });
+
+    // Colorize after rendering numbers
+    if (typeof window.applyFrequencyColors === 'function') window.applyFrequencyColors();
+  }
+
+  function urlFor(name, y) {
+    const u = new URL(base, window.location.origin);
+    u.searchParams.set('client', name);
+    if (y != null) { u.searchParams.set('start', `${y}-01-01`); u.searchParams.set('end', `${y}-12-31`); }
+    return u.toString();
+  }
+  function bestUrlFor(name) {
+    const bestBase = base.replace(/\/frequency(?:\/)?$/, '/frequency/best');
+    const u = new URL(bestBase, window.location.origin);
+    u.searchParams.set('client', name);
+    return u.toString();
+  }
+  function fetchMonths(url) {
+    console.debug('[IBF] GET', url);
+    return fetch(url, {
+      headers: { 'Accept': 'application/json' },
+      credentials: 'same-origin',
+      cache: 'no-store'
+    }).then(r => r.ok ? r.json() : null)
+      .then(j => (j && j.months) ? j.months : null)
+      .catch(err => { console.warn('[IBF] fetch error', err); return null; });
+  }
+  function sumMap(map) {
+    if (!map) return 0;
+    return MONTH_KEYS.reduce((acc, m) => {
+      const n = parseInt(map[m] ?? map[m + '.'] ?? 0, 10);
+      return acc + (isNaN(n) ? 0 : n);
+    }, 0);
+  }
+  function revName(name) {
+    const parts = (name || '').split(/\s+/).filter(Boolean);
+    return (parts.length >= 2) ? `${parts.at(-1)} ${parts[0]}` : '';
+  }
+
+  const y   = new Date().getFullYear();
+  const rev = revName(client);
+
+  // sequence: year → rev year → prev → rev prev → best
+  fetchMonths(urlFor(client, y)).then(m1 => {
+    if (m1 && sumMap(m1) > 0) { render(m1); if (status) status.textContent = ''; return; }
+    if (rev) {
+      return fetchMonths(urlFor(rev, y)).then(m2 => {
+        if (m2 && sumMap(m2) > 0) { render(m2); if (status) status.textContent = ''; return; }
+        return fetchMonths(urlFor(client, y - 1)).then(m3 => {
+          if (m3 && sumMap(m3) > 0) { render(m3); if (status) status.textContent = ''; return; }
+          if (rev) {
+            return fetchMonths(urlFor(rev, y - 1)).then(m4 => {
+              if (m4 && sumMap(m4) > 0) { render(m4); if (status) status.textContent = ''; return; }
+              return fetchMonths(bestUrlFor(client)).then(mb => { render(mb || {}); if (status) status.textContent = mb ? '' : 'No IBF data'; });
+            });
+          } else {
+            return fetchMonths(bestUrlFor(client)).then(mb => { render(mb || {}); if (status) status.textContent = mb ? '' : 'No IBF data'; });
+          }
+        });
+      });
+    }
+    return fetchMonths(urlFor(client, y - 1)).then(m3 => {
+      if (m3 && sumMap(m3) > 0) { render(m3); if (status) status.textContent = ''; return; }
+      return fetchMonths(bestUrlFor(client)).then(mb => { render(mb || {}); if (status) status.textContent = mb ? '' : 'No IBF data'; });
+    });
+  }).catch(err => {
+    console.error('[IBF] init error', err);
+    if (status) status.textContent = 'error';
+  });
+})();
+</script>

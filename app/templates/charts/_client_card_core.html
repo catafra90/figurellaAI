@@ -1,0 +1,332 @@
+{# templates/charts/_client_card_core.html — shared core for modal & page (SWAPPED) #}
+<div id="client-chart-root"
+     class="space-y-6"
+     data-client="{{ client }}"
+     data-workout-blocks='{{ workout_blocks_json | tojson }}'>
+
+  <style>
+  :root{
+    --fig-pink:#CC0066; --fig-pink-600:#AA0055; --ink:#0f172a; --muted:#6b7280;
+    --head:rgba(249,250,251,0.90); --zebra:rgba(243,244,246,0.70); --hover:rgba(238,242,247,0.70);
+  }
+  .hidden{display:none!important}
+  .tabs-wrapper{position:relative}
+  .tabs-list{display:flex;gap:1rem;list-style:none;margin:0;padding:0;overflow-x:auto;white-space:nowrap}
+  .tab-btn{background:none;border:none;cursor:pointer;font-weight:600}
+  .tab-btn.active{color:var(--fig-pink)}
+  #tabUnderline{position:absolute;bottom:-1px;height:3px;background:var(--fig-pink);width:0;left:0;border-radius:3px;will-change:transform,width;transition:transform .12s ease,width .12s ease}
+
+  .zebra-pink tbody tr:nth-child(even){background-color:var(--zebra)!important}
+  .zebra-pink tbody tr:hover>td,.zebra-pink tbody tr:hover>th{background-color:var(--hover)}
+  .sticky-header thead th{position:sticky;top:0;background:var(--head);z-index:10}
+
+  .card{
+    background: rgba(255,255,255,0.80);
+    -webkit-backdrop-filter: saturate(120%) blur(8px);
+    backdrop-filter: saturate(120%) blur(8px);
+    border:1px solid rgba(255,255,255,0.45);
+    border-radius:.75rem;
+    box-shadow:0 8px 24px rgba(0,0,0,.10), inset 0 1px 0 rgba(255,255,255,.6)
+  }
+  .card-pad{padding:1rem}
+  .field{border:1px solid rgba(0,0,0,0.10);border-radius:.375rem;padding:.35rem .55rem;background:rgba(255,255,255,0.94)}
+  .btn{border:1px solid rgba(0,0,0,0.10);background:rgba(255,255,255,0.94);border-radius:.5rem;padding:.45rem .8rem;font-weight:600}
+  .btn-primary{background:var(--fig-pink);color:#fff;border-color:var(--fig-pink)}
+  .btn-primary:hover{background:var(--fig-pink-600);border-color:var(--fig-pink-600)}
+  .toast{position:fixed;right:14px;bottom:14px;background:#0f172a;color:#fff;padding:.6rem .8rem;border-radius:.5rem;opacity:0;transform:translateY(10px);transition:all .2s ease;z-index:60}
+
+  /* Inner scrollers (works in modal & page) */
+  .chart-table-card{background:#fff;border:1px solid #eef2f7;border-radius:12px;box-shadow:0 8px 24px rgba(15,23,42,.06);display:flex;flex-direction:column;min-height:0}
+  .chart-table-scroll{flex:1 1 auto;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch}
+  .tab-panel{display:flex;flex-direction:column;min-height:0}
+  .tab-scroll{flex:1 1 auto;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch}
+  </style>
+
+  <!-- Tabs header -->
+  <div class="border-b mb-4 tabs-wrapper">
+    <ul class="tabs-list">
+      <li><button class="tab-btn px-4 py-2 border-b-2 border-figurella active" data-tab="profile">Profile</button></li>
+      <li><button class="tab-btn px-4 py-2 border-b-2 border-transparent" data-tab="chart">Chart</button></li>
+      <!-- NOTE: keep label "Measures" but target panel 'measures-a' to avoid duplicate #measures id -->
+      <li><button class="tab-btn px-4 py-2 border-b-2 border-transparent" data-tab="measures-a">Measures</button></li>
+      <li><button class="tab-btn px-4 py-2 border-b-2 border-transparent" data-tab="workout-rev1">Workout</button></li>
+      <li><button class="tab-btn px-4 py-2 border-b-2 border-transparent" data-tab="nutrition">Nutrition</button></li>
+      <li><button class="tab-btn px-4 py-2 border-b-2 border-transparent" data-tab="communication">Communication</button></li>
+    </ul>
+    <span id="tabUnderline"></span>
+  </div>
+
+  <!-- Profile -->
+  <section id="profile" class="tab-panel">
+    <div class="tab-scroll">
+      <div class="card card-pad">
+        {% include 'charts/_header_table.html' %}
+      </div>
+    </div>
+  </section>
+
+  <!-- Chart (NOW shows the classic chart + notes) -->
+  <section id="chart" class="tab-panel hidden">
+    <div class="tab-scroll">
+      <div class="chart-table-card">
+        <div class="chart-table-scroll">
+          <div class="card card-pad" style="background:#fff;border:0;box-shadow:none;padding:0;">
+            {% include 'charts/_measures_table.html' %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Measures (NOW shows Table A) -->
+  <section id="measures-a" class="tab-panel hidden">
+    <div class="tab-scroll">
+      <div class="card card-pad">
+        {% include 'charts/_measures_table_a.html' %}
+      </div>
+    </div>
+  </section>
+
+  <!-- Workout -->
+  <section id="workout-rev1" class="tab-panel hidden">
+    <div class="tab-scroll">
+      <div class="card card-pad">
+        {% include 'charts/_workout_rev1.html' %}
+      </div>
+    </div>
+  </section>
+
+<!-- Nutrition -->
+<section id="nutrition" class="tab-panel hidden">
+  <div class="tab-scroll">
+    <div class="card card-pad">
+
+      <!-- ================= FULL NUTRITIONAL CONSULTATION ================= -->
+      <div class="mb-8">
+        {% set nc_mode = 'full' %}
+        {% set render_nc_inner = false %}
+        {% set render_notes_inside_nc = false %}
+        {% include 'nutrition/_nc_section.html' %}
+      </div>
+
+      <!-- ================= NUTRITIONAL CONSULTATION ================= -->
+      <div class="mb-8">
+        {% set nc_mode = 'single' %}
+        {% include 'nutrition/_nutritional_consultation.html' %}
+      </div>
+
+      <!-- ================= NUTRITION ENTRIES (STACKED) ================= -->
+      <div class="mb-8">
+        <template id="nutrition-row-template">
+          <div class="form-row mt-6 nutrition-row flex flex-col space-y-4">
+            <div class="flex flex-col">
+              <label class="text-sm font-medium mb-1">Date</label>
+              <input name="nutrition_date[]" type="date" class="field w-full nutrition-date"/>
+            </div>
+
+            <div class="flex flex-col">
+              <label class="text-sm font-medium mb-1">Type</label>
+              <input name="nutrition_type[]" type="text" placeholder="Type" class="field w-full nutrition-type"/>
+            </div>
+
+            <div class="flex flex-col">
+              <label class="text-sm font-medium mb-1">Notes</label>
+              <textarea name="nutrition_notes_row[]" rows="3" placeholder="Notes for this entry" class="field w-full nutrition-notes"></textarea>
+            </div>
+          </div>
+        </template>
+
+        {% set nut_rows = (sheets['nutrition'].data
+            if sheets and sheets.get('nutrition') and sheets['nutrition'].data else []) %}
+        <div id="nutrition-rows">
+          {% for row in nut_rows %}
+            <div class="form-row mt-6 nutrition-row flex flex-col space-y-4">
+              <div class="flex flex-col">
+                <label class="text-sm font-medium mb-1">Date</label>
+                <input name="nutrition_date[]" type="date" value="{{ row.get('Date','') }}" class="field w-full nutrition-date"/>
+              </div>
+
+              <div class="flex flex-col">
+                <label class="text-sm font-medium mb-1">Type</label>
+                <input name="nutrition_type[]" type="text" value="{{ row.get('Type','') }}" class="field w-full nutrition-type"/>
+              </div>
+
+              <div class="flex flex-col">
+                <label class="text-sm font-medium mb-1">Notes</label>
+                <textarea name="nutrition_notes_row[]" rows="3" class="field w-full nutrition-notes">{{ row.get('Notes','') }}</textarea>
+              </div>
+            </div>
+          {% endfor %}
+          {% if not nut_rows %}
+            <div class="form-row mt-6 nutrition-row flex flex-col space-y-4">
+              <div class="flex flex-col">
+                <label class="text-sm font-medium mb-1">Date</label>
+                <input name="nutrition_date[]" type="date" class="field w-full nutrition-date"/>
+              </div>
+
+              <div class="flex flex-col">
+                <label class="text-sm font-medium mb-1">Type</label>
+                <input name="nutrition_type[]" type="text" placeholder="Type" class="field w-full nutrition-type"/>
+              </div>
+
+              <div class="flex flex-col">
+                <label class="text-sm font-medium mb-1">Notes</label>
+                <textarea name="nutrition_notes_row[]" rows="3" placeholder="Notes for this entry" class="field w-full nutrition-notes"></textarea>
+              </div>
+            </div>
+          {% endif %}
+        </div>
+
+        <button type="button" class="mt-4 btn btn-primary"
+          onclick="(function(){
+            const host=document.getElementById('nutrition-rows'); if(!host) return;
+            const tpl=document.getElementById('nutrition-row-template');
+            const node=(tpl&&tpl.content&&tpl.content.firstElementChild)
+              ? tpl.content.firstElementChild.cloneNode(true)
+              : (function(){const d=document.createElement('div'); d.className='form-row mt-6 nutrition-row flex flex-col space-y-4'; d.innerHTML=''
+                +'<div class=&quot;flex flex-col&quot;><label class=&quot;text-sm font-medium mb-1&quot;>Date</label><input name=&quot;nutrition_date[]&quot; type=&quot;date&quot; class=&quot;field w-full nutrition-date&quot;/></div>'
+                +'<div class=&quot;flex flex-col&quot;><label class=&quot;text-sm font-medium mb-1&quot;>Type</label><input name=&quot;nutrition_type[]&quot; type=&quot;text&quot; placeholder=&quot;Type&quot; class=&quot;field w-full nutrition-type&quot;/></div>'
+                +'<div class=&quot;flex flex-col&quot;><label class=&quot;text-sm font-medium mb-1&quot;>Notes</label><textarea name=&quot;nutrition_notes_row[]&quot; rows=&quot;3&quot; placeholder=&quot;Notes for this entry&quot; class=&quot;field w-full nutrition-notes&quot;></textarea></div>';
+                return d; })();
+            host.appendChild(node);
+          })()">+ Add Row</button>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+
+
+  <!-- Communication -->
+  <section id="communication" class="tab-panel hidden">
+    <div class="tab-scroll">
+      <div class="card card-pad">
+        <h2 class="text-xl font-bold">Communication Log</h2>
+
+        <template id="comm-row-template">
+          <div class="flex space-x-4 form-row mt-4 comm-row">
+            <div class="flex flex-col w-32">
+              <label class="text-sm font-medium mb-1">Date</label>
+              <input name="comm_date[]" type="date" class="field w-full comm-date"/>
+            </div>
+            <div class="flex flex-col w-32">
+              <label class="text-sm font-medium mb-1">Type</label>
+              <input name="comm_type[]" type="text" placeholder="Type" class="field w-full comm-type"/>
+            </div>
+            <div class="flex flex-col flex-1">
+              <label class="text-sm font-medium mb-1">Notes</label>
+              <textarea name="comm_notes[]" rows="3" placeholder="Notes" class="field w-full comm-notes"></textarea>
+            </div>
+          </div>
+        </template>
+
+        {% set comm_rows = (sheets['communication'].data if sheets and sheets.get('communication') and sheets['communication'].data else []) %}
+        <div id="comm-rows">
+          {% for row in comm_rows %}
+            <div class="flex space-x-4 form-row mt-4 comm-row">
+              <div class="flex flex-col w-32">
+                <label class="text-sm font-medium mb-1">Date</label>
+                <input name="comm_date[]" type="date" value="{{ row.get('Date','') }}" class="field w-full comm-date"/>
+              </div>
+              <div class="flex flex-col w-32">
+                <label class="text-sm font-medium mb-1">Type</label>
+                <input name="comm_type[]" type="text" value="{{ row.get('Type','') }}" class="field w-full comm-type"/>
+              </div>
+              <div class="flex flex-col flex-1">
+                <label class="text-sm font-medium mb-1">Notes</label>
+                <textarea name="comm_notes[]" rows="3" class="field w-full comm-notes">{{ row.get('Notes','') }}</textarea>
+              </div>
+            </div>
+          {% endfor %}
+          {% if not comm_rows %}
+            <div class="flex space-x-4 form-row mt-4 comm-row">
+              <div class="flex flex-col w-32">
+                <label class="text-sm font-medium mb-1">Date</label>
+                <input name="comm_date[]" type="date" class="field w-full comm-date"/>
+              </div>
+              <div class="flex flex-col w-32">
+                <label class="text-sm font-medium mb-1">Type</label>
+                <input name="comm_type[]" type="text" placeholder="Type" class="field w-full comm-type"/>
+              </div>
+              <div class="flex flex-col flex-1">
+                <label class="text-sm font-medium mb-1">Notes</label>
+                <textarea name="comm_notes[]" rows="3" placeholder="Notes" class="field w-full comm-notes"></textarea>
+              </div>
+            </div>
+          {% endif %}
+        </div>
+
+        <button type="button" class="mt-2 btn btn-primary"
+          onclick="(function(){
+            var host=document.getElementById('comm-rows'); if(!host) return;
+            var tpl=document.getElementById('comm-row-template');
+            var node=(tpl&&tpl.content&&tpl.content.firstElementChild)
+              ? tpl.content.firstElementChild.cloneNode(true)
+              : (function(){var d=document.createElement('div'); d.className='flex space-x-4 form-row mt-4 comm-row'; d.innerHTML=''
+                +'<div class=&quot;flex flex-col w-32&quot;><label class=&quot;text-sm font-medium mb-1&quot;>Date</label><input name=&quot;comm_date[]&quot; type=&quot;date&quot; class=&quot;field w-full comm-date&quot;/></div>'
+                +'<div class=&quot;flex flex-col w-32&quot;><label class=&quot;text-sm font-medium mb-1&quot;>Type</label><input name=&quot;comm_type[]&quot; type=&quot;text&quot; placeholder=&quot;Type&quot; class=&quot;field w-full comm-type&quot;/></div>'
+                +'<div class=&quot;flex flex-col flex-1&quot;><label class=&quot;text-sm font-medium mb-1&quot;>Notes</label><textarea name=&quot;comm_notes[]&quot; rows=&quot;3&quot; placeholder=&quot;Notes&quot; class=&quot;field w-full comm-notes&quot;></textarea></div>'; return d; })();
+            host.appendChild(node);
+          })()">+ Add Row</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- toast used by workout partial -->
+  <div id="rev1-toast" class="toast" role="status" aria-live="polite"></div>
+
+  <!-- blocks JSON (kept for both) -->
+  <template id="workout-blocks-json">
+    {{ workout_blocks_json | tojson | safe }}
+  </template>
+
+  <!-- Tiny tabs controller -->
+  <script>
+    (function(){
+      const root = document.currentScript.closest('#client-chart-root');
+      const list = root.querySelector('.tabs-list');
+      const underline = root.querySelector('#tabUnderline');
+      const btns = Array.from(root.querySelectorAll('.tab-btn'));
+      const panels = {
+        profile: root.querySelector('#profile'),
+        chart: root.querySelector('#chart'),
+        'measures-a': root.querySelector('#measures-a'),
+        'workout-rev1': root.querySelector('#workout-rev1'),
+        nutrition: root.querySelector('#nutrition'),
+        communication: root.querySelector('#communication')
+      };
+
+      function show(id){
+        Object.entries(panels).forEach(([k,el])=>{ if (el) el.classList.toggle('hidden', k!==id); });
+        btns.forEach(b=>b.classList.toggle('active', b.dataset.tab===id));
+        moveUnderline();
+        try { document.dispatchEvent(new CustomEvent('cc-tab-shown', {detail:{key:id}})); } catch(_){}
+        if (id==='profile' && window.ChartApp?.initFrequencyForCard){
+          const card = root.closest('.client-modal')?.querySelector('.chart-card') || root;
+          try { ChartApp.initFrequencyForCard(card); } catch(_){}
+        }
+      }
+
+      function moveUnderline(){
+        const active = root.querySelector('.tab-btn.active');
+        if (!active) return;
+        const r = active.getBoundingClientRect();
+        const lr = list.getBoundingClientRect();
+        underline.style.width = r.width + 'px';
+        underline.style.transform = 'translateX(' + (r.left - lr.left + list.scrollLeft) + 'px)';
+      }
+
+      list.addEventListener('click', (e)=>{
+        const b = e.target.closest('.tab-btn'); if (!b) return;
+        show(b.dataset.tab);
+      });
+      window.addEventListener('resize', moveUnderline);
+      list.addEventListener('scroll', moveUnderline, {passive:true});
+
+      // initial
+      show('profile');
+      setTimeout(moveUnderline, 0);
+    })();
+  </script>
+</div>

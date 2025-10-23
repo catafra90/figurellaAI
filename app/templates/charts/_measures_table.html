@@ -1,0 +1,337 @@
+<!-- ====== Chart (paged) — DROP-IN REPLACEMENT (with Notes below) ====== -->
+<section class="space-y-4 p-4 measures-chart" id="measures-chart">
+  <div class="flex items-center justify-between">
+    <h2 class="text-xl font-bold">Chart</h2>
+
+    <!-- New Chart + Pager -->
+    <div class="flex items-center gap-2">
+      <nav id="chart-pager" class="flex items-center gap-1" aria-label="Charts pagination">
+        <button type="button" class="pg-btn" data-act="prev" title="Previous chart">‹</button>
+        <span id="pg-pages" class="inline-flex items-center gap-1"></span>
+        <button type="button" class="pg-btn" data-act="next" title="Next chart">›</button>
+      </nav>
+      <button type="button" id="btn-new-chart" class="btn btn-add" title="Create a new chart page">
+        <span aria-hidden="true">＋</span> New Chart
+      </button>
+    </div>
+  </div>
+
+  <style>
+    /* pager */
+    .pg-btn{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:.5rem;background:#f3f4f6;color:#111827;border:1px solid #e5e7eb;font-weight:600;line-height:1;cursor:pointer}
+    .pg-btn:hover{background:#e5e7eb}
+    .pg-chip{min-width:28px;height:28px;padding:0 .4rem;display:inline-flex;align-items:center;justify-content:center;border:1px solid #e5e7eb;background:#fff;color:#111827;border-radius:.5rem;font-weight:600;cursor:pointer}
+    .pg-chip.active{background:#111827;color:#fff;border-color:#111827}
+
+    /* table styles (your originals) */
+    .zebra-pink tbody tr:nth-child(even){background-color:rgba(204,0,102,.08)}
+    .sticky-header th{position:sticky;top:0;background:rgba(249,250,251,.90);z-index:10}
+    .highlight-col{background-color:rgba(255,0,0,.08)!important}
+    .meas-card{overflow:hidden}
+    .meas-scroll{overflow:auto;-webkit-overflow-scrolling:touch;position:relative}
+    .meas-zoom{transform:none;transform-origin:top left;width:100%}
+    .meas-grid{--label:160px;--num:calc((100% - var(--label))/10)}
+    .meas-grid table{border-collapse:collapse;table-layout:fixed;width:100%;min-width:100%}
+    .meas-grid+.meas-grid{margin-top:1rem}
+    .meas-grid th,.meas-grid td{padding:.35rem .4rem;box-sizing:border-box}
+    td[contenteditable="true"]{min-height:26px;outline:none;background:transparent;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    td[data-date-cell]{position:relative;padding:0}
+    td[data-date-cell] .cell-date{width:100%;height:26px;padding:0 .3rem;border:0;background:transparent;font:inherit;box-sizing:border-box;appearance:none;-webkit-appearance:none;cursor:pointer}
+    td[data-date-cell] .cell-date:focus{outline:none;box-shadow:inset 0 0 0 2px rgba(204,0,102,.25);background:#fff}
+    .cell-date:not(:focus):not(:valid)::-webkit-datetime-edit{color:transparent}
+    .cell-date:not(:focus):not(:valid){color:transparent;caret-color:transparent}
+    @-moz-document url-prefix(){.cell-date:not(:focus):not(:valid){color:transparent}}
+    .cell-date::-webkit-calendar-picker-indicator{opacity:1}
+    .cell-date::-webkit-clear-button,.cell-date::-webkit-inner-spin-button{display:none}
+    .meas-select{width:100%;height:26px;border:0;background:transparent;font:inherit;padding:0 .25rem;outline:none}
+    .meas-select:focus{box-shadow:inset 0 0 0 2px rgba(204,0,102,.25);background:#fff}
+    .meas-flag{width:18px;height:18px;cursor:pointer}
+    .btn{display:inline-flex;align-items:center;gap:.4rem;border-radius:.5rem;padding:.4rem .7rem;font-size:.875rem;line-height:1;border:1px solid transparent;cursor:pointer}
+    .btn-add{background:#cc0066;color:#fff}.btn-add:hover{filter:brightness(.95)}
+    .btn-remove{background:#f3f4f6;color:#111827;border:1px solid #e5e7eb}.btn-remove:hover{background:#e5e7eb}
+    @media (max-width:1200px){.meas-grid{--label:140px}.meas-grid th,.meas-grid td{padding:.3rem .35rem}.meas-select,.cell-date{height:24px;font-size:.9em}}
+    @media (max-width:980px){.meas-grid{--label:120px}.meas-grid th,.meas-grid td{padding:.25rem .3rem}.meas-select,.cell-date{height:22px;font-size:.85em}}
+  </style>
+
+  {# --- macros (unchanged) --- #}
+  {% macro header_range(start, end) -%}
+    <thead class="bg-gray-100 text-center text-xs font-semibold uppercase sticky-header">
+      <tr>
+        <th class="border px-2 py-1">#</th>
+        {%- for i in range(start, end + 1) -%}
+          <th class="border px-2 py-1{% if i in [10,20] %} border-l-2 border-gray-300 highlight-col{% endif %}">{{ i }}</th>
+        {%- endfor -%}
+      </tr>
+    </thead>
+  {%- endmacro %}
+
+  {% macro colgroup10(start) -%}
+    <colgroup>
+      <col style="width:var(--label);">
+      {%- for i in range(10) -%}
+        <col style="width:var(--num);" class="{% if (start+i) in [10,20] %}highlight-col{% endif %}">
+      {%- endfor -%}
+    </colgroup>
+  {%- endmacro %}
+
+  {% macro row_text(label, row, start, end) -%}
+    <tr class="text-left" data-row-label="{{ label }}">
+      <th class="border px-2 py-1 text-xs font-medium">{{ label }}</th>
+      {%- for i in range(start, end + 1) -%}
+        {%- set key = i|string -%}
+        {%- set cell = (row[key] if (row is mapping and key in row) else '') -%}
+        <td class="border px-2 py-1 {% if i in [10,20] %}highlight-col{% endif %}" data-col="{{ i }}" contenteditable="true" spellcheck="false">{{ cell }}</td>
+      {%- endfor -%}
+    </tr>
+  {%- endmacro %}
+
+  {% macro row_date(label, row, start, end) -%}
+    <tr class="text-left" data-row-label="{{ label }}">
+      <th class="border px-2 py-1 text-xs font-medium">{{ label }}</th>
+      {%- for i in range(start, end + 1) -%}
+        {%- set key = i|string -%}
+        {%- set val = ((row[key] if (row is mapping and key in row) else '') | string).strip() -%}
+        <td class="border px-2 py-1 {% if i in [10,20] %}highlight-col{% endif %}" data-col="{{ i }}" data-date-cell>
+          <input type="date" class="cell-date" value="{{ val }}" required aria-label="Date {{ i }}">
+        </td>
+      {%- endfor -%}
+    </tr>
+  {%- endmacro %}
+
+  <!-- Pages container -->
+  <div id="chart-pages" class="card card-pad meas-card"></div>
+
+  <!-- Single page template (two 10-col blocks) -->
+  <template id="chart-page-template">
+    <div class="chart-page meas-scroll" data-page="">
+      <div class="meas-zoom">
+        <div class="meas-grid zebra-pink">
+          <table class="text-sm">
+            {{ colgroup10(1) }}
+            {{ header_range(1, 10) }}
+            <tbody>
+              {{ row_date('DATE', r_DATE, 1, 10) }}
+              {{ row_text('FA',     r_FA,     1, 10) }}
+              {{ row_text('Freq.',  r_Freq,   1, 10) }}
+              {{ row_text('Reps',   r_Reps,   1, 10) }}
+              {{ row_text('STEP',   r_STEP,   1, 10) }}
+              {{ row_text('NC',     r_NC,     1, 10) }}
+              {{ row_text('Weight', r_Weight, 1, 10) }}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="meas-grid zebra-pink">
+          <table class="text-sm">
+            {{ colgroup10(11) }}
+            {{ header_range(11, 20) }}
+            <tbody>
+              {{ row_date('DATE', r_DATE, 11, 20) }}
+              {{ row_text('FA',     r_FA,     11, 20) }}
+              {{ row_text('Freq.',  r_Freq,   11, 20) }}
+              {{ row_text('Reps',   r_Reps,   11, 20) }}
+              {{ row_text('STEP',   r_STEP,   11, 20) }}
+              {{ row_text('NC',     r_NC,     11, 20) }}
+              {{ row_text('Weight', r_Weight, 11, 20) }}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <!-- External enhancer (optional) -->
+  <script src="/static/js/charts/measures_dropdowns.js" defer></script>
+
+  <!-- Paging + guaranteed enhancement (scoped fallback included) -->
+  <script>
+  (function(){
+    const root   = document.getElementById('measures-chart');
+    const pages  = document.getElementById('chart-pages');
+    const pager  = document.getElementById('chart-pager');
+    const chips  = document.getElementById('pg-pages');
+    const btnNew = document.getElementById('btn-new-chart');
+    const tpl    = document.getElementById('chart-page-template');
+    let active = 1;
+
+    /* Scoped fallback enhancer (FA/STEP dropdowns + NC flags) */
+    const DROPDOWN_MAP = {
+      "STEP": ["", "1","2","3","4","5","MED","DTX","2DV","2DF"],
+      "FA":   ["", "Kim","Aleeza","Julie","Chiara"],
+    };
+    const FLAG_ROWS = ["NC"];
+    const hasWidget = td => td.querySelector('.meas-select,.meas-flag');
+    function mkSelect(opts, val){
+      const s=document.createElement('select'); s.className='meas-select';
+      for(const o of opts){ const opt=document.createElement('option'); opt.value=o; opt.textContent=o; if(String(o)===String(val||'')) opt.selected=true; s.appendChild(opt); }
+      return s;
+    }
+    function mkFlag(val){
+      const b=document.createElement('input'); b.type='checkbox'; b.className='meas-flag';
+      const v=(val||'').toString().toLowerCase(); if(['true','1','x','yes'].includes(v)) b.checked=true; return b;
+    }
+    function fallbackEnhancePage(pageEl){
+      pageEl.querySelectorAll('tbody tr[data-row-label]').forEach(row=>{
+        const label=(row.getAttribute('data-row-label')||'').trim();
+        if (DROPDOWN_MAP[label]){
+          row.querySelectorAll('td:not([data-date-cell])').forEach(td=>{
+            if (hasWidget(td)) return;
+            const txt=td.textContent.trim(); td.textContent=''; td.removeAttribute('contenteditable');
+            td.appendChild(mkSelect(DROPDOWN_MAP[label], txt));
+          });
+        } else if (FLAG_ROWS.includes(label)){
+          row.querySelectorAll('td:not([data-date-cell])').forEach(td=>{
+            if (hasWidget(td)) return;
+            const txt=td.textContent.trim(); td.textContent=''; td.removeAttribute('contenteditable');
+            td.appendChild(mkFlag(txt));
+          });
+        }
+      });
+      pageEl.addEventListener('click', function(e){
+        const td=e.target.closest('td[data-date-cell]'); if(!td) return;
+        const input=td.querySelector('input[type="date"]'); if(!input) return;
+        if(e.target!==input){ input.focus({preventScroll:true}); if(input.showPicker){ try{ input.showPicker(); }catch{} } }
+      }, true);
+    }
+
+    function enhancePage(el){
+      if (window.MeasuresDropdowns && typeof window.MeasuresDropdowns.refresh==='function'){
+        window.MeasuresDropdowns.refresh(el);
+      } else {
+        fallbackEnhancePage(el);
+      }
+    }
+
+    // If external file loads later, enhance all pages with it
+    window.addEventListener('load', ()=>{
+      if (window.MeasuresDropdowns && typeof window.MeasuresDropdowns.refresh==='function'){
+        Array.from(pages.children).forEach(p => window.MeasuresDropdowns.refresh(p));
+      }
+    });
+
+    function renderPager(){
+      chips.innerHTML='';
+      const total=pages.children.length;
+      for(let i=1;i<=total;i++){
+        const b=document.createElement('button');
+        b.type='button'; b.className='pg-chip'+(i===active?' active':''); b.textContent=i;
+        b.addEventListener('click',()=>setActive(i));
+        chips.appendChild(b);
+      }
+    }
+
+    function setActive(n){
+      const total=pages.children.length; if(n<1||n>total) return;
+      active=n;
+      Array.from(pages.children).forEach((p,idx)=>{ p.style.display = (idx===(n-1))?'block':'none'; });
+      // ensure active page is enhanced
+      enhancePage(pages.children[n-1]);
+      renderPager();
+    }
+
+    function addPage(){
+      const node=tpl.content.firstElementChild.cloneNode(true);
+      const index=pages.children.length+1;
+      node.dataset.page=String(index);
+      node.style.display='none';
+      pages.appendChild(node);
+      enhancePage(node);
+      setActive(index);
+    }
+
+    pager.querySelector('[data-act="prev"]').addEventListener('click',()=>setActive(active-1));
+    pager.querySelector('[data-act="next"]').addEventListener('click',()=>setActive(active+1));
+    btnNew.addEventListener('click',addPage);
+
+    // init with first page
+    addPage();
+  })();
+  </script>
+
+  <!-- ====== Notes ====== -->
+  <section id="measures-notes" class="space-y-4 pt-2">
+    <div class="flex items-center justify-between">
+      <h2 class="text-xl font-bold">Notes</h2>
+      <button type="button" id="btn-add-note" class="btn btn-add" title="Add note row">
+        <span aria-hidden="true">＋</span> Add Note
+      </button>
+    </div>
+
+    <div id="meas-notes-rows" class="card card-pad">
+      <!-- Template row (hidden) -->
+      <div id="meas-notes-template" class="flex flex-col md:flex-row md:items-start md:space-x-4 form-row mt-4 meas-notes-row hidden">
+        <div class="flex flex-col w-full md:w-32">
+          <label class="text-sm font-medium mb-1">Date</label>
+          <input name="meas_notes_date[]" type="date" class="field w-full meas-notes-date cell-date">
+        </div>
+        <div class="flex flex-col w-full md:w-32">
+          <label class="text-sm font-medium mb-1">Type</label>
+          <input name="meas_notes_type[]" type="text" placeholder="Type" class="field w-full meas-notes-type">
+        </div>
+        <div class="flex flex-col flex-1">
+          <label class="text-sm font-medium mb-1">Notes</label>
+          <textarea name="meas_notes_text[]" rows="3" placeholder="Notes" class="field w-full meas-notes-text"></textarea>
+        </div>
+        <div class="flex flex-col justify-end mt-2 md:mt-0">
+          <button type="button" class="btn btn-remove meas-note-remove" title="Remove this note">Remove</button>
+        </div>
+      </div>
+
+      <!-- Initial visible row -->
+      <div class="flex flex-col md:flex-row md:items-start md:space-x-4 form-row mt-4 meas-notes-row">
+        <div class="flex flex-col w-full md:w-32">
+          <label class="text-sm font-medium mb-1">Date</label>
+          <input name="meas_notes_date[]" type="date" class="field w-full meas-notes-date cell-date" required>
+        </div>
+        <div class="flex flex-col w-full md:w-32">
+          <label class="text-sm font-medium mb-1">Type</label>
+          <input name="meas_notes_type[]" type="text" placeholder="Type" class="field w-full meas-notes-type">
+        </div>
+        <div class="flex flex-col flex-1">
+          <label class="text-sm font-medium mb-1">Notes</label>
+          <textarea name="meas_notes_text[]" rows="3" placeholder="Notes" class="field w-full meas-notes-text"></textarea>
+        </div>
+        <div class="flex flex-col justify-end mt-2 md:mt-0">
+          <button type="button" class="btn btn-remove meas-note-remove" title="Remove this note">Remove</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Notes helpers: Add/Remove rows -->
+  <script>
+  (function(){
+    const wrap = document.getElementById('meas-notes-rows');
+    const btn  = document.getElementById('btn-add-note');
+    const tpl  = document.getElementById('meas-notes-template');
+
+    function clearRow(row){
+      row.querySelectorAll('input, textarea').forEach(el => { el.value = ''; });
+    }
+    function wireRemove(row){
+      const rm = row.querySelector('.meas-note-remove');
+      if (!rm) return;
+      rm.addEventListener('click', () => {
+        const rows = wrap.querySelectorAll('.meas-notes-row:not(#meas-notes-template)');
+        if (rows.length <= 1) { clearRow(rows[0]); return; }
+        row.remove();
+      });
+    }
+    function addRow(){
+      const clone = tpl.cloneNode(true);
+      clone.id = '';
+      clone.classList.remove('hidden');
+      clearRow(clone);
+      wrap.appendChild(clone);
+      wireRemove(clone);
+      // focus first input
+      (clone.querySelector('input, textarea') || clone).focus();
+      clone.scrollIntoView({ block:'nearest' });
+    }
+
+    // wire initial
+    wrap.querySelectorAll('.meas-notes-row:not(#meas-notes-template)').forEach(wireRemove);
+    btn?.addEventListener('click', addRow);
+  })();
+  </script>
+</section>

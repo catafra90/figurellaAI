@@ -1,0 +1,32 @@
+{# templates/charts/_client_chart_modal_shell.html #}
+<div id="floating-modals" style="position:fixed; inset:0; z-index:1999; pointer-events:none;"></div>
+
+<template id="client-modal-template">
+  <div class="client-modal" role="dialog" aria-modal="true" aria-labelledby="client-modal-title" tabindex="-1">
+    <!-- Backdrop (click-to-close handled in JS if desired) -->
+    <div class="modal-backdrop" data-close="true" aria-hidden="true"></div>
+
+    <!-- Slim Figurella header (title + close) -->
+    <div class="modal-header">
+  <div id="client-modal-title" class="modal-title"></div>
+  <!-- removed the × close button -->
+</div>
+
+    <!-- Body (tabbed content injected here) -->
+    <div class="modal-body">
+  <div class="loading" aria-live="polite">
+    Loading…
+    <span class="sr-only">Please wait while the client card loads.</span>
+  </div>
+</div>
+
+    <!-- Footer -->
+    <div class="modal-footer">
+  <button class="modal-close btn" type="button">Close</button>
+</div>
+
+
+    <!-- Resize handle -->
+    <div class="resize-handle" aria-hidden="true"></div>
+  </div>
+</template>

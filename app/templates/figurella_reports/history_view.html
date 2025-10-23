@@ -1,0 +1,369 @@
+{# app/figurella_reports/templates/figurella_reports/history_view.html #}
+{% extends "base.html" %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css">
+<style>
+  html, body { margin:0; padding:0; height:100%; overflow:hidden; }
+
+  #history-main {
+    position:absolute; top:64px; bottom:44px; left:0; right:0;
+    padding:1rem; box-sizing:border-box;
+    display:flex; flex-direction:column;
+  }
+
+  .panel {
+    background:white;
+    border-radius:.75rem;
+    box-shadow:0 0 16px rgba(0,0,0,0.15);
+    padding:1rem;
+    display:flex; flex-direction:column;
+    height:100%;
+  }
+
+  .table-wrap {
+    overflow:auto; flex:1;
+    border:1px solid #e5e7eb; border-radius:.5rem;
+    background:#fff;
+  }
+  #history-table { width:100%; border-collapse:collapse; }
+  #history-table th, #history-table td {
+    padding:.5rem; border-bottom:1px solid #e5e7eb;
+    white-space:nowrap; text-align:left;
+  }
+  #history-table thead th {
+    background:#f9fafb;
+    position:sticky; top:0; z-index:10;
+  }
+  td.preline { white-space: pre-line; }
+  td:first-child, th:first-child { min-width: 180px; }
+
+  .empty-state {
+    border:1px dashed #e5e7eb; border-radius:.75rem; padding:1.25rem;
+    color:#6b7280; background:#fafafa; text-align:center;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<main id="history-main">
+  <div class="panel">
+    <!-- Toolbar -->
+    <div class="flex items-center justify-between mb-4">
+      <div class="flex items-center">
+        <i class="bi bi-table text-2xl text-figurella mr-2"></i>
+        <h1 class="text-2xl font-bold text-figurella">{{ report_name }}</h1>
+      </div>
+      <a href="{{ url_for('reports_bp.reports_home') }}"
+         class="px-3 py-1 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 transition">
+        ← Back to Reports
+      </a>
+    </div>
+
+    <!-- Global Search -->
+    <input id="custom-search" type="text" placeholder="Search…" class="mb-2 border px-2 py-1 rounded"/>
+
+    {% set cols = columns or [] %}
+    {% set rows = data or [] %}
+
+    {% if cols|length == 0 %}
+      <div class="empty-state">
+        No columns to display for <strong>{{ report_name }}</strong>.
+      </div>
+    {% else %}
+      <!-- DataTable -->
+      <div class="table-wrap">
+        <table id="history-table">
+          <thead>
+            <tr>
+              {% for col in cols %}
+                <th>{{ col }}</th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% if rows|length == 0 %}
+              <tr><td class="preline" colspan="{{ cols|length }}">No rows found.</td></tr>
+            {% else %}
+              {% for row in rows %}
+                <tr>
+                  {% for cell in row %}
+                    <td class="preline">{{ cell }}</td>
+                  {% endfor %}
+                </tr>
+              {% endfor %}
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    {% endif %}
+  </div>
+</main>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+<script>
+(function(){
+  const report = ("{{ report_name|e }}").trim().toLowerCase();
+  const table  = document.getElementById('history-table');
+  if (!table || !table.tHead || !table.tBodies.length) return;
+
+  const norm = s => String(s||"").trim().toLowerCase();
+
+  // ---- utility: move a column to a target index (header + body) ----
+  function moveColumn(colIdx, targetIdx){
+    if (colIdx < 0 || colIdx === targetIdx) return;
+
+    const headRow = table.tHead.rows[0];
+    const th = headRow.cells[colIdx];
+    if (th){
+      const node = th.parentNode.removeChild(th);
+      if (targetIdx >= headRow.cells.length) headRow.appendChild(node);
+      else headRow.insertBefore(node, headRow.cells[targetIdx]);
+    }
+
+    Array.from(table.tBodies[0].rows).forEach(tr=>{
+      if (tr.cells.length > colIdx){
+        const td = tr.cells[colIdx];
+        const node = td.parentNode.removeChild(td);
+        if (targetIdx >= tr.cells.length) tr.appendChild(node);
+        else tr.insertBefore(node, tr.cells[targetIdx]);
+      }
+    });
+  }
+
+  // ---------- SUBSCRIPTIONS: move only "Client" to the far left ----------
+  if (report === "subscriptions" || report === "subscription") {
+    const headers = Array.from(table.tHead.rows[0].cells).map(th => th.textContent);
+    const lowers  = headers.map(norm);
+    let clientIdx = lowers.indexOf("client");
+    if (clientIdx === -1) clientIdx = lowers.indexOf("customer");
+    if (clientIdx >= 0) moveColumn(clientIdx, 0);
+  }
+
+  // ---------- Column layout tweaks ----------
+  const desiredMap = {
+    "agenda": {
+      order: [
+        ["First Name"], ["Last Name"], ["Email"], ["Phone","Telephone"],
+        ["Customer Status","Status"], ["Day","Date"], ["Appointment Status"]
+      ],
+      dropExtras: false
+    },
+    "contracts": {
+      order: [
+        ["Name","First","First name","First Name"],
+        ["Surname","Last","Last name","Last Name"],
+        ["Assist.","Assist","Assistant"],
+        ["Date","Day"], ["Details"], ["Amount","Ammount"]
+      ],
+      dropExtras: false
+    },
+    "payments done": {
+      order: [
+        ["Last","Last name","Surname"],
+        ["First","First name","Name"],
+        ["Expected"],
+        ["Cash In","CashIn","Cash_in"],
+        ["Instalment","Installment","Installments"],
+        ["Amount","Ammount"]
+      ],
+      dropExtras: true
+    },
+    "payments due": {
+      order: [
+        ["Client"],
+        ["Contract"],
+        ["Date"],
+        ["Amount","Ammount"]
+      ],
+      dropExtras: true
+    },
+    "pip": {
+      order: [
+        ["Client","Name","Customer"],
+        "__PIP_DATE_SLOT__",
+        ["Assist.","Assist","Assistant"],
+        ["Amount","Ammount"]
+      ],
+      dropExtras: true
+    }
+  };
+
+  function findIndexByAliases(headersLower, aliases, fuzzy){
+    for (let i=0;i<aliases.length;i++){
+      const k = norm(aliases[i]);
+      const idx = headersLower.indexOf(k);
+      if (idx !== -1) return idx;
+    }
+    if (fuzzy){
+      for (let j=0;j<headersLower.length;j++){
+        if (headersLower[j].includes('date')) return j;
+      }
+    }
+    return -1;
+  }
+
+  function applyLayout(layout){
+    if (!layout || !layout.order) return;
+
+    const headCells = Array.from(table.tHead.rows[0].cells);
+    const lowers = headCells.map(h => norm(h.textContent));
+
+    // PIP: resolve date slot dynamically
+    if (report === "pip"){
+      const dateIdx = findIndexByAliases(
+        lowers,
+        ["Contract date","Contract Date","Date","Day","Contract","Contract #","Contract#"],
+        true
+      );
+      if (dateIdx !== -1){
+        desiredMap["pip"].order = [
+          ["Client","Name","Customer"],
+          [headCells[dateIdx].textContent],
+          ["Assist.","Assist","Assistant"],
+          ["Amount","Ammount"]
+        ];
+      } else {
+        desiredMap["pip"].order = [
+          ["Client","Name","Customer"],
+          ["Assist.","Assist","Assistant"],
+          ["Amount","Ammount"]
+        ];
+      }
+    }
+
+    const idxByLower = {};
+    headCells.forEach((th,i)=>{ idxByLower[lowers[i]] = i; });
+
+    const orderIdx = [];
+    const used = new Set();
+
+    layout.order.forEach(aliasList=>{
+      let found = null;
+      for (let j=0;j<aliasList.length;j++){
+        const key = norm(aliasList[j]);
+        if (Object.prototype.hasOwnProperty.call(idxByLower, key)){
+          const idx = idxByLower[key];
+          if (!used.has(idx)){ found = idx; break; }
+        }
+      }
+      if (found !== null){ orderIdx.push(found); used.add(found); }
+    });
+
+    if (!layout.dropExtras){
+      headCells.forEach((_,i)=>{ if (!used.has(i)) orderIdx.push(i); });
+    }
+
+    if (orderIdx.length){
+      const rebuild = (row)=>{
+        const tds = Array.from(row.children);
+        const frag = document.createDocumentFragment();
+        orderIdx.forEach(i=>{
+          if (i < tds.length){
+            frag.appendChild(tds[i].parentNode.removeChild(tds[i]));
+          }
+        });
+        row.appendChild(frag);
+      };
+      rebuild(table.tHead.rows[0]);
+      Array.from(table.tBodies[0].rows).forEach(rebuild);
+    }
+  }
+
+  if (desiredMap[report]) applyLayout(desiredMap[report]);
+
+  // Last Session header rename
+  if (report === "last session") {
+    Array.from(table.tHead.rows[0].cells).forEach(th=>{
+      const l = norm(th.textContent);
+      if (l === "bubble") th.textContent = "Bubble residual";
+      if (l.startsWith("cellu")) th.textContent = "Cellu residual";
+    });
+  }
+
+  // Remove TxnDate for these
+  if (report === "payments due" || report === "pip") {
+    const headRow = table.tHead.rows[0];
+    const cells = Array.from(headRow.cells);
+    const idx = cells.findIndex(th => {
+      const t = norm(th.textContent);
+      return t === "txndate" || t === "txn date";
+    });
+    if (idx >= 0) {
+      headRow.deleteCell(idx);
+      Array.from(table.tBodies[0].rows).forEach(tr=>{
+        if (tr.cells.length > idx) tr.deleteCell(idx);
+      });
+    }
+  }
+
+  // Cleanup for Payments Done
+  if (report === "payments done") {
+    const body = table.tBodies[0];
+    const headersLower = Array.from(table.tHead.rows[0].cells).map(th=>norm(th.textContent));
+    const expectedIdx = headersLower.indexOf("expected");
+    Array.from(body.rows).forEach(tr=>{
+      const cells = Array.from(tr.cells).map(c=>norm(c.textContent));
+      const expectedVal = expectedIdx >= 0 ? cells[expectedIdx] : "";
+      const allEmpty = cells.every(c=>!c || c==="nan" || c==="none");
+      if (allEmpty || !expectedVal || expectedVal==="nan" || expectedVal==="none"){
+        body.removeChild(tr);
+      }
+    });
+  }
+})();
+
+$(function(){
+  const tableEl = document.getElementById('history-table');
+  if (!tableEl) return;
+
+  // Gather column indexes for date sort enhancement only if table exists
+  const headCells = Array.from(document.querySelectorAll('#history-table thead th'));
+  const idxLast   = headCells.findIndex(th => th.textContent.trim().toLowerCase() === 'last session');
+  const idxExp    = headCells.findIndex(th => th.textContent.trim().toLowerCase() === 'contract expiration');
+
+  function toISOForSort(txt){
+    if (!txt) return '';
+    const s = String(txt).trim();
+
+    let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+    if (m){
+      const y = +m[1], mm = +m[2], dd = +m[3];
+      return `${y.toString().padStart(4,'0')}-${mm.toString().padStart(2,'0')}-${dd.toString().padStart(2,'0')}`;
+    }
+
+    m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (m){
+      let a = +m[1], b = +m[2], y = +m[3];
+      let mm, dd;
+      if (a > 12 && b <= 12) { dd = a; mm = b; }
+      else if (b > 12 && a <= 12) { dd = b; mm = a; }
+      else { mm = a; dd = b; } // assume MM/DD
+      return `${y.toString().padStart(4,'0')}-${mm.toString().padStart(2,'0')}-${dd.toString().padStart(2,'0')}`;
+    }
+    return s;
+  }
+
+  const bodyRows = document.querySelectorAll('#history-table tbody tr');
+  bodyRows.forEach(tr => {
+    if (idxLast >= 0 && tr.cells[idxLast]) {
+      const t = tr.cells[idxLast].textContent;
+      tr.cells[idxLast].setAttribute('data-order', toISOForSort(t));
+    }
+    if (idxExp >= 0 && tr.cells[idxExp]) {
+      const t = tr.cells[idxExp].textContent;
+      tr.cells[idxExp].setAttribute('data-order', toISOForSort(t));
+    }
+  });
+
+  const dt = $('#history-table').DataTable({
+    paging:false, info:false, ordering:true, dom:'t', autoWidth:false
+  });
+  $('#custom-search').on('keyup', ()=> dt.search($('#custom-search').val()).draw());
+});
+</script>
+{% endblock %}

@@ -1,0 +1,539 @@
+{# app/templates/charts/_workout_rev1.html #}
+{% set wrdata     = (sheets['workout_rev1'].data if sheets and sheets.get('workout_rev1') and sheets['workout_rev1'].data else []) %}
+{% set wr_hasmeta = wrdata and ('KG' in wrdata[0] or 'Tools' in wrdata[0]) %}
+{% set wr_offset  = 1 if wr_hasmeta else 0 %}
+{% set wr_rec     = (wrdata[0] if wr_hasmeta else {}) %}
+
+<div class="rev1-toolbar">
+  <div class="toolbar-row">
+    <span class="text-sm font-semibold">Program</span>
+
+    <label for="workout-rev1-type" class="ml-4 text-sm font-medium">Type:</label>
+    <select id="workout-rev1-type" class="select">
+      {% for opt in ['C1','C2','C3','C4','C5','V1','V2','V3','V4','V5','TO1','TO2','TO3','TO4','TO5','B1','B2','B3','B4','B5','B6','B7','B8','B9','B10','B11','B12','B13','B14','B15'] %}
+        <option value="{{ opt }}">{{ opt }}</option>
+      {% endfor %}
+    </select>
+
+    <button type="button" id="rev1-clear" class="btn"
+      onclick="(function(btn){
+        // SCOPE: operate inside this chart only
+        const SCOPE = btn.closest('.client-modal') || btn.closest('#client-chart-root') || document;
+        const tbl   = SCOPE.querySelector('#rev1-table');
+        if (tbl && tbl.tBodies[0]) {
+          Array.from(tbl.tBodies[0].rows).forEach(tr=>{
+            tr.querySelector('.rev1-workout') && (tr.querySelector('.rev1-workout').value='');
+            tr.querySelector('.rev1-rings')   && (tr.querySelector('.rev1-rings').value='');
+            tr.querySelector('.rev1-notes')   && (tr.querySelector('.rev1-notes').value='');
+            const btn = tr.querySelector('.movement-cell-btn');
+            if (btn) btn.remove(); // remove play button in THIS chart only
+          });
+        }
+        const gk = SCOPE.querySelector('#gk-rev1-table');
+        if (gk && gk.tBodies[0]) {
+          Array.from(gk.tBodies[0].rows).forEach(tr=>{
+            tr.querySelector('.rev1-gk-workout') && (tr.querySelector('.rev1-gk-workout').value='');
+            tr.querySelector('.rev1-gk-rings')   && (tr.querySelector('.rev1-gk-rings').value='');
+            tr.querySelector('.rev1-gk-notes')   && (tr.querySelector('.rev1-gk-notes').value='');
+            const btn = tr.querySelector('.movement-cell-btn');
+            if (btn) btn.remove();
+          });
+        }
+      })(this)">
+      Clear
+    </button>
+
+    <div class="toolbar-sp">
+      <label class="text-sm">KG :</label>
+      <input id="workout-rev1-kg" type="text" value="{{ wr_rec.get('KG','') }}" class="field w-24">
+      <label class="text-sm">Tools :</label>
+      <input id="workout-rev1-tools" type="text" value="{{ wr_rec.get('Tools','') }}" class="field w-64">
+
+      <button type="button" class="btn btn-primary" title="Save to History (local)"
+        onclick="(function(btn){
+          // SCOPE
+          const SCOPE = btn.closest('.client-modal') || btn.closest('#client-chart-root') || document;
+
+          const root = SCOPE.querySelector('#client-chart-root') || SCOPE;
+          const client = (root && root.dataset.client) || '';
+
+          const program_type = SCOPE.querySelector('#workout-rev1-type')?.value||'';
+          const kg     = SCOPE.querySelector('#workout-rev1-kg')?.value||'';
+          const tools  = SCOPE.querySelector('#workout-rev1-tools')?.value||'';
+
+          const tbl    = SCOPE.querySelector('#rev1-table');
+          const gkTbl  = SCOPE.querySelector('#gk-rev1-table');
+
+          const rows = [];
+          if (tbl && tbl.tBodies[0]){
+            Array.from(tbl.tBodies[0].rows).forEach(tr=>{
+              rows.push({
+                Workout: tr.querySelector('.rev1-workout')?.value?.trim()||'',
+                Rings:   tr.querySelector('.rev1-rings')?.value?.trim()||'',
+                Notes:   tr.querySelector('.rev1-notes')?.value?.trim()||''
+              });
+            });
+          }
+
+          const gk_rows = [];
+          if (gkTbl && gkTbl.tBodies[0]){
+            Array.from(gkTbl.tBodies[0].rows).forEach(tr=>{
+              gk_rows.push({
+                Workout: tr.querySelector('.rev1-gk-workout')?.value?.trim()||'',
+                Rings:   tr.querySelector('.rev1-gk-rings')?.value?.trim()||'',
+                Notes:   tr.querySelector('.rev1-gk-notes')?.value?.trim()||''
+              });
+            });
+          }
+
+          try{
+            const key='charts:'+client+':workoutrev1:archive';
+            const cur=JSON.parse(localStorage.getItem(key)||'[]');
+            cur.unshift({ts:Date.now(), program_type, kg, tools, rows, gk_rows});
+            localStorage.setItem(key, JSON.stringify(cur.slice(0,20)));
+            const t = SCOPE.querySelector('#rev1-toast');
+            if(t){ t.textContent='Archived locally (saving disabled)'; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),1600); }
+          }catch(e){
+            const t=SCOPE.querySelector('#rev1-toast');
+            if(t){ t.textContent='Local archive failed'; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),1800); }
+          }
+          try{
+            const k='charts:'+client+':workoutrev1:state';
+            localStorage.setItem(k, JSON.stringify({type:program_type, kg, tools}));
+          }catch(_){}
+        })(this)">
+        Archive
+      </button>
+
+      <a class="btn" title="Open full history page"
+         href="{{ url_for('charts.workout_rev_history', client=client) }}">
+        <i class="bi bi-clock-history"></i>
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- Program table -->
+<div class="p-4">
+  <div class="card">
+    <div class="card-pad overflow-x-auto">
+      <table class="clean zebra-pink sticky-header" id="rev1-table">
+        <colgroup>
+          <col class="num"><col class="workout"><col class="rings"><col class="notes">
+        </colgroup>
+        <thead>
+          <tr><th>#</th><th>Movements</th><th>Rings</th><th>Notes</th></tr>
+        </thead>
+        <tbody>
+          {% for i in range(1,21) %}
+            {% set idx = (i - 1) + wr_offset %}
+            {% set row = (wrdata[idx] if wrdata|length > idx else {}) %}
+            {% set mv  = row.get('Workout','') %}
+            <tr data-rev1-id="{{ i }}">
+              <td class="row-num drag-handle text-center font-semibold" title="Drag to reorder">{{ i }}</td>
+
+              {# movement input + CONDITIONAL play button #}
+              <td>
+                <div class="flex items-center gap-2">
+                  <input class="rev1-workout w-full field" type="text" value="{{ mv }}">
+                  {% if mv %}
+                    <button type="button"
+                            class="movement-cell movement-cell-btn text-gray-600 hover:text-gray-900"
+                            title="Preview movement video"
+                            data-name="{{ mv }}">
+                      <i class="bi bi-play-circle"></i>
+                    </button>
+                  {% endif %}
+                </div>
+              </td>
+
+              <td><input class="rev1-rings   w-full field" type="text"   value="{{ row.get('Rings','') }}"></td>
+              <td><input class="rev1-notes   w-full field" type="text"   value="{{ row.get('Notes','') }}"></td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+/* Drag-to-reorder for Workout table (#rev1-table) — SCOPE FIXED */
+(function(){
+  // SCOPE to this chart only
+  const S = document.currentScript;
+  const SCOPE = (S && (S.closest('.client-modal') || S.closest('#client-chart-root'))) || document;
+
+  const ROOT   = SCOPE.querySelector('#client-chart-root') || SCOPE;
+  const CLIENT = ROOT ? ROOT.dataset.client : '';
+  const TBL    = SCOPE.querySelector('#rev1-table');
+  if (!CLIENT || !TBL || !TBL.tBodies || !TBL.tBodies[0]) return;
+
+  const BODY = TBL.tBodies[0];
+  const TYPE_SEL = SCOPE.querySelector('#workout-rev1-type');
+
+  function keyFor(typeVal){
+    const t = (typeVal || '').trim() || 'UNKNOWN';
+    return 'charts:'+CLIENT+':workoutrev1:order:'+t;
+  }
+  function renumber(){
+    Array.from(BODY.rows).forEach((tr, idx) => {
+      const cell = tr.querySelector('.row-num');
+      if (cell) cell.textContent = String(idx + 1);
+    });
+  }
+  function currentOrder(){
+    return Array.from(BODY.rows).map(tr => tr.getAttribute('data-rev1-id') || '');
+  }
+  function applySavedOrder(){
+    if (!TYPE_SEL) return;
+    try{
+      const raw = localStorage.getItem(keyFor(TYPE_SEL.value));
+      if (!raw) { renumber(); return; }
+      const ids = JSON.parse(raw) || [];
+      if (!Array.isArray(ids) || !ids.length) { renumber(); return; }
+
+      const map = new Map(Array.from(BODY.rows).map(tr => [tr.getAttribute('data-rev1-id'), tr]));
+      const used = new Set();
+
+      ids.forEach(id => {
+        const tr = map.get(String(id));
+        if (tr && !used.has(tr)) { BODY.appendChild(tr); used.add(tr); }
+      });
+      Array.from(map.values()).forEach(tr => { if (!used.has(tr)) BODY.appendChild(tr); });
+      renumber();
+    }catch(_){ renumber(); }
+  }
+const saveOrder = (function(){
+  let t;
+  return function(){
+    if (!TYPE_SEL) return;
+    clearTimeout(t);
+    t = setTimeout(() => {
+      try{
+        localStorage.setItem(keyFor(TYPE_SEL.value), JSON.stringify(currentOrder()));
+        const toast = SCOPE.querySelector('#rev1-toast');
+        if (toast){
+          toast.textContent = 'Reordered (local only)';
+          toast.classList.add('show');
+          setTimeout(()=>toast.classList.remove('show'), 900);
+        }
+      }catch(_){}
+    }, 80); // small debounce
+  };
+})();
+
+// rAF throttle helpers (1 call per frame max)
+const raf = (fn)=>{ let id=0; return (...a)=>{ cancelAnimationFrame(id); id=requestAnimationFrame(()=>fn(...a)); }; };
+const renumberRaf   = raf(renumber);
+const saveOrderRaf  = raf(saveOrder);
+
+
+  function attachDrag(){
+  if (window.Sortable && typeof window.Sortable.create === 'function'){
+    window.Sortable.create(BODY, {
+      handle: '.drag-handle',
+      animation: 120,
+      onEnd(){ renumberRaf(); saveOrderRaf(); }
+    });
+    return;
+  }
+
+  Array.from(BODY.rows).forEach(tr => {
+    const handle = tr.querySelector('.drag-handle');
+    if (!handle) return;
+    tr.draggable = true;
+    handle.style.cursor = 'grab';
+
+    tr.addEventListener('dragstart', e => {
+      tr.classList.add('dragging');
+      e.dataTransfer.setData('text/plain', tr.getAttribute('data-rev1-id') || '');
+    });
+
+    tr.addEventListener('dragend', () => {
+      tr.classList.remove('dragging');
+      renumberRaf(); 
+      saveOrderRaf();
+    });
+  });  // ←←← this was missing
+
+  BODY.addEventListener('dragover', e => {
+    e.preventDefault();
+    const dragging = BODY.querySelector('tr.dragging');
+    if (!dragging) return;
+
+    const rows = Array.from(BODY.querySelectorAll('tr:not(.dragging)'));
+    const after = rows.find(r => e.clientY <= r.getBoundingClientRect().top + r.offsetHeight/2);
+    if (!after) BODY.appendChild(dragging);
+    else BODY.insertBefore(dragging, after);
+  });
+}
+
+
+  // Appear/disappear play button based on input text — SCOPE FIXED
+  function wireMovementButtons(){
+    Array.from(BODY.rows).forEach(tr=>{
+      const input = tr.querySelector('.rev1-workout');
+      if (!input) return;
+      let btn = tr.querySelector('.movement-cell-btn');
+
+      const ensure = () => {
+        const name = (input.value || '').trim();
+        if (name && !btn){
+          btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'movement-cell movement-cell-btn text-gray-600 hover:text-gray-900';
+          btn.title = 'Preview movement video';
+          btn.innerHTML = '<i class="bi bi-play-circle"></i>';
+          btn.dataset.name = name;
+          input.insertAdjacentElement('afterend', btn);
+        } else if (!name && btn){
+          btn.remove();
+          btn = null;
+        } else if (btn){
+          btn.dataset.name = name;
+        }
+      };
+
+      ensure();
+      input.addEventListener('input', ensure);
+    });
+  }
+
+  applySavedOrder();
+  attachDrag();
+  wireMovementButtons();
+
+  if (TYPE_SEL){
+    TYPE_SEL.addEventListener('change', () => {
+      applySavedOrder();
+      wireMovementButtons();
+    });
+  }
+})();
+</script>
+
+<!-- GK (TO & B) -->
+<div class="px-4">
+  <div class="card">
+    <div class="card-pad">
+      <h3 class="text-md font-semibold mb-2">Goldorack (TO &amp; B plans)</h3>
+
+      <div id="gk-rev1-section" class="overflow-x-auto hidden">
+        <table class="clean zebra-pink sticky-header gk-numbered" id="gk-rev1-table">
+          <thead>
+            <tr>
+              <th style="width:56px; text-align:center">#</th>
+              <th>Movements</th>
+              <th style="width:180px">Rings</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% set wr_gold = (wrdata | selectattr('Goldorack') | list) if wrdata else [] %}
+            {% for j in range(0,12) %}
+              {% set grow = wr_gold[j] if wr_gold|length > j else {} %}
+              {% set gmv = grow.get('Workout', grow.get('Value','')) %}
+              <tr data-gk-id="{{ j }}">
+                <td class="row-num drag-handle text-center font-semibold" title="Drag to reorder"></td>
+
+                <td>
+                  <div class="flex items-center gap-2">
+                    <input class="rev1-gk-workout w-full field" type="text" value="{{ gmv }}">
+                    {% if gmv %}
+                      <button type="button"
+                              class="movement-cell movement-cell-btn text-gray-600 hover:text-gray-900"
+                              title="Preview movement video"
+                              data-name="{{ gmv }}">
+                        <i class="bi bi-play-circle"></i>
+                      </button>
+                    {% endif %}
+                  </div>
+                </td>
+
+                <td><input class="rev1-gk-rings w-full field"   type="text" value="{{ grow.get('Rings','') }}"></td>
+                <td><input class="rev1-gk-notes w-full field"   type="text" value="{{ grow.get('Notes','') }}"></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+
+        <script>
+        (function(){
+          // SCOPE to GK section only
+          const S = document.currentScript;
+          const SCOPE = (S && (S.closest('.client-modal') || S.closest('#client-chart-root'))) || document;
+
+          const ROOT   = SCOPE.querySelector('#client-chart-root') || SCOPE;
+          const CLIENT = ROOT ? ROOT.dataset.client : '';
+          const TBL    = SCOPE.querySelector('#gk-rev1-table');
+          const TBODY  = TBL ? TBL.tBodies[0] : null;
+          if (!CLIENT || !TBODY) return;
+
+          const LS_KEY = 'charts:'+CLIENT+':workoutrev1:gk_order';
+          const rowId = (tr)=> tr.getAttribute('data-gk-id');
+          const orderIds = ()=> Array.from(TBODY.rows).map(rowId);
+
+          function saveGKOrderLocal(){
+            try{
+              localStorage.setItem(LS_KEY, JSON.stringify(orderIds()));
+              const t = SCOPE.querySelector('#rev1-toast');
+              if(t){ t.textContent='Reordered (local only)'; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),900); }
+            }catch(_){}
+          }
+          function applySavedGKOrderLocal(){
+            try{
+              const raw=localStorage.getItem(LS_KEY);
+              if(!raw) return;
+              const ids=JSON.parse(raw)||[];
+              if(!Array.isArray(ids)||!ids.length) return;
+              const map=new Map(Array.from(TBODY.rows).map(tr=>[rowId(tr),tr]));
+              const used=new Set();
+              ids.forEach(id=>{ const tr=map.get(String(id)); if(tr && !used.has(tr)){ TBODY.appendChild(tr); used.add(tr); }});
+              Array.from(map.values()).forEach(tr=>{ if(!used.has(tr)) TBODY.appendChild(tr); });
+            }catch(_){}
+          }
+
+// rAF throttle for GK reorder save
+const raf = (fn)=>{ let id=0; return (...a)=>{ cancelAnimationFrame(id); id=requestAnimationFrame(()=>fn(...a)); }; };
+const saveGKOrderLocalRaf = raf(saveGKOrderLocal);
+
+
+          function attachDragSave(){
+            if (window.Sortable && typeof window.Sortable.create === 'function'){
+              window.Sortable.create(TBODY,{
+  handle:'.drag-handle',
+  animation:120,
+  onEnd: saveGKOrderLocalRaf
+});
+
+              return;
+            }
+            Array.from(TBODY.rows).forEach(tr=>{
+              const h=tr.querySelector('.drag-handle'); if(!h) return;
+              tr.draggable=true; h.style.cursor='grab';
+              tr.addEventListener('dragstart', e=>{ tr.classList.add('dragging'); e.dataTransfer.setData('text/plain',''); });
+              tr.addEventListener('dragend',   ()=>{ tr.classList.remove('dragging'); saveGKOrderLocalRaf(); });
+
+            });
+            TBODY.addEventListener('dragover', e=>{
+              e.preventDefault();
+              const dragging=TBODY.querySelector('tr.dragging'); if(!dragging) return;
+              const rows=Array.from(TBODY.querySelectorAll('tr:not(.dragging)'));
+              const after=rows.find(r => e.clientY <= r.getBoundingClientRect().top + r.offsetHeight/2);
+              if(!after) TBODY.appendChild(dragging); else TBODY.insertBefore(dragging, after);
+            });
+          }
+
+          // Dynamic button for GK inputs — SCOPE FIXED
+          function wireGKButtons(){
+            Array.from(TBODY.rows).forEach(tr=>{
+              const input = tr.querySelector('.rev1-gk-workout');
+              if (!input) return;
+              let btn = tr.querySelector('.movement-cell-btn');
+
+              const ensure = () => {
+                const name = (input.value || '').trim();
+                if (name && !btn){
+                  btn = document.createElement('button');
+                  btn.type = 'button';
+                  btn.className = 'movement-cell movement-cell-btn text-gray-600 hover:text-gray-900';
+                  btn.title = 'Preview movement video';
+                  btn.innerHTML = '<i class="bi bi-play-circle"></i>';
+                  btn.dataset.name = name;
+                  input.insertAdjacentElement('afterend', btn);
+                } else if (!name && btn){
+                  btn.remove(); btn = null;
+                } else if (btn){
+                  btn.dataset.name = name;
+                }
+              };
+
+              ensure();
+              input.addEventListener('input', ensure);
+            });
+          }
+
+          const GKSEC = SCOPE.querySelector('#gk-rev1-section');
+          if (GKSEC) {
+            const obs=new MutationObserver(()=>{
+              if (GKSEC.offsetParent!==null) { applySavedGKOrderLocal(); wireGKButtons(); }
+            });
+            obs.observe(GKSEC,{attributes:true, attributeFilter:['class','style']});
+          }
+
+          (function init(){ applySavedGKOrderLocal(); attachDragSave(); wireGKButtons(); })();
+        })();
+        </script>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="rev1-toast" class="toast" role="status" aria-live="polite"></div>
+
+<!-- Restore type/kg/tools (local only) — SCOPE FIXED -->
+<script>
+(function(){
+  try{
+    const S = document.currentScript;
+    const SCOPE = (S && (S.closest('.client-modal') || S.closest('#client-chart-root'))) || document;
+
+    var root=SCOPE.querySelector('#client-chart-root');
+    if(!root) return;
+    var client=root.dataset.client||'unknown';
+    var key='charts:'+client+':workoutrev1:state';
+    var s=JSON.parse(localStorage.getItem(key)||'{}');
+    var sel=SCOPE.querySelector('#workout-rev1-type');
+    if(sel && s.type && Array.from(sel.options).some(function(o){return o.value===s.type;})){
+      sel.value=s.type;
+    }
+    var kg=SCOPE.querySelector('#workout-rev1-kg');
+    var tools=SCOPE.querySelector('#workout-rev1-tools');
+    if(kg && typeof s.kg==='string') kg.value=s.kg;
+    if(tools && typeof s.tools==='string') tools.value=s.tools;
+  }catch(e){}
+})();
+</script>
+
+<script id="workout-blocks-json" type="application/json">
+{{ blocks_json|default({}, true)|tojson }}
+</script>
+
+<link rel="stylesheet" href="/static/css/workout_autofill.css">
+<script src="/static/js/charts/workout_autofill.js" defer></script>
+
+<style>
+  /* Neutralize residual pink styling inside this chart modal only */
+  .client-modal .zebra-pink .field,
+  #client-chart-root .zebra-pink .field {
+    background-color: #ffffff !important;   /* plain white inputs */
+    border-color: #e5e7eb !important;       /* neutral border */
+    box-shadow: none !important;            /* remove any pink glow */
+  }
+  .client-modal .zebra-pink tbody tr td,
+  #client-chart-root .zebra-pink tbody tr td {
+    background: transparent !important;     /* no pink row fill */
+  }
+  /* Keep a nice focus state (matches your platform style) */
+  .client-modal .zebra-pink .field:focus,
+  #client-chart-root .zebra-pink .field:focus {
+    border-color: #94a3b8 !important;
+    box-shadow: 0 0 0 2px rgba(204,0,102,.25) !important; /* subtle Figurella-pink ring */
+    outline: none;
+  }
+</style>
+
+<script>
+  /* Clean any leftover Tailwind pink classes on load (border-pink-300, bg-pink-50, etc.) */
+  (function(){
+    try{
+      const S = document.currentScript;
+      const SCOPE = (S && (S.closest('.client-modal') || S.closest('#client-chart-root'))) || document;
+      SCOPE.querySelectorAll('#rev1-table .field, #gk-rev1-table .field').forEach(el=>{
+        el.classList.remove('border-pink-300','ring-pink-300','bg-pink-50','border-pink-400','bg-rose-50');
+      });
+    }catch(_){}
+  })();
+</script>

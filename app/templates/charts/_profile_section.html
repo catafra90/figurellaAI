@@ -1,0 +1,113 @@
+<!-- ===== Client Modal • Profile Tab (desktop parity) ===== -->
+<div id="profile" data-tab="profile">
+  <div class="tab-scroll">
+
+    <!-- Header row (avatar + name + status) -->
+    <div class="profile-header flex items-center justify-between mb-3">
+      <div class="flex items-center gap-3">
+        <div class="h-10 w-10 rounded-full bg-gray-200 grid place-items-center text-gray-600 font-semibold">
+          {{ (client or 'C')[:1] }}
+        </div>
+        <div>
+          <h2 class="text-lg font-semibold leading-tight text-slate-900">{{ client }}</h2>
+          <p class="text-xs text-slate-500">Client Profile</p>
+        </div>
+      </div>
+      {% if status %}
+      <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium
+                   bg-emerald-50 text-emerald-700 border border-emerald-200">
+        <i class="bi bi-circle-fill text-[9px]"></i>{{ status }}
+      </span>
+      {% endif %}
+    </div>
+
+    <!-- responsive 2-col on desktop → 1-col on phones -->
+    <div class="profile-grid">
+      <!-- Left Card -->
+      <section class="profile-card">
+        <h3 class="section-title">Core Details</h3>
+
+        <div class="kv-row">
+          <div class="kv-label">Name</div>
+          <div class="kv-value">{{ client }}</div>
+        </div>
+
+        <div class="kv-row">
+          <div class="kv-label">Date of Birth</div>
+          <div class="kv-value">{{ dob or '—' }}</div>
+        </div>
+
+        <div class="kv-row">
+          <div class="kv-label">Height (m)</div>
+          <div class="kv-value">{{ height_m or '—' }}</div>
+        </div>
+
+        <div class="kv-row">
+          <div class="kv-label">Goals</div>
+          <div class="kv-value">{{ goals or '—' }}</div>
+        </div>
+      </section>
+
+      <!-- Right Card -->
+      <section class="profile-card">
+        <h3 class="section-title">Weights & Milestones</h3>
+
+        <div class="kv-row">
+          <div class="kv-label">Initial Weight</div>
+          <div class="kv-value">{{ init_weight or '—' }}</div>
+        </div>
+
+        <div class="kv-row">
+          <div class="kv-label">Initial Date</div>
+          <div class="kv-value">{{ init_date or '—' }}</div>
+        </div>
+
+        <div class="kv-row">
+          <div class="kv-label">Lowest Weight</div>
+          <div class="kv-value">{{ low_weight or '—' }}</div>
+        </div>
+
+        <div class="kv-row">
+          <div class="kv-label">Lowest Weight Date</div>
+          <div class="kv-value">{{ low_weight_date or '—' }}</div>
+        </div>
+
+        <div class="kv-row">
+          <div class="kv-label">Most Recent Weight</div>
+          <div class="kv-value">{{ last_weight or '—' }}</div>
+        </div>
+
+        <div class="kv-row">
+          <div class="kv-label">Most Recent Date</div>
+          <div class="kv-value">{{ last_weight_date or '—' }}</div>
+        </div>
+
+        <div class="kv-row">
+          <div class="kv-label">Target Weight</div>
+          <div class="kv-value">{{ target_weight or '—' }}</div>
+        </div>
+      </section>
+
+      <!-- Full-width Notes card -->
+      <section class="profile-card md:col-span-2">
+        <h3 class="section-title">Notes</h3>
+        <div class="space-y-3">
+          <div>
+            <label class="input-label">Initial Consultation Notes</label>
+            <textarea rows="3" class="input-base w-full" placeholder="—">{{ consult_notes or '' }}</textarea>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label class="input-label">First Contract Date</label>
+              <input type="date" class="input-base w-full" value="{{ first_contract_date or '' }}">
+            </div>
+            <div>
+              <label class="input-label">Motivation</label>
+              <input type="text" class="input-base w-full" value="{{ motivation or '' }}" placeholder="—">
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>

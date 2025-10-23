@@ -1,0 +1,286 @@
+{# ─── Full Nutritional Consultation (accordion, no icon) ─── #}
+{% set _nc = (sheets.get('nc') if sheets and sheets.get('nc') else {}) %}
+{% set nc_name    = _nc.get('Name','') %}
+{% set nc_date    = _nc.get('Date','') %}
+{% set nc_w_cur   = _nc.get('WeightCurrent','') %}
+{% set nc_w_low   = _nc.get('WeightLowest','') %}
+{% set nc_w_high  = _nc.get('WeightHighest','') %}
+{% set nc_w_ideal = _nc.get('WeightIdeal','') %}
+{% set nc_goal    = _nc.get('Goal','') %}
+{% set nc_tried   = _nc.get('Tried','') %}
+
+{% set _daylog = (sheets.get('nc_daylog') if sheets and sheets.get('nc_daylog') else {}) %}
+
+<style>
+  /* One grid template used by BOTH header and data rows -> perfect 1:1 alignment */
+  .meal-grid{
+    display: grid;
+    grid-template-columns:
+      110px                 /* TIME */
+      minmax(220px, 1.5fr)  /* WHAT */
+      90px                  /* Q.TY */
+      1fr                   /* ADDITION */
+      1fr                   /* DRINK */
+      130px;                /* COOKED/OUT */
+    align-items: stretch;
+  }
+  @media (max-width:1024px){
+    .meal-grid{
+      grid-template-columns:
+        100px
+        minmax(200px, 1.4fr)
+        80px
+        1fr
+        1fr
+        120px;
+    }
+  }
+
+  /* Make form controls fill their cell so header & row heights feel consistent */
+  .meal-cell{ padding: .5rem .75rem; }
+  .meal-input,
+  .meal-textarea,
+  .meal-select{
+    width: 100%;
+    height: 100%;
+  }
+  .meal-textarea{
+    resize: vertical;        /* still expandable, but stays inside the cell */
+    overflow: hidden;        /* paired with auto-expand JS below */
+    min-height: 2rem;
+  }
+
+  /* Keep the horizontal scroll area stable */
+  .meal-wrap{ min-width: 880px; }
+</style>
+
+<div class="mb-4 border rounded-xl overflow-hidden">
+  <!-- Header / toggle (no icon) -->
+  <button
+    type="button"
+    class="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100"
+    data-acc-target="#nc-accordion-body"
+    aria-controls="nc-accordion-body"
+    aria-expanded="false"
+    onclick="(function(btn){
+      const id = btn.getAttribute('data-acc-target');
+      const el = document.querySelector(id);
+      if(!el) return;
+      el.classList.toggle('hidden');
+      const expanded = !el.classList.contains('hidden');
+      btn.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+    })(this)"
+  >
+    <span class="text-base font-semibold">Full Nutritional Consultation</span>
+  </button>
+
+  <!-- Body (start collapsed) -->
+  <div id="nc-accordion-body" class="p-4 space-y-6 hidden">
+    <!-- Name + Date -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <label class="block text-sm font-medium mb-1">Name</label>
+        <input name="nc_name" type="text" class="field w-full" value="{{ nc_name }}"/>
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Date</label>
+        <input name="nc_date" type="date" class="field w-full" value="{{ nc_date }}"/>
+      </div>
+    </div>
+
+    <!-- Weight -->
+    <div>
+      <div class="text-sm font-semibold mb-2">Weight</div>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div>
+          <label class="block text-xs text-gray-600 mb-1">Current</label>
+          <input name="nc_weight_current" type="text" class="field w-full" value="{{ nc_w_cur }}" placeholder="e.g., 140 lb"/>
+        </div>
+        <div>
+          <label class="block text-xs text-gray-600 mb-1">Lowest</label>
+          <input name="nc_weight_lowest" type="text" class="field w-full" value="{{ nc_w_low }}" placeholder="e.g., 125 lb"/>
+        </div>
+        <div>
+          <label class="block text-xs text-gray-600 mb-1">Highest</label>
+          <input name="nc_weight_highest" type="text" class="field w-full" value="{{ nc_w_high }}" placeholder="e.g., 165 lb"/>
+        </div>
+        <div>
+          <label class="block text-xs text-gray-600 mb-1">Ideal</label>
+          <input name="nc_weight_ideal" type="text" class="field w-full" value="{{ nc_w_ideal }}" placeholder="e.g., 135 lb"/>
+        </div>
+      </div>
+    </div>
+
+    <!-- GOALS -->
+    <div>
+      <div class="text-sm font-semibold mb-2">GOALS</div>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm mb-1">1. What is your body goal?</label>
+          <textarea name="nc_goal" rows="2" class="field w-full" placeholder="Describe your primary body goal…">{{ nc_goal }}</textarea>
+        </div>
+        <div>
+          <label class="block text-sm mb-1">2. What have you tried in the past to achieve it?</label>
+          <textarea name="nc_tried" rows="2" class="field w-full" placeholder="List diets, programs, or approaches you’ve tried…">{{ nc_tried }}</textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- HEALTH -->
+    <div>
+      <div class="text-sm font-semibold mb-2">HEALTH</div>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm mb-1">
+            3. Medical history: food allergies, intolerances, high cholesterol, diabetes, heart diseases, hypo/hyperthyroidism, recent surgeries, bowel disease, depression, recent injuries, anemia, high/low blood pressure.
+          </label>
+          <textarea name="nc_medical_history" rows="3" class="field w-full" placeholder="List any conditions, allergies, or relevant notes here…"></textarea>
+        </div>
+        <div>
+          <label class="block text-sm mb-1">Description</label>
+          <textarea name="nc_description" rows="2" class="field w-full" placeholder="Provide brief details about medical conditions…"></textarea>
+        </div>
+        <div>
+          <label class="block text-sm mb-1">Medication</label>
+          <textarea name="nc_medication" rows="2" class="field w-full" placeholder="List any medications currently taken…"></textarea>
+        </div>
+        <div>
+          <label class="block text-sm mb-1">
+            4. What age did you get your first period? Do you get regular periods? When was your last one? How long did it last?
+          </label>
+          <input name="nc_period_info" type="text" class="field w-full" placeholder="Answer here…"/>
+        </div>
+        <div>
+          <label class="block text-sm mb-1">Do you use contraceptives or hormonal therapy?</label>
+          <input name="nc_contraceptives" type="text" class="field w-full" placeholder="Yes / No, specify details…"/>
+        </div>
+        <div>
+          <label class="block text-sm mb-1">
+            5. Do you take any Vitamin/Mineral supplements? (If yes, please list below)
+          </label>
+          <textarea name="nc_supplements" rows="2" class="field w-full" placeholder="List vitamins, minerals, or supplements…"></textarea>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm mb-1">
+              6. On average, how many hours do you sleep? (Week / Weekends)
+            </label>
+            <input name="nc_sleep_hours" type="text" class="field w-full" placeholder="Week: ___  Weekends: ___"/>
+          </div>
+          <div>
+            <label class="block text-sm mb-1">7. What is your stress level?</label>
+            <select name="nc_stress_level" class="field w-full">
+              <option value="">Select</option>
+              <option>Not at all</option>
+              <option>A little</option>
+              <option>Moderate</option>
+              <option>Very</option>
+              <option>Extremely</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="block text-sm mb-1">How do you manage your stress/food relation?</label>
+          <textarea name="nc_stress_relation" rows="2" class="field w-full" placeholder="Describe how you handle stress or emotional eating…"></textarea>
+        </div>
+        <div>
+          <label class="block text-sm mb-1">Have you ever had any eating disorder?</label>
+          <input name="nc_eating_disorder" type="text" class="field w-full" placeholder="Yes / No, specify if applicable…"/>
+        </div>
+        <div>
+          <label class="block text-sm mb-1">8. Are you currently on an exercise program?</label>
+          <input name="nc_exercise_program" type="text" class="field w-full" placeholder="Yes / No / With a PT?"/>
+        </div>
+        <div>
+          <label class="block text-sm mb-1">9. Have you ever played sports?</label>
+          <input name="nc_sports" type="text" class="field w-full" placeholder="Yes / No / Which / Professionally?"/>
+        </div>
+      </div>
+    </div>
+
+    {# ========== Day Log Sections (all meals) ========== #}
+    {% macro meal_block(key, label) -%}
+      {% set r = (_daylog.get(key) if _daylog else {}) %}
+      <section class="border border-gray-200 rounded-lg overflow-hidden mb-4">
+        <header class="px-3 py-2 bg-gray-200 text-sm font-semibold uppercase">{{ label }}</header>
+
+        <div class="overflow-x-auto">
+          <div class="meal-wrap">
+            <!-- Header row uses the SAME grid template as the data row -->
+            <div class="meal-grid bg-gray-200 text-[12px] font-bold tracking-wide">
+              <div class="meal-cell">TIME</div>
+              <div class="meal-cell">WHAT</div>
+              <div class="meal-cell">Q.TY</div>
+              <div class="meal-cell">ADDITION</div>
+              <div class="meal-cell">DRINK</div>
+              <div class="meal-cell">COOKED/OUT</div>
+            </div>
+
+            <!-- Data row (1:1 with header) -->
+            <div class="meal-grid border-t border-gray-200">
+              <div class="meal-cell">
+                <input name="nc_daylog[{{key}}][time]" type="time" class="field meal-input" value="{{ r.get('time','') }}">
+              </div>
+              <div class="meal-cell">
+                <textarea name="nc_daylog[{{key}}][what]" class="field meal-textarea auto-expand" rows="1" placeholder="Food / meal">{{ r.get('what','') }}</textarea>
+              </div>
+              <div class="meal-cell">
+                <input name="nc_daylog[{{key}}][qty]" type="text" class="field meal-input" placeholder="Qty" value="{{ r.get('qty','') }}">
+              </div>
+              <div class="meal-cell">
+                <textarea name="nc_daylog[{{key}}][addition]" class="field meal-textarea auto-expand" rows="1" placeholder="Extras / sides">{{ r.get('addition','') }}</textarea>
+              </div>
+              <div class="meal-cell">
+                <textarea name="nc_daylog[{{key}}][drink]" class="field meal-textarea auto-expand" rows="1" placeholder="Drink">{{ r.get('drink','') }}</textarea>
+              </div>
+              <div class="meal-cell">
+                {% set sel = r.get('cooked_out','') %}
+                <select name="nc_daylog[{{key}}][cooked_out]" class="field meal-select">
+                  <option value=""></option>
+                  <option value="Cooked" {{ 'selected' if sel=='Cooked' else '' }}>Cooked</option>
+                  <option value="Out"     {{ 'selected' if sel=='Out' else '' }}>Out</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    {%- endmacro %}
+
+    {{ meal_block('breakfast',        'Breakfast') }}
+    {{ meal_block('morning_snack',    'Morning Snack') }}
+    {{ meal_block('lunch',            'Lunch') }}
+    {{ meal_block('afternoon_snack',  'Afternoon Snack') }}
+    {{ meal_block('dinner',           'Dinner') }}
+    {{ meal_block('after_dinner',     'After Dinner') }}
+
+    <p class="text-xs text-gray-500 mt-2">Tip: boxes expand as you type; scroll horizontally if needed.</p>
+  </div>
+</div>
+
+<!-- Sync aria-expanded on load for any accordion using data-acc-target -->
+<script>
+  (function(){
+    document.querySelectorAll('[data-acc-target]').forEach(btn => {
+      const id = btn.getAttribute('data-acc-target');
+      const body = document.querySelector(id);
+      if (!body) return;
+      const expanded = !body.classList.contains('hidden');
+      btn.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+    });
+  })();
+
+  // Auto-expand textareas (keep existing behavior)
+  document.addEventListener('input', function(e) {
+    if (e.target.classList && e.target.classList.contains('auto-expand')) {
+      e.target.style.height = 'auto';
+      e.target.style.height = e.target.scrollHeight + 'px';
+    }
+  });
+  window.addEventListener('load', () => {
+    document.querySelectorAll('.auto-expand').forEach(t => {
+      t.style.height = 'auto';
+      t.style.height = t.scrollHeight + 'px';
+    });
+  });
+</script>

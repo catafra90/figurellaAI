@@ -1,0 +1,173 @@
+{# app/templates/nutrition/index.html #}
+{% extends "base.html" %}
+
+{% block content %}
+<div id="nutrition-root" class="max-w-7xl mx-auto px-6">
+
+  <!-- Add Google Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+
+  <!-- Page-scoped overrides to RE-ENABLE scrolling just for Nutrition -->
+  <style>
+    body.nutrition-page, body.nutrition-page html { overflow-y: auto !important; height: auto !important; }
+
+    body.nutrition-page #charts-main,
+    body.nutrition-page #charts-wrapper,
+    body.nutrition-page #chart-panel,
+    body.nutrition-page .panel {
+      position: static !important;
+      height: auto !important;
+      overflow: visible !important;
+    }
+
+    :root {
+      --fig-pink: #CC0066;
+      --fig-violet: #7c3aed;
+      --fig-teal: #0ea5a6;
+      --glass: rgba(255,255,255,.88);
+      --glass-lite: rgba(255,255,255,.78);
+      --border: rgba(255,255,255,.70);
+    }
+    .nx-card {
+      background: var(--glass);
+      backdrop-filter: saturate(120%) blur(10px);
+      border: 1px solid var(--border);
+      border-radius: 1.25rem;
+      box-shadow: 0 12px 28px rgba(0,0,0,.14);
+      overflow: hidden;
+    }
+    .nx-ribbon {
+      position: relative; padding: .9rem 1.25rem;
+      border-bottom: 1px solid var(--border); color: #0f172a;
+      background:
+        linear-gradient(90deg, rgba(204,0,102,.12), transparent 45%),
+        linear-gradient(180deg, rgba(255,255,255,.35), rgba(255,255,255,0));
+    }
+    .nx-ribbon .nx-pill {
+      font-size: .72rem; padding: .35rem .7rem; border-radius: 999px; color: white;
+      box-shadow: 0 6px 14px rgba(0,0,0,.18); display: inline-block;
+    }
+    .nx-accent { position: relative; }
+    .nx-accent:before {
+      content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 6px;
+      background: linear-gradient(180deg, var(--fig-pink), var(--fig-violet));
+      border-top-left-radius: 1.25rem; border-bottom-left-radius: 1.25rem;
+    }
+    .nx-panel { background: var(--glass-lite); border: 1px solid var(--border); border-radius: .9rem; }
+    table.nx-table { width: 100%; border-collapse: collapse; }
+    .nx-table thead th {
+      font-weight: 600; color: #374151; padding: .45rem .6rem;
+      position: sticky; top: 0; background: rgba(255,255,255,.92); backdrop-filter: blur(6px);
+    }
+    .nx-table tbody td { padding: .45rem .6rem; border-top: 1px solid #f1f5f9; }
+    .nx-table tbody tr:hover td { background: rgba(204,0,102,.04); }
+    .editable[contenteditable="true"] { min-height: 1.6rem; outline: none; border-radius: .4rem; transition: box-shadow .15s, background .15s; }
+    .editable[contenteditable="true"]:focus { background: white; box-shadow: 0 0 0 2px rgba(204,0,102,.25); }
+    .editable[contenteditable="true"]:empty:before { color: #94a3b8; content: attr(data-placeholder); }
+  </style>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      document.body.classList.add('nutrition-page');
+    });
+  </script>
+
+  <!-- Content -->
+  <div class="mt-6 space-y-8 pb-28">
+
+    <!-- ========== MEAL PLANS ========== -->
+    <section class="nx-card nx-accent">
+      <div class="nx-ribbon flex flex-wrap items-center justify-between pl-6">
+        <div>
+          <h2 class="text-lg font-semibold">Meal Plans</h2>
+          <p class="text-xs text-gray-600">Weekly templates with calories/macros & substitutions.</p>
+        </div>
+        <div class="flex gap-2">
+          <a href="#" class="nx-pill" style="background: var(--fig-pink);">Create plan</a>
+          <a href="#" class="nx-pill" style="background: #111827;">Assign to client</a>
+          <a href="#" class="nx-pill" style="background: linear-gradient(90deg,var(--fig-violet),var(--fig-pink));">Download PDF</a>
+        </div>
+      </div>
+
+      <div class="px-5 pt-5 pb-6 grid md:grid-cols-2 gap-6">
+        <div class="nx-panel p-4">
+          <h3 class="text-sm font-semibold text-gray-900 mb-2">Suggested fields</h3>
+          <ul class="text-sm text-gray-700 grid grid-cols-2 gap-y-1">
+            <li>Plan name</li><li>Target calories (kcal)</li>
+            <li>Protein / Carbs / Fat (g/% )</li><li>Hydration goal (L)</li>
+            <li>Allergies / exclusions</li><li>Substitution rules</li>
+            <li>Days covered (Mon–Sun)</li><li>Notes / coaching tips</li>
+          </ul>
+        </div>
+
+        <div class="nx-panel p-4 overflow-auto">
+          <h3 class="text-sm font-semibold text-gray-900 mb-2">Weekly overview</h3>
+          <table class="nx-table text-sm">
+            <thead>
+              <tr>
+                <th>Day</th><th>Breakfast</th><th>Lunch</th><th>Dinner</th><th>Snacks</th><th>kcal</th>
+              </tr>
+            </thead>
+            <tbody class="align-top">
+              {% for d in ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'] %}
+              <tr>
+                <td class="font-medium text-gray-900">{{ d }}</td>
+                <td class="editable" contenteditable="true" data-placeholder="Add..."></td>
+                <td class="editable" contenteditable="true" data-placeholder="Add..."></td>
+                <td class="editable" contenteditable="true" data-placeholder="Add..."></td>
+                <td class="editable" contenteditable="true" data-placeholder="Add..."></td>
+                <td class="editable" contenteditable="true" data-placeholder="0"></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          <p class="mt-2 text-xs text-gray-500">Tip: click a cell to type. This is a temporary editable view (no save yet).</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== INSIGHTS ========== -->
+    <section class="nx-card nx-accent">
+      <div class="nx-ribbon pl-6"
+           style="background: linear-gradient(90deg, rgba(124,58,237,.16), transparent 45%), linear-gradient(180deg, rgba(255,255,255,.35), rgba(255,255,255,0));">
+        <h2 class="text-lg font-semibold">Insights</h2>
+        <p class="text-xs text-gray-600">Trends &amp; recommendations from plans, logs, progress, and attendance.</p>
+      </div>
+
+      <div class="px-5 pt-5 pb-6 grid md:grid-cols-3 gap-6">
+        <div class="nx-panel p-4">
+          <h3 class="text-sm font-semibold text-gray-900 mb-2">Key indicators</h3>
+          <ul class="text-sm text-gray-700 space-y-1">
+            <li><span class="text-gray-600">Adherence (7d): </span><span class="font-medium text-gray-900 editable" contenteditable="true" data-placeholder="0%"></span></li>
+            <li><span class="text-gray-600">Avg kcal delta vs plan: </span><span class="font-medium text-gray-900 editable" contenteditable="true" data-placeholder="0"></span></li>
+            <li><span class="text-gray-600">Protein target hits: </span><span class="font-medium text-gray-900 editable" contenteditable="true" data-placeholder="0 / 7"></span></li>
+            <li><span class="text-gray-600">Hydration goal: </span><span class="font-medium text-gray-900 editable" contenteditable="true" data-placeholder="0%"></span></li>
+          </ul>
+        </div>
+
+        <div class="nx-panel p-4">
+          <h3 class="text-sm font-semibold text-gray-900 mb-2">Recommendations</h3>
+          <ul class="text-sm text-gray-700 list-disc ml-5 space-y-1">
+            <li class="editable" contenteditable="true" data-placeholder="Type a recommendation..."></li>
+            <li class="editable" contenteditable="true" data-placeholder="Type a recommendation..."></li>
+            <li class="editable" contenteditable="true" data-placeholder="Type a recommendation..."></li>
+          </ul>
+        </div>
+
+        <div class="nx-panel p-4">
+          <h3 class="text-sm font-semibold text-gray-900 mb-2">Upcoming checks</h3>
+          <ul class="text-sm text-gray-700 space-y-1">
+            <li class="editable" contenteditable="true" data-placeholder="Add a check item..."></li>
+            <li class="editable" contenteditable="true" data-placeholder="Add a check item..."></li>
+            <li class="editable" contenteditable="true" data-placeholder="Add a check item..."></li>
+          </ul>
+          <div class="mt-3 text-xs">
+            <a href="#" class="nx-pill inline-block" style="background: #111827;">Generate weekly summary</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div><!-- /space-y -->
+</div>
+{% endblock %}

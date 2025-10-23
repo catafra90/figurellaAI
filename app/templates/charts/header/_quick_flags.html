@@ -1,0 +1,39 @@
+<style>
+  @media (max-width:1024px){
+    .quick-flags { flex-wrap: wrap; gap: .5rem .5rem; }
+    .quick-flags .flag-btn { min-height: 40px; }
+  }
+</style>
+
+<div class="mt-2">
+  <div class="quick-flags flex items-center gap-3 flex-wrap">
+
+    <!-- Nutrition Flag -->
+    <label class="flag-group inline-flex items-center gap-2 select-none" data-flag="nutrition">
+      <input type="checkbox" name="flag_nutrition" class="sr-only peer" {% if nutri_on %}checked{% endif %} />
+      <span class="flag-btn inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-sm cursor-pointer
+                   bg-gray-100 border-gray-300 text-gray-800 hover:bg-gray-200 peer-checked:text-white">
+        <span class="label-text font-medium">Nutrition</span>
+      </span>
+    </label>
+
+    <!-- Focus Case -->
+    <label class="flag-group inline-flex items-center gap-2 select-none" data-flag="focus">
+      <input type="checkbox" name="flag_focus_case" class="sr-only peer" {% if focus_on %}checked{% endif %} />
+      <span class="flag-btn inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-sm cursor-pointer
+                   bg-gray-100 border-gray-300 text-gray-800 hover:bg-gray-200 peer-checked:text-white">
+        <span class="label-text font-medium">PC</span>
+      </span>
+    </label>
+
+    <!-- Goal Achieved -->
+    <label class="flag-group inline-flex items-center gap-2 select-none" data-flag="goal">
+      <input type="checkbox" name="flag_goal" class="sr-only peer" {% if goal_on %}checked{% endif %} />
+      <span class="flag-btn inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-sm cursor-pointer
+                   bg-gray-100 border-gray-300 text-gray-800 hover:bg-gray-200 peer-checked:text-white">
+        <span class="label-text font-medium">Goal Achieved</span>
+      </span>
+    </label>
+
+  </div>
+</div>

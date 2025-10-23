@@ -1,0 +1,182 @@
+/* ========== Global responsive layout (document scroll everywhere) ========== */
+
+/* Body scrolls like a normal site */
+html, body { min-height: 100%; height: auto; margin: 0; }
+html { height: -webkit-fill-available; }                /* iPad/Safari fallback */
+body {
+  min-height: 100vh; min-height: -webkit-fill-available;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: #f7f7f8;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Vars */
+:root{
+  --vh: 1vh;
+  --header-h: 64px;
+  --footer-h: 0px;
+  --gap: 12px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --fig-heading: #111827; /* gray-900 */
+  --fig-subtle:  #374151; /* gray-700 */
+}
+
+/* Main participates in normal flow */
+body > main, #app-main{
+  position: relative;
+  display: block;
+  overflow: visible;
+  height: auto;
+
+  /* Use the better of 100dvh and JS-updated --vh for iPad Safari bars */
+  min-height: min(
+    calc(100dvh - var(--header-h)),
+    calc(var(--vh, 1vh) * 100 - var(--header-h))
+  );
+
+  padding-top: var(--header-h);
+  padding-bottom: calc(var(--safe-bottom) + 8px);
+}
+
+/* Sidebar/main helpers */
+.sidebar{ min-width: 260px; }
+.main-panel{ overflow: visible; }
+.sidebar-scroll{ overflow: visible; height: auto; }
+
+/* Off-canvas sidebar on phones */
+@media (max-width: 768px){
+  .sidebar{
+    position: fixed; z-index: 1000;
+    top: var(--header-h); bottom: calc(var(--footer-h) + var(--safe-bottom));
+    left: 0; width: min(86vw, 340px);
+    transform: translateX(-100%);
+    transition: transform .25s ease;
+    background: #fff; border-right: 1px solid #e5e7eb; border-radius: 0;
+    overflow: auto; -webkit-overflow-scrolling: touch;
+  }
+  .sidebar.open{ transform: translateX(0); }
+  .overlay{
+    content: ""; position: fixed; inset: 0;
+    background: rgba(0,0,0,.28); z-index: 999; display: none;
+  }
+  .overlay.show{ display: block; }
+}
+
+/* ===== Tables: stack into “cards” on phones ===== */
+@media (max-width: 768px){
+  .table-stacked{
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 8px;
+  }
+  .table-stacked thead{ display: none; }
+  .table-stacked tr{
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    background: #fff;
+    border: 1px solid #eee;
+    border-radius: 10px;
+    padding: 8px;
+  }
+  .table-stacked tr:has(td:nth-child(2):last-child){ grid-template-columns: 1fr; }
+
+  .table-stacked td{
+    display: flex; align-items: baseline; gap: 6px;
+    padding: 6px 8px; border: 0 !important; min-width: 0;
+  }
+  .table-stacked td::before{
+    content: attr(data-label);
+    flex: 0 0 42%;
+    font-size: 12px; color: #6b7280;
+  }
+}
+
+/* Utilities */
+@media (max-width: 768px){ .hide-sm{ display: none !important; } }
+@media (max-width: 768px){
+  button, .btn, .tap{ min-height: 44px; padding: 10px 14px; }
+  body{ font-size: clamp(14px, 3.8vw, 16px); }
+}
+@media (max-width: 768px){
+  .sticky-actions{
+    position: sticky; bottom: 0;
+    background: #fff; padding: 10px;
+    border-top: 1px solid #eee;
+    margin-top: 8px;
+    z-index: 10;
+    /* avoid overlap with iOS home indicator */
+    padding-bottom: calc(10px + var(--safe-bottom));
+  }
+}
+.scroll-y{ overflow: auto; -webkit-overflow-scrolling: touch; }
+.no-scroll{ overflow: hidden !important; }
+
+/* Container spacing (iPad/desktop) */
+.container-responsive{ padding: 8px; }
+@media (min-width: 1024px){
+  .container-responsive{ padding: 12px var(--gap); }
+}
+
+/* Reduce motion if the user prefers */
+@media (prefers-reduced-motion: reduce){
+  *{ animation: none !important; transition: none !important; }
+}
+
+/* ========== Headings / text tone ========== */
+h1, h2, h3,
+.heading, .panel-title,
+.modal h1, .modal h2, .modal h3 {
+  color: var(--fig-heading) !important;
+  font-weight: 700 !important;
+}
+label span, .form-label, .text-muted {
+  color: var(--fig-subtle) !important;
+}
+
+/* FullCalendar: weekday headers + toolbar title */
+.fc .fc-col-header-cell-cushion,
+.fc .fc-toolbar-title {
+  color: var(--fig-heading) !important;
+  font-weight: 700 !important;
+  text-shadow: none !important;
+}
+
+/* ========== Buttons: dark text for light/neutral only ========== */
+button, .btn { color: var(--fig-heading); }
+
+.btn-light, .btn-outline, .btn-neutral,
+button.btn-light,
+button[style*="#f3f4f6"],         /* gray-100 */
+button[style*="rgb(243"],        /* gray-100 */
+button[style*="#e5e7eb"],        /* gray-200 */
+button[style*="rgb(229"] {       /* gray-200 */
+  color: var(--fig-heading) !important;
+  font-weight: 600 !important;
+}
+
+/* Brand/primary buttons keep white text */
+.btn-primary, .bg-figurella, .bg-pink-600, .bg-pink-500 { color: #fff !important; }
+
+/* ========== Calendar events (single style: dark text) ========== */
+.fc-event,
+.fc-daygrid-event,
+.fc-timegrid-event {
+  color: #111827 !important;  /* gray-900 */
+  font-weight: 500;
+}
+.fc-event.fc-is-done,
+.fc-daygrid-event.fc-is-done,
+.fc-timegrid-event.fc-is-done {
+  color: #374151 !important;  /* gray-700 */
+}
+
+/* ===== iPad is NOT “tablet-compact”: keep desktop structure ===== */
+@media (min-width: 820px){
+  .table-stacked thead{ display: table-header-group !important; }
+  .table-stacked tr{ display: table-row !important; }
+  .table-stacked td{ display: table-cell !important; border: 1px solid #eee !important; }
+  .table-stacked td::before{ content: none !important; }
+}

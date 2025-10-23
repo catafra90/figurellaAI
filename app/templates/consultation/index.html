@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+
+{% block head_extra %}
+<style>
+  html, body { height: auto; overflow-y: auto !important; }
+  main { height: auto !important; overflow-y: visible !important; }
+  html { scroll-behavior: smooth; }
+
+  .fade-in { animation: fadeIn .15s ease-out; }
+  .fade-out { animation: fadeOut .12s ease-in forwards; }
+  @keyframes fadeIn { from {opacity:0} to {opacity:1} }
+  @keyframes fadeOut { from {opacity:1} to {opacity:0} }
+
+  /* Force contact links to be BLACK (override any text-white on parents) */
+  .contact-link,
+  .contact-link:visited {
+    color: #000 !important;
+    text-decoration: none;
+    font-weight: 600;
+  }
+  .contact-link:hover {
+    color: #cc0066 !important; /* Figurella pink hover */
+    text-decoration: underline;
+  }
+
+  /* ✅ Strong rule for white consultation title */
+  .consultation-title {
+    color: #ffffff !important;
+    text-shadow: 0 0 6px rgba(0,0,0,0.35); /* glow for readability */
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto px-4 py-8">
+
+  <form id="consultation-form" method="post" onsubmit="return false"
+        class="space-y-6 rounded-2xl bg-white/90 backdrop-blur border border-white/70 p-6 shadow-sm relative overflow-hidden">
+
+    <!-- White Consultation Title now inside box -->
+    <h1 class="text-2xl font-bold consultation-title mb-6 bg-figurella text-center py-3 rounded-xl shadow-md">
+      Consultation
+    </h1>
+
+    <!-- Names -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div>
+        <label for="first_name" class="block text-sm font-medium text-gray-700">First Name</label>
+        <input id="first_name" name="first_name" type="text"
+               class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-figurella/40"
+               placeholder="e.g., Maria">
+      </div>
+      <div>
+        <label for="last_name" class="block text-sm font-medium text-gray-700">Last Name</label>
+        <input id="last_name" name="last_name" type="text"
+               class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-figurella/40"
+               placeholder="e.g., Rossi">
+      </div>
+    </div>
+
+    <!-- Text areas -->
+    {% for label, id, placeholder in [
+      ('Goals Recap', 'goals_recap', 'Summarize the client’s goals...'),
+      ('Needs Recap', 'needs_recap', 'List or describe client needs...'),
+      ('Figurella Benefits', 'figurella_benefits', 'Explain benefits relevant to this client...'),
+      ('Ideal Program', 'ideal_program', 'Describe the recommended program...'),
+      ('Suggestion Explanation', 'suggestion_explanation', 'Explain reasoning for the suggested approach...'),
+      ('Other Options', 'other_options', 'List alternative options or considerations...')
+    ] %}
+    <div>
+      <label for="{{ id }}" class="block text-sm font-medium text-gray-700">{{ label }}</label>
+      <textarea id="{{ id }}" name="{{ id }}" rows="3"
+                class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 resize-y focus:ring-2 focus:ring-figurella/40"
+                placeholder="{{ placeholder }}"></textarea>
+    </div>
+    {% endfor %}
+
+    <!-- Submit Button -->
+    <div class="flex items-center justify-between pt-2">
+      <p id="form-error" class="text-sm text-red-600 invisible">Please enter at least a first or last name.</p>
+      <button id="btn-open-confirm" type="button"
+              class="inline-flex items-center rounded-xl bg-figurella text-white px-5 py-2 hover:opacity-90 transition">
+        Submit
+      </button>
+    </div>
+  </form>
+
+  <!-- Added Contacts -->
+  <div class="mt-8 rounded-2xl bg-white/85 backdrop-blur border border-white/70 p-5 shadow-sm">
+    <h2 class="text-lg font-semibold mb-3">Added Contacts</h2>
+    <ul id="contact-list" class="list-disc pl-6 space-y-1 text-black"></ul>
+    <p id="empty-list-hint" class="text-sm text-gray-500">No contacts yet.</p>
+  </div>
+</div>
+
+<!-- Confirmation Modal -->
+<div id="confirm-modal" class="fixed inset-0 z-[100] hidden">
+  <div id="confirm-overlay" class="absolute inset-0 bg-black/40"></div>
+  <div class="absolute inset-0 flex items-center justify-center p-4">
+    <div class="fade-in w-full max-w-md rounded-2xl bg-white shadow-xl border border-gray-200">
+      <div class="px-5 py-4 border-b">
+        <h3 class="text-lg font-semibold">Add contact to list?</h3>
+      </div>
+      <div class="px-5 py-4 space-y-2">
+        <p class="text-sm text-gray-700">
+          Do you want to add <span id="confirm-name" class="font-medium"></span> to the list?
+        </p>
+      </div>
+      <div class="px-5 py-4 flex items-center justify-end gap-3 border-t">
+        <button id="btn-cancel" class="rounded-lg border px-4 py-2 text-gray-700 hover:bg-gray-50">
+          Cancel
+        </button>
+        <button id="btn-accept" class="rounded-lg bg-figurella text-white px-4 py-2 hover:opacity-90">
+          Accept
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const first = document.getElementById('first_name');
+  const last  = document.getElementById('last_name');
+  const err   = document.getElementById('form-error');
+  const openBtn = document.getElementById('btn-open-confirm');
+
+  const modal = document.getElementById('confirm-modal');
+  const overlay = document.getElementById('confirm-overlay');
+  const btnAccept = document.getElementById('btn-accept');
+  const btnCancel = document.getElementById('btn-cancel');
+  const confirmName = document.getElementById('confirm-name');
+
+  const list = document.getElementById('contact-list');
+  const emptyHint = document.getElementById('empty-list-hint');
+
+  function openModal(name){
+    confirmName.textContent = name || '(Unnamed)';
+    modal.classList.remove('hidden');
+    modal.classList.add('fade-in');
+  }
+  function closeModal(){
+    modal.classList.add('fade-out');
+    setTimeout(() => {
+      modal.classList.add('hidden');
+      modal.classList.remove('fade-in','fade-out');
+    }, 120);
+  }
+  function addContact(name){
+    const li = document.createElement('li');
+    const a = document.createElement('a');
+    a.textContent = name || '(Unnamed)';
+    a.href = `/reports/${encodeURIComponent(name)}`;
+    a.className = 'contact-link';
+    li.appendChild(a);
+    list.appendChild(li);
+    if (list.children.length > 0) emptyHint.classList.add('hidden');
+  }
+
+  // Open modal
+  openBtn.addEventListener('click', function(){
+    const f = (first.value || '').trim();
+    const l = (last.value  || '').trim();
+    if (!f && !l){
+      err.classList.remove('invisible');
+      first.focus();
+      return;
+    }
+    err.classList.add('invisible');
+    const fullName = [f, l].filter(Boolean).join(' ');
+    openModal(fullName);
+  });
+
+  // Accept -> add to list
+  btnAccept.addEventListener('click', function(){
+    const f = (first.value || '').trim();
+    const l = (last.value  || '').trim();
+    const fullName = [f, l].filter(Boolean).join(' ');
+    addContact(fullName);
+    first.value = '';
+    last.value = '';
+    closeModal();
+  });
+
+  // Cancel and overlay close
+  [btnCancel, overlay].forEach(el => el.addEventListener('click', closeModal));
+  document.addEventListener('keydown', (e) => {
+    if (!modal.classList.contains('hidden') && e.key === 'Escape') closeModal();
+  });
+})();
+</script>
+{% endblock %}

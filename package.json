@@ -1,0 +1,30 @@
+{
+  "name": "ai_project",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build:css": "npx -p tailwindcss@latest tailwindcss -i ./app/static/css/src/tailwind.css -o ./app/static/css/tailwind.css --minify",
+    "watch:css": "npx -p tailwindcss@latest tailwindcss -i ./app/static/css/src/tailwind.css -o ./app/static/css/tailwind.css --watch"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/catafra90/flask-daily-checkin.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/catafra90/flask-daily-checkin/issues"
+  },
+  "homepage": "https://github.com/catafra90/flask-daily-checkin#readme",
+  "devDependencies": {
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.11"
+  },
+  "dependencies": {
+    "swiper": "^11.2.10"
+  }
+}
