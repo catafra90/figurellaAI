@@ -1,0 +1,29 @@
+﻿{% extends "base.html" %}
+
+{% block extra_head %}
+<style>
+  html, body { margin:0; padding:0; height:100%; overflow:hidden; }
+  #history-main{ position:absolute; top:64px; bottom:44px; left:0; right:0; padding:1rem; box-sizing:border-box; display:flex; align-items:center; justify-content:center; }
+  .empty{
+    max-width:720px; width:100%;
+    border:1px dashed #e5e7eb; border-radius:12px; background:#fff; padding:1.25rem 1rem;
+    text-align:center; box-shadow:0 6px 18px rgba(17,12,46,.06);
+  }
+  .title{ font-weight:700; font-size:1.125rem; color:#0f172a; margin:0 0 .25rem; }
+  .sub{ color:#6b7280; margin:0; }
+</style>
+{% endblock %}
+
+{% block content %}
+<main id="history-main">
+  <div class="empty">
+    <p class="title">Reports disabled</p>
+    <p class="sub">
+      This report view has been retired while we decommission all report routes.
+      If you reached this page from a bookmark, the underlying report is no longer available.
+    </p>
+  </div>
+</main>
+{% endblock %}
+
+{% block scripts %}{% endblock %}
