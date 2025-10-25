@@ -2,19 +2,11 @@
 {% extends "base.html" %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css">
 <style>
   :root{
-    --fig-pink:#CC0066;
-    --fig-pink-2:#ff4aa0;
-    --fig-indigo:#675BFF;
-    --fig-sky:#22b7ff;
-    --fig-mint:#23e1b0;
-    --fig-amber:#f6b44c;
     --panel-bg: rgba(255,255,255,0.92);
     --ring:#e9edf6;
   }
-
   html, body { margin:0; padding:0; height:100%; overflow:hidden; }
 
   /* PAGE FRAME */
@@ -28,7 +20,7 @@
       radial-gradient(900px 450px at 50% 110%, rgba(255,190,150,.35) 0%, transparent 60%);
   }
 
-  /* PANELS (top = cards, bottom = workspace) */
+  /* WRAPPER PANEL */
   .panel-wrap{
     width:min(1200px, 100%);
     margin-inline:auto;
@@ -36,123 +28,44 @@
     border:1px solid rgba(255,255,255,.7);
     border-radius:1.1rem;
     box-shadow:0 12px 32px rgba(17, 12, 46, .08);
-    padding:1rem 1.25rem;
+    padding:2rem 1.5rem;
     backdrop-filter: blur(6px);
   }
 
-  /* TOP GRID PANEL */
-  #cards-grid{ display:grid; gap:1rem; }
-  @media (min-width:640px){ #cards-grid{ grid-template-columns:repeat(2,1fr);} }
-  @media (min-width:1024px){ #cards-grid{ grid-template-columns:repeat(3,1fr);} }
-
-  .report-card{
-    position:relative;
-    display:flex; align-items:center; gap:.9rem;
-    padding:1rem 1rem;
+  /* PLACEHOLDER */
+  .empty-state{
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:.5rem; text-align:center; min-height:220px;
+  }
+  .empty-title{ font-weight:700; font-size:1.125rem; color:#0f172a; margin:0; }
+  .empty-sub{ color:#6b7280; margin:0; }
+  .empty-box{
+    border:1px dashed var(--ring);
+    background:#fff;
     border-radius:1rem;
-    background:white;
-    border:1px solid var(--ring);
-    box-shadow:0 6px 18px rgba(17,12,46,.06);
-    text-decoration:none;
-    transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease, background .18s ease;
+    padding:1.25rem 1rem;
+    width:100%;
   }
-  .report-card:hover{
-    transform: translateY(-2px);
-    box-shadow:0 14px 30px rgba(17,12,46,.10);
-    border-color:#d9dfea;
-    background:linear-gradient(180deg,#fff, #fbfbff);
-  }
-
-  .badge{
-    width:56px; height:56px; min-width:56px;
-    border-radius:16px;
-    display:grid; place-items:center;
-    position:relative; isolation:isolate;
-    background:
-      radial-gradient(60% 60% at 30% 25%, rgba(255,255,255,.95) 0 60%, transparent 62%),
-      linear-gradient(145deg, rgba(255,255,255,.97), rgba(255,255,255,.88));
-    box-shadow:
-      inset 0 2px 5px rgba(0,0,0,.06),
-      inset 0 -2px 8px rgba(0,0,0,.05),
-      0 6px 16px rgba(17,12,46,.12);
-    outline: 2px dashed rgba(0,0,0,.06);
-    outline-offset: 2px;
-  }
-  .badge::before{
-    content:"";
-    position:absolute; inset:-3px; z-index:-1; border-radius:20px;
-    background: conic-gradient(from 180deg, var(--fig-pink), var(--fig-pink-2), var(--fig-indigo), var(--fig-sky), var(--fig-mint), var(--fig-amber), var(--fig-pink));
-    filter: saturate(1.05) blur(.2px);
-  }
-  .badge i{
-    font-size:22px; line-height:1;
-    background: linear-gradient(135deg, var(--fig-pink-2), var(--fig-pink));
-    -webkit-background-clip:text; background-clip:text; color:transparent;
-    text-shadow:
-      0 1px 0 rgba(255,255,255,.9),
-      0 0 0.5px rgba(0,0,0,.12),
-      0 1px 1px rgba(0,0,0,.08);
-  }
-
-  .card-texts{ display:flex; flex-direction:column; }
-  .card-title{ font-weight:700; color:#0f172a; letter-spacing:.2px; margin:0; }
-  .card-sub{ margin-top:2px; font-size:.84rem; color:#6b7280; }
-
-  /* per-card color moods */
-  .card-agenda .badge::before{ background: conic-gradient(from 120deg, #ff7bc0, #ffa5a1, #ffd36a, #9cf0c3, #7fd9ff, #c1a4ff, #ff7bc0); }
-  .card-contracts .badge::before{ background: conic-gradient(from 120deg, #ffd36a, #ff9b77, #ff7bc0, #c1a4ff, #91e7ff, #9cf0c3, #ffd36a); }
-  .card-customer-acquisitions .badge::before{ background: conic-gradient(from 120deg, #7fd9ff, #9cf0c3, #ffd36a, #ffa5a1, #ff7bc0, #c1a4ff, #7fd9ff); }
-  .card-ibf .badge::before{ background: conic-gradient(from 120deg, #c1a4ff, #7fd9ff, #9cf0c3, #ffd36a, #ffa5a1, #ff7bc0, #c1a4ff); }
-  .card-last-session .badge::before{ background: conic-gradient(from 120deg, #ffa5a1, #ff7bc0, #c1a4ff, #7fd9ff, #9cf0c3, #ffd36a, #ffa5a1); }
-  .card-payments-done .badge::before{ background: conic-gradient(from 120deg, #9cf0c3, #7fd9ff, #c1a4ff, #ff7bc0, #ffa5a1, #ffd36a, #9cf0c3); }
-  .card-payments-due .badge::before{ background: conic-gradient(from 120deg, #ffd36a, #ff9b77, #ff7bc0, #c1a4ff, #7fd9ff, #9cf0c3, #ffd36a); }
-  .card-pip .badge::before{ background: conic-gradient(from 120deg, #c1a4ff, #ff7bc0, #ffa5a1, #ffd36a, #9cf0c3, #7fd9ff, #c1a4ff); }
-  .card-subscriptions .badge::before{ background: conic-gradient(from 120deg, #7fd9ff, #c1a4ff, #ff7bc0, #ffa5a1, #ffd36a, #9cf0c3, #7fd9ff); }
-
-  #cards-grid a span,
-  #cards-grid a .text-gray-500,
-  #cards-grid a .text-gray-600 { color:#111827!important; }
 </style>
 {% endblock %}
 
 {% block content %}
 <main id="home-main">
 
-  <!-- TOP: CARDS PANEL -->
+  <!-- All report icons/cards removed on purpose. Keeping a light placeholder. -->
   <section id="home-pane" class="panel-wrap">
-    <div id="cards-grid">
-      {% for c in cards %}
-        {% set path_key = (c.key|replace('_','-')) %}
-        <a href="/figurella-reports/{{ path_key }}/history/view"
-           class="report-card card-{{ path_key }}">
-          <div class="badge">
-            <i class="bi {{ c.icon }}"></i>
-          </div>
-          <div class="card-texts">
-            <span class="card-title">{{ c.label }}</span>
-            <span class="card-sub">
-              {% if c.key == "agenda" %}Calendar & visit outcomes
-              {% elif c.key == "contracts" %}Contracts status & terms
-              {% elif c.key == "customer_acquisitions" %}Leads & sources
-              {% elif c.key == "ibf" %}IBF active clients
-              {% elif c.key == "last_session" %}Most recent sessions
-              {% elif c.key == "payments_done" %}Completed payments
-              {% elif c.key == "payments_due" %}Upcoming & overdue
-              {% elif c.key == "pip" %}PIP history
-              {% elif c.key == "subscriptions" %}Auto-renewals
-              {% else %}Open report
-              {% endif %}
-            </span>
-          </div>
-        </a>
-      {% endfor %}
+    <div class="empty-box">
+      <div class="empty-state">
+        <h2 class="empty-title">Reports section disabled</h2>
+        <p class="empty-sub">
+          All report tiles and views have been temporarily removed.  
+          This page remains to avoid breaking routes while we decommission code step-by-step.
+        </p>
+      </div>
     </div>
   </section>
-
-  <!-- BOTTOM: INCLUDE workspace partial -->
-  {% include "figurella_reports/_workspace_sales_chart.html" %}
 
 </main>
 {% endblock %}
 
-{% block scripts %}{{ super() }}{% endblock %}
+{% block scripts %}{% endblock %}

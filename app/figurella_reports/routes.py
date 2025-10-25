@@ -2,15 +2,6 @@
 from flask import Blueprint, render_template, current_app, redirect, url_for, request
 
 # ---- Sub-blueprints (must exist as stubs or real modules) ----
-from .blueprints.agenda import bp as agenda_bp
-from .blueprints.contracts import bp as contracts_bp
-from .blueprints.last_session import bp as last_session_bp
-from .blueprints.payments_done import bp as payments_done_bp
-from .blueprints.payments_due import bp as payments_due_bp
-from .blueprints.pip import bp as pip_bp
-from .blueprints.customer_acquisitions import bp as ca_bp
-from .blueprints.ibf import bp as ibf_bp
-from .blueprints.subscriptions import bp as subscriptions_bp  # ← ADDED
 
 # ---- Cards/constants (with safe fallback) ----
 try:
@@ -79,12 +70,3 @@ def ibf_frequency_shim():
 # Call this from create_app() after creating app
 # -----------------------------------------------------------------------------
 def register_sub_blueprints(app):
-    app.register_blueprint(agenda_bp,        url_prefix="/figurella-reports/agenda")
-    app.register_blueprint(contracts_bp,     url_prefix="/figurella-reports/contracts")
-    app.register_blueprint(last_session_bp,  url_prefix="/figurella-reports/last-session")
-    app.register_blueprint(payments_done_bp, url_prefix="/figurella-reports/payments-done")
-    app.register_blueprint(payments_due_bp,  url_prefix="/figurella-reports/payments-due")
-    app.register_blueprint(pip_bp,           url_prefix="/figurella-reports/pip")
-    app.register_blueprint(ca_bp,            url_prefix="/figurella-reports/customer-acquisitions")
-    app.register_blueprint(ibf_bp,           url_prefix="/figurella-reports/ibf")
-    app.register_blueprint(subscriptions_bp, url_prefix="/figurella-reports/subscriptions")
