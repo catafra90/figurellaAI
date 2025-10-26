@@ -1,15 +1,15 @@
-{# templates/charts/_first_session_date.html #}
+{# templates/charts/_first_session_date.html (cleaned) #}
 {# Expects:
    - last_session: prefilled value (string, may be '')
-   - client_name/client_full_name/client (any of these available from header)
+   - client_name/client_full_name/client (optional; unused now)
 #}
 
-{# Resolve a display/client string the same way your header does #}
+{# Resolve a display/client string if needed later (currently unused) #}
 {% set _client_from_ctx = client_name
                            |default(client_full_name)
                            |default((client.first_name ~ ' ' ~ client.last_name) if client is defined else '') %}
 
-{# --- Row UI (keeps your field name so collectProfile continues to work) --- #}
+<!-- Row UI (keeps the original field name so existing code keeps working) -->
 <div class="flex items-center space-x-4">
   <span class="font-medium w-1/4">First Session Date</span>
   <input
@@ -20,43 +20,7 @@
   />
 </div>
 
-{# --- Auto-fill from IBF First Contract (only if empty) --- #}
-<div id="ibf-first-contract"
-     data-url="{{ url_for('ibf_bp.ibf_first_contract') }}"
-     data-client="{{ _client_from_ctx }}">
-</div>
-<script>
-(function(){
-  const root = document.getElementById('ibf-first-contract');
-  if (!root) return;
-
-  const url = root.getAttribute('data-url') || '';
-  // Hidden attr first; else fall back to the card’s dataset name
-  const card = (document.currentScript && document.currentScript.closest('.chart-card')) || document.querySelector('.chart-card');
-  const cardClient = card ? (card.getAttribute('data-client') || '') : '';
-  const client = (root.getAttribute('data-client') || cardClient || '').trim();
-  if (!url || !client) return;
-
-  const input = document.querySelector('input[name="last_session"]');
-  if (!input || (input.value && input.value.trim())) return; // don’t overwrite
-
-  function toISODate(s){
-    const d = new Date(s); if (isNaN(d)) return '';
-    const m = String(d.getMonth()+1).padStart(2,'0');
-    const dd= String(d.getDate()).padStart(2,'0');
-    return `${d.getFullYear()}-${m}-${dd}`;
-  }
-
-  const qs = new URLSearchParams({ client });
-  fetch(`${url}?${qs.toString()}`, { headers:{'Accept':'application/json'}, credentials:'same-origin', cache:'no-store' })
-    .then(r => r.ok ? r.json() : null)
-    .then(j => {
-      if (j && j.first_contract_date) {
-        const iso = toISODate(j.first_contract_date);
-        if (iso && (!input.value || !input.value.trim())) input.value = iso;
-      }
-    })
-    .catch(()=>{});
-})();
-</script>
-
+{# Note:
+   IBF auto-fill via `url_for('ibf_bp.ibf_first_contract')` has been removed.
+   No external fetches are performed here anymore.
+#}

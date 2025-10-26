@@ -175,7 +175,7 @@ def create_app() -> Flask:
 import pandas as pd
 from app.models import ChartEntry
 
-# Optional centralized gate; if you already added app/common/save_gate.py, you can import saves_enabled from there.
+
 def _saves_enabled() -> bool:
     try:
         cfg = getattr(current_app, "config", {}) or {}

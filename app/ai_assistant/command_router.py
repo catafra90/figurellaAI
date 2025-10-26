@@ -7,6 +7,7 @@ from app.ai_assistant.gpt_wrapper import summarize_data, analyze_trends_and_sugg
 MODEL = os.getenv("GPT_FUNCTION_MODEL", "gpt-3.5-turbo")
 client = OpenAI()
 
+# Only expose pages we still support (no per-report names)
 FUNCTIONS = [
     {
         "name": "get_summary",
@@ -24,23 +25,20 @@ FUNCTIONS = [
         "parameters": {
             "type": "object",
             "properties": {
-                "date": {
-                    "type": "string",
-                    "description": "YYYY-MM-DD"
-                }
+                "date": {"type": "string", "description": "YYYY-MM-DD"}
             },
             "required": ["date"]
         }
     },
     {
         "name": "navigate_to_page",
-        "description": "Navigate to a specific section of the app like home, daily check-in, reports, or clients",
+        "description": "Navigate to a section of the app (home, daily, clients, reports).",
         "parameters": {
             "type": "object",
             "properties": {
                 "page": {
                     "type": "string",
-                    "description": "Page to navigate to (e.g., home, daily, clients, reports or report names)"
+                    "description": "One of: home, daily, clients, reports"
                 }
             },
             "required": ["page"]
@@ -73,45 +71,22 @@ def route_command(user_input: str):
                 return summarize_for_date(args.get("date", ""))
 
             if name == "navigate_to_page":
-                page = args.get("page", "").lower()
+                # Normalize and route only to supported top-level pages.
+                page = (args.get("page") or "").strip().lower()
 
-                # ✅ Alias map for report matching
-                REPORT_ALIASES = {
-                    "agenda": "Agenda",
-                    "contracts": "Contracts",
-                    "contract": "Contracts",
-                    "customer acquisitions": "customer acquisitions",
-                    "customer": "customer acquisitions",
-                    "acquisition": "customer acquisitions",
-                    "ibf": "IBF",
-                    "last session": "Last Session",
-                    "session": "Last Session",
-                    "payments done": "Payments Done",
-                    "done payments": "Payments Done",
-                    "payments due": "Payments Due",
-                    "due payments": "Payments Due",
-                    "pip": "PIP",
-                    "subscriptions": "Subscriptions",
-                    "subs": "Subscriptions"
-                }
-
-                for key, value in REPORT_ALIASES.items():
-                    if key in page:
-                        return {
-                            "redirect": f"/figurella-reports/reports/{value}/history/view"
-                        }
-
-                # ✅ General navigation (order matters)
+                # simple keyword mapping (no legacy report names / URLs)
                 if "home" in page:
                     return {"redirect": "/"}
-                elif "reports" in page:
-                    return {"redirect": "/figurella-reports/reports"}
-                elif "clients" in page:
-                    return {"redirect": "/clients"}
-                elif "check" in page or "daily" in page or "report" in page:
+                if "report" in page or "daily" in page or "check" in page:
+                    # daily check-in
                     return {"redirect": "/report"}
-                else:
-                    return {"message": f"❓ Unknown destination: {page}"}
+                if "client" in page:
+                    return {"redirect": "/clients"}
+                if "report" in page or "reports" in page:
+                    # reports shell (placeholder)
+                    return {"redirect": "/figurella-reports/"}
+
+                return {"message": f"❓ Unknown destination: {page}"}
 
             return {"message": f"⚠ Function {name} not implemented."}
 

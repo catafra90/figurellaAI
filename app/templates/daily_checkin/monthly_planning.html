@@ -1,3 +1,4 @@
+<!-- Monthly Planning (reports endpoints removed) -->
 <div class="bg-white rounded-2xl shadow">
 
   <!-- Toolbar -->
@@ -7,17 +8,7 @@
               class="bg-figurella text-white px-4 py-2 rounded hover:bg-pink-700 transition">
         + Add Row
       </button>
-
-      <!-- Import buttons -->
-      <button id="mp-import-expiring" type="button"
-              class="px-3 py-2 rounded bg-gray-100 hover:bg-gray-200">
-        Import Expiring PINK
-      </button>
-
-      <button id="mp-import-lowres" type="button"
-              class="px-3 py-2 rounded bg-gray-100 hover:bg-gray-200">
-        Import Low Residual (&lt;10)
-      </button>
+      <!-- Removed: Import buttons that called old report APIs -->
     </div>
     <div></div>
   </div>
@@ -58,17 +49,10 @@
             </select>
           </td>
 
-          <!-- Internal Planning + Closing (REVISED: added History button) -->
+          <!-- Internal Planning + Closing (History removed) -->
           <td class="border border-gray-200 px-2 py-2">
-            <div class="flex items-center gap-2">
-              <input class="w-full border border-gray-200 rounded px-2 py-1 text-sm ip"
-                     data-key="internal_planning" placeholder="internal planning">
-              <button type="button"
-                      class="view-contracts px-2 py-1 rounded bg-gray-100 hover:bg-gray-200"
-                      title="Show contract history">
-                History
-              </button>
-            </div>
+            <input class="w-full border border-gray-200 rounded px-2 py-1 text-sm ip"
+                   data-key="internal_planning" placeholder="internal planning">
           </td>
           <td class="border border-gray-200 px-2 py-2">
             <input class="w-full border border-gray-200 rounded px-2 py-1 text-sm"
@@ -142,17 +126,9 @@
             <option>stop</option>
           </select>
         </td>
-        <!-- Internal Planning (REVISED: added History button) -->
         <td class="border border-gray-200 px-2 py-2">
-          <div class="flex items-center gap-2">
-            <input class="w-full border border-gray-200 rounded px-2 py-1 text-sm ip"
-                   data-key="internal_planning" placeholder="internal planning">
-            <button type="button"
-                    class="view-contracts px-2 py-1 rounded bg-gray-100 hover:bg-gray-200"
-                    title="Show contract history">
-              History
-            </button>
-          </div>
+          <input class="w-full border border-gray-200 rounded px-2 py-1 text-sm ip"
+                 data-key="internal_planning" placeholder="internal planning">
         </td>
         <td class="border border-gray-200 px-2 py-2">
           <input class="w-full border border-gray-200 rounded px-2 py-1 text-sm"
@@ -237,21 +213,21 @@
           <tr>
             <td class="border px-4 py-2">PAYMENTS DUE</td>
             <td class="border px-4 py-2 flex items-center gap-2">
-              <input id="metric-payments-due" class="w-full border rounded px-2 py-1" readonly>
+              <input id="metric-payments-due" class="w-full border rounded px-2 py-1">
             </td>
           </tr>
 
           <tr>
             <td class="border px-4 py-2">PAYMENTS DONE</td>
             <td class="border px-4 py-2 flex items-center gap-2">
-              <input id="metric-payments-done" class="w-full border rounded px-2 py-1" readonly>
+              <input id="metric-payments-done" class="w-full border rounded px-2 py-1">
             </td>
           </tr>
 
           <tr>
             <td class="border px-4 py-2">SALES</td>
             <td class="border px-4 py-2 flex items-center gap-2">
-              <input id="metric-sales" class="w-full border rounded px-2 py-1" readonly>
+              <input id="metric-sales" class="w-full border rounded px-2 py-1">
             </td>
           </tr>
 
@@ -273,9 +249,8 @@
 </div>
 
 <style>
-  /* tiny polish for the inline details row */
   .contract-details-row .details-wrap { border-top: 1px solid #e5e7eb; }
-  .contract-details-row table th, 
+  .contract-details-row table th,
   .contract-details-row table td { font-size: 0.9rem; }
 </style>
 
@@ -286,7 +261,6 @@
   const TPL_ID  = 'mp-row-template';
 
   const log  = (...a)=>console.log('[MonthlyPlanning]', ...a);
-  const warn = (...a)=>console.warn('[MonthlyPlanning]', ...a);
 
   function getBody(){ return document.getElementById(BODY_ID); }
   function getTpl(){  return document.getElementById(TPL_ID); }
@@ -295,7 +269,6 @@
     try { return new Intl.NumberFormat(undefined,{style:'currency',currency:'USD'}).format(Number(n||0)); }
     catch(e){ return `$${Number(n||0).toFixed(2)}`; }
   }
-
   function setCurrency(el, n){
     if (!el) return;
     try { el.value = new Intl.NumberFormat(undefined,{style:'currency',currency:'USD'}).format(Number(n||0)); }
@@ -307,28 +280,21 @@
     const sel = e.target.closest('select.pack');
     if (!sel) return;
     const td  = sel.closest('td');
-    const priceTd = td && td.nextElementSibling;
-    const input = priceTd && priceTd.querySelector('input.price');
+    const input = td?.nextElementSibling?.querySelector('input.price');
     if (!input) return;
-
     const opt = sel.selectedOptions && sel.selectedOptions[0];
     const raw = opt ? Number(opt.getAttribute('data-price') || 0) : 0;
     setCurrency(input, raw);
     if (typeof window.recalc === 'function') window.recalc(sel.closest('tr'));
   }
-
   function wirePackAuto(scope){
     const root = scope || document;
     root.querySelectorAll('select.pack').forEach(sel=>{
       sel.removeEventListener('change', handlePackChange);
       sel.addEventListener('change', handlePackChange);
-      // sync once for preselected values
-      const event = new Event('change', {bubbles:false});
-      sel.dispatchEvent(event);
+      sel.dispatchEvent(new Event('change', {bubbles:false}));
     });
   }
-
-  // expose for rows created later (your code calls this)
   window.wirePackAuto = wirePackAuto;
 
   // ===== Row helpers =====
@@ -342,15 +308,7 @@
     return tr;
   }
 
-  function emptyStarterRow(){
-    const body = getBody();
-    if (!body || !body.rows.length) return null;
-    const tr = body.rows[0];
-    const ip = tr.querySelector('[data-key="internal_planning"]');
-    const closing = tr.querySelector('[data-key="closing_date"]');
-    return (ip && closing && !ip.value.trim() && !closing.value.trim()) ? tr : null;
-  }
-
+  // ===== Metrics / Missing =====
   function parseMoney(str){
     if (str == null) return 0;
     const s = String(str).trim();
@@ -363,285 +321,21 @@
     const n = Number(token);
     return isFinite(n) ? n : 0;
   }
-
-  // ===== Metrics / Missing =====
   function updateMissing(){
-    const goalEl   = document.getElementById('metric-goal');
-    const dueEl    = document.getElementById('metric-payments-due');
-    const doneEl   = document.getElementById('metric-payments-done');
-    const salesEl  = document.getElementById('metric-sales');
-    const missEl   = document.getElementById('metric-missing');
-
-    const goal  = parseMoney(goalEl?.value);
-    const due   = parseMoney(dueEl?.value);
-    const done  = parseMoney(doneEl?.value);
-    const sales = parseMoney(salesEl?.value);
-
+    const goal  = parseMoney(document.getElementById('metric-goal')?.value);
+    const due   = parseMoney(document.getElementById('metric-payments-due')?.value);
+    const done  = parseMoney(document.getElementById('metric-payments-done')?.value);
+    const sales = parseMoney(document.getElementById('metric-sales')?.value);
     const missing = goal - (due + done + sales);
-    setCurrency(missEl, missing);
-  }
-
-async function fillPaymentsDueMetric(){
-  try{
-    const now = new Date();
-    const y = now.getFullYear();
-    const m = now.getMonth() + 1;
-
-    // FIXED: removed "/reports/" and used hyphen style like other BPs
-    const url = `/figurella-reports/payments-due/total?year=${y}&month=${m}&debug=1`;
-    const res = await fetch(url, { credentials: 'same-origin' });
-    if (!res.ok) return;
-
-    const data = await res.json();
-    const el = document.getElementById('metric-payments-due');
-    if (el) el.value = fmtCurrency((data && (data.total || 0)));
-
-    updateMissing();
-    console.log('[MonthlyPlanning] Payments Due:', data);
-  }catch(e){
-    console.warn('fillPaymentsDueMetric', e);
-  }
-}
-
-async function fillPaymentsDoneMetric(){
-  try{
-    const now = new Date();
-    // FIXED: removed "/reports/" and used hyphen style
-    const url = `/figurella-reports/payments-done/total?year=${now.getFullYear()}&month=${now.getMonth()+1}`;
-    const res = await fetch(url, {credentials:'same-origin'});
-    if(!res.ok) return;
-    const data = await res.json();
-    const el = document.getElementById('metric-payments-done');
-    if (el) el.value = fmtCurrency((data && (data.total || 0)));
-    updateMissing();
-    console.log('[MonthlyPlanning] Done total:', data);
-  }catch(e){ console.warn('fillPaymentsDoneMetric', e); }
-}
-
-async function fillSalesMetric(){
-  try{
-    const now = new Date();
-    // FIXED: removed "/reports/" and used hyphen style path + sales-total
-    const url = `/figurella-reports/contracts/sales-total?year=${now.getFullYear()}&month=${now.getMonth()+1}`;
-    const res = await fetch(url, {credentials:'same-origin'});
-    if(!res.ok) return;
-    const data = await res.json();
-    const el = document.getElementById('metric-sales');
-    if (el) el.value = fmtCurrency((data && (data.total || 0)));
-    updateMissing();
-    console.log('[MonthlyPlanning] Sales total:', data);
-  }catch(e){ console.warn('fillSalesMetric', e); }
-}
-
-async function importExpiringPink(){
-  try{
-    // FIXED: call the route we added in contracts_bp
-    const res = await fetch('/figurella-reports/contracts/expiring-pink.json', {credentials:'same-origin'});
-    if(!res.ok){ toast('Expiring PINK: HTTP error'); return; }
-
-    // FIXED: accept either {items:[...]} or {clients:[...]}
-    const data = await res.json();
-    const list = Array.isArray(data?.items) ? data.items
-               : Array.isArray(data?.clients) ? data.clients
-               : [];
-
-    if (!list.length){ toast('No expiring PINK this month'); return; }
-
-    const body = getBody(); if (!body){ toast('Table body not found'); return; }
-    const existing = new Set(
-      Array.from(body.querySelectorAll('[data-key="internal_planning"]'))
-        .map(i => (i.value||'').replace(/—\s*Expiring PINK/i,'').trim().toLowerCase())
-    );
-
-    let starter = emptyStarterRow(), usedStarter = false, added = 0;
-    for (const item of list){
-      const n   = String(item.full_name || item.name || '').trim();
-      const exp = String(item.fine_contratto || item.expiration || '').slice(0,10);
-      if (!n || existing.has(n.toLowerCase())) continue;
-
-      const tr = (!usedStarter && starter) ? (usedStarter = true, starter) : createRowFromTemplate();
-      if (!tr) break;
-
-      const ip = tr.querySelector('[data-key="internal_planning"]');
-      if (ip){ ip.value = `${n} — Expiring PINK`; ip.setAttribute('value', ip.value); }
-
-      const dateEl = tr.querySelector('[data-key="closing_date"]');
-      if (dateEl){ dateEl.value = exp; dateEl.setAttribute('value', exp); }
-
-      const st = tr.querySelector('[data-key="status"]');
-      if (st) st.value = '';
-
-      wirePackAuto(tr);
-      if (typeof window.recalc === 'function') window.recalc(tr);
-      existing.add(n.toLowerCase());
-      added++;
-    }
-    toast(`Imported ${added} expiring`);
-    await fillPaymentsDueMetric();
-  }catch(e){ console.warn('importExpiringPink', e); toast('Expiring PINK: error'); }
-}
-
-
-  async function importLowResidual(){
-    try{
-      const res = await fetch('/figurella-reports/subscriptions/low-residual?threshold=10', { credentials:'same-origin' });
-      if(!res.ok){ toast('Low Residual: HTTP error'); return; }
-      const data = await res.json();
-      const list = Array.isArray(data?.clients) ? data.clients : [];
-      if (!list.length){ toast('No low residual < 10'); return; }
-
-      const body = getBody(); if (!body){ toast('Table body not found'); return; }
-      const existing = new Set(
-        Array.from(body.querySelectorAll('[data-key="internal_planning"]'))
-          .map(i => (i.value||'').replace(/—.*/,'').trim().toLowerCase())
-      );
-
-      let starter = emptyStarterRow(), usedStarter = false, added = 0;
-      for (const {name, residual} of list){
-        const n = String(name||'').trim();
-        if (!n || existing.has(n.toLowerCase())) continue;
-
-        const tr = (!usedStarter && starter) ? (usedStarter = true, starter) : createRowFromTemplate();
-        if (!tr) break;
-
-        tr.querySelector('[data-key="internal_planning"]')?.setAttribute('value', `${n} — Low residual (${residual})`);
-        const ip = tr.querySelector('[data-key="internal_planning"]'); if (ip) ip.value = `${n} — Low residual (${residual})`;
-        const st = tr.querySelector('[data-key="status"]'); if (st) st.value = '';
-
-        wirePackAuto(tr);
-        if (typeof window.recalc === 'function') window.recalc(tr);
-        existing.add(n.toLowerCase());
-        added++;
-      }
-      toast(`Imported ${added} low residual`);
-      await fillPaymentsDueMetric();
-    }catch(e){ warn('importLowResidual', e); toast('Low Residual: error'); }
-  }
-
-  // ===== Inline expansion (accordion) =====
-  function renderContractsTable(contracts){
-    if (!contracts || !contracts.length){
-      return `<div class="text-sm text-gray-600 px-3 pb-3">No contracts found.</div>`;
-    }
-    const headers = ['Contract','Start','Expiration','Price','Residual','Status','Notes'];
-    const thead = `<thead class="bg-gray-100 text-xs">
-      <tr>${headers.map(h=>`<th class="text-left px-2 py-2 border">${h}</th>`).join('')}</tr>
-    </thead>`;
-    const rows = contracts.map(c=>`
-      <tr class="odd:bg-white even:bg-gray-50 text-sm">
-        <td class="px-2 py-2 border">${c.contract_type||''}</td>
-        <td class="px-2 py-2 border">${c.start_date||''}</td>
-        <td class="px-2 py-2 border">${c.expiration_date||''}</td>
-        <td class="px-2 py-2 border">${c.price||''}</td>
-        <td class="px-2 py-2 border">${c.residual||''}</td>
-        <td class="px-2 py-2 border">${c.status||''}</td>
-        <td class="px-2 py-2 border">${c.notes||''}</td>
-      </tr>`).join('');
-    return `
-      <div class="overflow-x-auto px-3 pb-3">
-        <table class="min-w-full border border-gray-200 rounded">
-          ${thead}
-          <tbody>${rows}</tbody>
-        </table>
-      </div>`;
-  }
-
-  function extractNameFromInternalPlanning(tr){
-    const ip = tr.querySelector('input.ip,[data-key="internal_planning"]');
-    if (!ip) return '';
-    // strip suffix after "—" if present (e.g., "— Expiring PINK")
-    return (ip.value||'').split('—')[0].trim();
-  }
-
-  function makeDetailsRow(colspan){
-    const tr = document.createElement('tr');
-    tr.className = 'contract-details-row';
-    tr.innerHTML = `
-      <td colspan="${colspan}" class="bg-gray-50 p-0">
-        <div class="details-wrap border-t border-gray-200">
-          <div class="flex items-center gap-2 px-3 py-2">
-            <span class="font-semibold">Contracts for</span>
-            <span class="client-label text-figurella"></span>
-            <button type="button"
-              class="ml-auto close-details px-2 py-1 rounded hover:bg-gray-200">Close</button>
-          </div>
-          <div class="details-loading px-3 pb-3 text-sm text-gray-500">Loading…</div>
-          <div class="details-content px-3 pb-3 hidden"></div>
-        </div>
-      </td>`;
-    return tr;
-  }
-
-  async function loadContracts(detailsRow, clientName){
-    const loading = detailsRow.querySelector('.details-loading');
-    const content = detailsRow.querySelector('.details-content');
-
-    loading.classList.remove('hidden');
-    content.classList.add('hidden');
-    content.innerHTML = '';
-
-    const qs = new URLSearchParams({ client_name: clientName });
-    const res = await fetch(`/figurella-reports/reports/contracts/history?${qs.toString()}`, {credentials:'same-origin'});
-    if (!res.ok){
-      loading.textContent = 'Failed to load contracts.';
-      return;
-    }
-    const data = await res.json();
-    content.innerHTML = renderContractsTable(data?.contracts||[]);
-    loading.classList.add('hidden');
-    content.classList.remove('hidden');
-  }
-
-  function wireAccordion(){
-    const body = getBody();
-    if (!body) return;
-
-    // History button (delegated)
-    body.addEventListener('click', async (e)=>{
-      const btn = e.target.closest('.view-contracts');
-      if (!btn) return;
-
-      e.preventDefault();
-      const mainRow = btn.closest('tr');
-      const table   = mainRow.closest('table');
-      const colspan = table.tHead ? table.tHead.rows[0].cells.length : mainRow.cells.length;
-
-      // If a details row already exists right after, toggle it; else create/load it
-      const next = mainRow.nextElementSibling;
-      const already = next?.classList.contains('contract-details-row') ? next : null;
-
-      // Accordion behavior: close other open rows
-      body.querySelectorAll('.contract-details-row').forEach(r=>{
-        if (r !== already) r.remove();
-      });
-
-      if (already){
-        already.remove(); // toggle off
-        return;
-      }
-
-      const clientName = extractNameFromInternalPlanning(mainRow);
-      if (!clientName){
-        alert('No client name found in Internal Planning.');
-        return;
-      }
-
-      const details = makeDetailsRow(colspan);
-      details.querySelector('.client-label').textContent = clientName;
-      mainRow.insertAdjacentElement('afterend', details);
-
-      // Close button inside details row
-      details.querySelector('.close-details').addEventListener('click', ()=>details.remove());
-
-      try { await loadContracts(details, clientName); }
-      catch(err){ console.error(err); }
-    });
+    setCurrency(document.getElementById('metric-missing'), missing);
   }
 
   // ===== Wire once =====
   function wire(){
     // Add row
-    document.getElementById('mp-add-row')?.addEventListener('click', (e)=>{ e.preventDefault(); createRowFromTemplate(); });
+    document.getElementById('mp-add-row')?.addEventListener('click', (e)=>{
+      e.preventDefault(); createRowFromTemplate();
+    });
 
     // Delete row (delegated)
     document.getElementById('mp-body')?.addEventListener('click', (e)=>{
@@ -649,35 +343,20 @@ async function importExpiringPink(){
       if (!btn) return;
       e.preventDefault();
       const tr = btn.closest('tr');
-      const body = tr?.parentElement;
-      // remove details row if it's open right under this tr
-      if (tr && tr.nextElementSibling && tr.nextElementSibling.classList.contains('contract-details-row')){
-        tr.nextElementSibling.remove();
-      }
       tr?.remove();
       if (typeof window.recalc === 'function') window.recalc();
+      const body = document.getElementById('mp-body');
       if (body && body.rows.length === 0) createRowFromTemplate();
     });
-
-    // Imports
-    document.getElementById('mp-import-expiring')?.addEventListener('click', importExpiringPink);
-    document.getElementById('mp-import-lowres') ?.addEventListener('click', importLowResidual);
 
     // Wire pack→price for existing row(s)
     wirePackAuto(document);
 
-    // Metrics on load
-    fillPaymentsDueMetric();
-    fillPaymentsDoneMetric();
-    fillSalesMetric();
+    // Recompute when any metric changes
+    ['metric-goal','metric-payments-due','metric-payments-done','metric-sales']
+      .forEach(id => document.getElementById(id)?.addEventListener('input', updateMissing));
 
-    // Recompute when GOAL changes
-    document.getElementById('metric-goal')?.addEventListener('input', updateMissing);
-
-    // Inline accordion
-    wireAccordion();
-
-    // Initial missing compute (if goal prefilled)
+    // Initial missing compute (if any values prefilled)
     setTimeout(updateMissing, 0);
   }
 
