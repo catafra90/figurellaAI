@@ -1,33 +1,58 @@
-// app/static/js/profile_menu.js
+// static/js/profile_menu.js
 (function () {
-  const btn  = document.getElementById('profile-menu-btn');
-  const menu = document.getElementById('profile-menu');
-  if (!btn || !menu) return;
+  function setup(idBtn = 'profile-menu-btn', idMenu = 'profile-menu') {
+    const btn  = document.getElementById(idBtn);
+    const menu = document.getElementById(idMenu);
+    if (!btn || !menu || menu.__profileMenuInit) return;
+    menu.__profileMenuInit = true; // guard against double init
 
-  const isOpen = () => !menu.classList.contains('hidden');
-  const open   = () => { menu.classList.remove('hidden'); btn.setAttribute('aria-expanded','true'); };
-  const close  = () => { menu.classList.add('hidden');    btn.setAttribute('aria-expanded','false'); };
+    // Ensure hidden to start
+    if (!menu.classList.contains('hidden')) menu.classList.add('hidden');
 
-  // Toggle on button click
-  btn.addEventListener('click', (e) => {
-    e.preventDefault();
-    e.stopPropagation(); // avoid immediate close from other global click handlers
-    isOpen() ? close() : open();
-  });
+    // Make sure the menu can receive clicks and sits above UI
+    menu.style.zIndex = '2100';
+    menu.style.pointerEvents = 'auto';
 
-  // Click-away (capture phase = robust around overlays)
-  document.addEventListener('click', (e) => {
-    if (!isOpen()) return;
-    if (menu.contains(e.target) || btn.contains(e.target)) return;
-    close();
-  }, true);
+    const open = () => {
+      menu.classList.remove('hidden');
+      btn.setAttribute('aria-expanded', 'true');
+      const first = menu.querySelector('[role="menuitem"], a, button');
+      if (first) setTimeout(() => first.focus?.({ preventScroll: true }), 0);
+    };
 
-  // ESC to close
-  window.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && isOpen()) close();
-  });
+    const close = () => {
+      if (!menu.classList.contains('hidden')) {
+        menu.classList.add('hidden');
+        btn.setAttribute('aria-expanded', 'false');
+      }
+    };
 
-  // ARIA
-  btn.setAttribute('aria-haspopup', 'menu');
-  btn.setAttribute('aria-expanded', 'false');
+    const toggle = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation?.();
+      menu.classList.contains('hidden') ? open() : close();
+    };
+
+    // Open/close (support mouse, touch, and pointer)
+    btn.addEventListener('click', toggle, { passive: false });
+    btn.addEventListener('pointerdown', () => {}, { passive: true });
+    btn.addEventListener('touchstart', () => {}, { passive: true });
+
+    // ✅ Close when clicking outside (use contains, not equality)
+    document.addEventListener('click', (e) => {
+      if (!menu.contains(e.target) && !btn.contains(e.target)) close();
+    }, { capture: true });
+
+    // Close on Escape
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') close();
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => setup());
+  } else {
+    setup();
+  }
 })();

@@ -6,10 +6,7 @@
   <!-- Header -->
   <div class="flex-shrink-0 flex justify-between items-center px-4 py-3 bg-white shadow">
     <h2 class="text-2xl font-bold figurella-pink">Daily Checks</h2>
-    <a href="{{ url_for('daily_checkin.report_history') }}"
-       class="text-gray-500 hover:text-figurella" title="View History">
-      <i class="bi bi-clock-history text-2xl"></i>
-    </a>
+    <!-- ⛔ Removed refresh icon link -->
   </div>
 
   <!-- Tabs -->
@@ -106,26 +103,30 @@
       {% include 'daily_checkin/monthly_planning.html' %}
     </section>
 
-<!-- TAB: ACTIVE CLIENTS -->
-<section id="tab-active-clients" class="tab-panel hidden">
-  {% include 'daily_checkin/active_clients.html' %}
-</section>
+    <!-- TAB: ACTIVE CLIENTS -->
+    <section id="tab-active-clients" class="tab-panel hidden">
+      {% include 'daily_checkin/active_clients.html' %}
+    </section>
 
- 
+    <!-- Sticky Submit Bar -->
+    <div id="dc-submitbar" class="sticky bottom-0 bg-white shadow-inner p-4 flex justify-end z-10">
+      <button type="submit" form="daily-form"
+              class="bg-figurella text-white px-6 py-2 rounded-full shadow hover:bg-pink-700 transition">
+        Submit Report
+      </button>
+    </div>
+  </div>
 
-  <!-- Sticky Submit Bar (only for Daily tab) -->
-  <div id="dc-submitbar" class="sticky bottom-0 bg-white shadow-inner p-4 flex justify-end z-10">
-    <button type="submit" form="daily-form"
-            class="bg-figurella text-white px-6 py-2 rounded-full shadow hover:bg-pink-700 transition">
-      Submit Report
-    </button>
+  <!-- Toast -->
+  <div id="dc-toast" class="fixed bottom-20 right-4 hidden bg-green-600 text-white px-4 py-2 rounded-lg shadow">
+    ✅ Report submitted
   </div>
 </div>
 
-<!-- Toast -->
-<div id="dc-toast" class="fixed bottom-20 right-4 hidden bg-green-600 text-white px-4 py-2 rounded-lg shadow">
-  ✅ Report submitted
-</div>
+<!-- Seed data -->
+<script id="dc-data" type="application/json">
+{{ (DC_DATA | default({})) | tojson | safe }}
+</script>
 
 <style>
   .dc-tab { color:#111827; }
@@ -136,10 +137,13 @@
     transform:scaleX(0); transform-origin:left; transition:transform .18s;
   }
   .dc-tab.active .dc-underline{ transform:scaleX(1); }
+
+  .tab-panel { display: block; }
+  .hidden { display: none !important; }
 </style>
 
 <script>
-/* Tabs: show/hide + keep footer only for Daily */
+/* Tabs */
 (function(){
   const tabs = document.querySelectorAll('.dc-tab');
   const panels = {
@@ -152,47 +156,28 @@
   function setActive(key){
     tabs.forEach(b=>b.classList.remove('active'));
     document.querySelector(`.dc-tab[data-tab="${key}"]`)?.classList.add('active');
-    Object.keys(panels).forEach(k=>panels[k].classList.add('hidden'));
-    panels[key].classList.remove('hidden');
+    Object.keys(panels).forEach(k=>panels[k]?.classList.add('hidden'));
+    panels[key]?.classList.remove('hidden');
     submitBar.style.display = (key === 'daily-form') ? 'flex' : 'none';
   }
 
   tabs.forEach(btn=> btn.addEventListener('click', ()=> setActive(btn.dataset.tab)));
-  setActive('daily-form'); // default
+  setActive('daily-form');
 })();
 </script>
 
 <script>
-/* Active Clients: lightweight client-side plumbing
-   When you're ready, have your backend return something like:
-   GET /daily-check-in/active_clients  ->  { "rows": [ {client, status, plan, start, expiration, sessions, residual}, ... ], "updated_at": "2025-08-24T12:34:56Z" }
-*/
+/* Active Clients placeholder */
 (function(){
-  const $body = document.getElementById('ac-body');
+  const $body  = document.getElementById('ac-body');
   const $empty = document.getElementById('ac-empty');
-  const $meta = document.getElementById('ac-meta');
-  const $search = document.getElementById('ac-search');
-
-  async function fetchActiveClients(){
-    try{
-      // TODO: replace URL with your real endpoint or file loader route
-      const res = await fetch('{{ url_for("daily_checkin.active_clients_json") if false else "#" }}', {headers:{'Accept':'application/json'}});
-      if(!res.ok) throw new Error('no endpoint yet');
-      const data = await res.json();
-      renderRows(Array.isArray(data.rows)? data.rows : []);
-      $meta.textContent = data.updated_at ? `Updated ${new Date(data.updated_at).toLocaleString()}` : '';
-    }catch(_){
-      // keep placeholder until endpoint exists
-      renderRows([]);
-      $meta.textContent = 'Connect data source';
-    }
-  }
+  const $meta  = document.getElementById('ac-meta');
+  if (!$body || !$empty || !$meta) return;
 
   function renderRows(rows){
-    // clear
     $body.querySelectorAll('tr').forEach(tr=>tr.remove());
-    if(!rows.length){
-      $body.appendChild($empty);
+    if(!rows || !rows.length){
+      if (!$empty.parentNode) $body.appendChild($empty);
       $empty.classList.remove('hidden');
       return;
     }
@@ -206,38 +191,21 @@
         <td class="border px-3 py-2">${escapeHTML(r.start || '')}</td>
         <td class="border px-3 py-2">${escapeHTML(r.expiration || '')}</td>
         <td class="border px-3 py-2">${escapeHTML(r.sessions || '')}</td>
-        <td class="border px-3 py-2">${escapeHTML(r.residual || '')}</td>
-      `;
+        <td class="border px-3 py-2">${escapeHTML(r.residual || '')}</td>`;
       $body.appendChild(tr);
     }
   }
 
   function escapeHTML(s){
-    return String(s).replace(/[&<>"']/g, m => ({
-      '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
-    }[m]));
+    return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
   }
 
-  // search filter (client/status/plan)
-  function filterRows(q){
-    const query = (q||'').trim().toLowerCase();
-    $body.querySelectorAll('tr').forEach(tr=>{
-      if(tr.id === 'ac-empty') return;
-      const text = tr.textContent.toLowerCase();
-      tr.style.display = text.includes(query) ? '' : 'none';
-    });
-  }
-
-  document.getElementById('ac-refresh')?.addEventListener('click', fetchActiveClients);
-  $search?.addEventListener('input', e=> filterRows(e.target.value));
-
-  // no auto-fetch yet (endpoint not wired); call fetchActiveClients() once you add the route
-  // fetchActiveClients();
+  renderRows([]);
 })();
 </script>
 
 <script>
-/* Daily Report autosave + submit (unchanged) */
+/* Daily Report autosave */
 (function () {
   const DRAFT_KEY = 'daily_checkin_draft_v3';
   const FIELDS = {

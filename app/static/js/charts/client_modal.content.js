@@ -1,4 +1,4 @@
-// static/js/charts/client_modal.content.js (revised)
+// static/js/charts/client_modal.content.js
 (function () {
   // Public entrypoint (reuse the unified opener)
   window.openClientChart = function(tr){
@@ -8,7 +8,8 @@
       (tr.querySelector('.client-name-text')?.textContent || '').trim() ||
       (tr.querySelector('td')?.textContent || '').trim();
 
-    const mode = (tr.dataset.mode || "default");
+    // Default to full-under-header now that the sidebar is gone
+    const mode = (tr.dataset.mode || "under-header");
     if (typeof window.openClientChartByName === 'function') {
       window.openClientChartByName(name, { mode });
     } else {

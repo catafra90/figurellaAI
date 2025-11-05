@@ -1,0 +1,37 @@
+<!-- File: app/templates/_clients_lifecycle.html -->
+<div class="rounded-2xl bg-gradient-to-br from-pink-50 to-white/90 backdrop-blur border border-pink-100 p-6 shadow-md">
+  <h3 class="text-lg font-semibold text-pink-700 flex items-center gap-2 mb-4">
+    <span class="inline-grid place-items-center h-6 w-6 rounded-md bg-pink-100 text-pink-700">
+      <i class="bi bi-people-fill text-sm"></i>
+    </span>
+    Clients Life Cycle
+  </h3>
+
+  {% set C = CLIENTS_LIFECYCLE or {} %}
+  <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+    <div class="rounded-xl border border-pink-100 bg-white/70 p-4 text-center hover:bg-pink-50 transition">
+      <div class="text-xs text-pink-700 font-medium">1 month</div>
+      <div class="text-2xl font-bold text-gray-900">{{ C.get('abandon_1m', 0) }}</div>
+    </div>
+
+    <div class="rounded-xl border border-pink-100 bg-white/70 p-4 text-center hover:bg-pink-50 transition">
+      <div class="text-xs text-pink-700 font-medium">3 months</div>
+      <div class="text-2xl font-bold text-gray-900">{{ C.get('abandon_3m', 0) }}</div>
+    </div>
+
+    <div class="rounded-xl border border-pink-100 bg-white/70 p-4 text-center hover:bg-pink-50 transition">
+      <div class="text-xs text-pink-700 font-medium">6 months</div>
+      <div class="text-2xl font-bold text-gray-900">{{ C.get('abandon_6m', 0) }}</div>
+    </div>
+
+    <div class="rounded-xl border border-pink-100 bg-white/70 p-4 text-center hover:bg-pink-50 transition">
+      <div class="text-xs text-pink-700 font-medium">1 year</div>
+      <div class="text-2xl font-bold text-gray-900">{{ C.get('abandon_1y', 0) }}</div>
+    </div>
+
+    <div class="rounded-xl border border-emerald-200 bg-emerald-50/80 p-4 text-center hover:bg-emerald-100 transition">
+      <div class="text-xs text-emerald-700 font-medium">Active</div>
+      <div class="text-2xl font-bold text-emerald-700">{{ C.get('active', 0) }}</div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,41 @@
+<!-- File: app/templates/_sales_statistics.html -->
+<div class="rounded-2xl bg-gradient-to-br from-pink-50 to-white/90 backdrop-blur border border-pink-100 p-6 shadow-md">
+  <h3 class="text-lg font-semibold text-pink-700 flex items-center gap-2 mb-4">
+    <span class="inline-grid place-items-center h-6 w-6 rounded-md bg-pink-100 text-pink-700">
+      <i class="bi bi-graph-up-arrow text-sm"></i>
+    </span>
+    Sales Statistics
+  </h3>
+
+  <div class="grid gap-3 sm:grid-cols-2">
+    <!-- Total Sales -->
+    <div class="rounded-xl border border-pink-100 bg-white/70 p-4 hover:bg-pink-50 transition">
+      <div class="text-xs text-pink-700 font-medium">Total Sales</div>
+      <div id="sales-total" class="text-2xl font-bold text-gray-900">$0</div>
+    </div>
+
+    <!-- Total Cash -->
+    <div class="rounded-xl border border-pink-100 bg-white/70 p-4 hover:bg-pink-50 transition">
+      <div class="text-xs text-pink-700 font-medium">Total Cash</div>
+      <div id="sales-cash" class="text-2xl font-bold text-gray-900">$0</div>
+    </div>
+
+    <!-- Payments -->
+    <div class="rounded-xl border border-pink-100 bg-white/70 p-4 hover:bg-pink-50 transition">
+      <div class="text-xs text-pink-700 font-medium">Payments $</div>
+      <div id="sales-payments" class="text-2xl font-bold text-gray-900">$0</div>
+    </div>
+
+    <!-- Internal Sales -->
+    <div class="rounded-xl border border-pink-100 bg-white/70 p-4 hover:bg-pink-50 transition">
+      <div class="text-xs text-pink-700 font-medium">Internal Sales $</div>
+      <div id="sales-internal" class="text-2xl font-bold text-gray-900">$0</div>
+    </div>
+
+    <!-- New Clients -->
+    <div class="sm:col-span-2 rounded-xl border border-pink-100 bg-white/70 p-4 hover:bg-pink-50 transition">
+      <div class="text-xs text-pink-700 font-medium">New Clients $</div>
+      <div id="sales-new-clients" class="text-2xl font-bold text-gray-900">$0</div>
+    </div>
+  </div>
+</div>

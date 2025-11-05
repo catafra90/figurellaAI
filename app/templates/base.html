@@ -50,7 +50,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/layout.css', v=6) }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/client_modal.css', v=11) }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/flags.css', v=7) }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/profile_ipad.css') }}?v=1">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/profile_ipad.css') }}?v=1">
 
   {% block extra_head %}{% endblock %}
 
@@ -112,83 +112,53 @@
     .client-modal .card, .client-modal .card-pad { contain: content; }
     .client-modal + .client-modal { box-shadow: 0 8px 24px rgba(0,0,0,.18); }
 
-    /* Keep floating layer ABOVE sidebar/header and non-blocking */
     #floating-modals { pointer-events: none; z-index: 4000 !important; }
     #floating-modals .client-modal { pointer-events: auto; }
   </style>
 
-  <!-- iOS/iPad-specific, safe platform-wide tweaks (scoped under .ios so desktop is untouched) -->
+  <!-- iOS/iPad-specific tweaks -->
   <style>
-    /* .ios is added to <html> by the script at the bottom */
     .ios :root { --vh: 1vh; }
-
-    /* Use dynamic viewport height on iPad to avoid 100vh jumps */
     .ios body{ min-height: calc(var(--vh, 1vh) * 100); }
-
-    /* Make your existing scroll panes feel native on iPad */
-    .ios .tab-scroll,
-    .ios .chart-table-scroll,
-    .ios .measuresA-scroll{
-      -webkit-overflow-scrolling: touch;
-      overscroll-behavior: contain;
+    .ios .tab-scroll, .ios .chart-table-scroll, .ios .measuresA-scroll{
+      -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
     }
-
-    /* Sticky header cells should have solid bg to avoid translucency artifacts */
     .ios .sticky-header thead th{ background:#fff; }
-
-    /* Slightly constrain iPad date inputs so they don't blow up columns */
     @media (max-width:1024px){
       .ios input[type="date"].field{ max-width: 10rem; }
-      .ios .btn{ min-height: 40px; } /* better touch target */
+      .ios .btn{ min-height: 40px; }
     }
   </style>
 
-  <!-- Load tablet overrides LAST so they override everything above -->
+  <!-- Load tablet overrides last -->
   <link rel="stylesheet" href="{{ url_for('static', filename='css/tablet.css') }}?v=t2">
 
-  <!-- iPad modal hotfix (scoped to .client-modal; overrides tablet.css if needed) -->
+  <!-- iPad modal hotfix -->
   <style id="ipad-modal-hotfix">
     @media (max-width:1024px){
-      /* Hide peer inputs reliably (Safari sometimes ignores .sr-only) */
       .client-modal .flag-group > input[type="checkbox"]{
-        position:absolute !important;
-        opacity:0 !important;
+        position:absolute !important; opacity:0 !important;
         width:1px !important; height:1px !important;
         margin:-1px !important; padding:0 !important;
         overflow:hidden !important; clip:rect(0,0,0,0) !important;
         white-space:nowrap !important; border:0 !important;
         pointer-events:none !important;
       }
-
-      /* Make pills/flags wrap and be touch sized */
-      .client-modal .quick-flags,
-      .client-modal .goals-pills{
+      .client-modal .quick-flags, .client-modal .goals-pills{
         display:flex; flex-wrap:wrap; gap:.5rem .5rem;
       }
-      .client-modal .flag-btn{
-        display:inline-flex; align-items:center; min-height:40px;
-      }
-
-      /* Generic flex rows: label above inputs when tight */
+      .client-modal .flag-btn{ display:inline-flex; align-items:center; min-height:40px; }
       .client-modal .flex{ flex-wrap:wrap; gap:.5rem .75rem; }
       .client-modal .flex .label{ width:100% !important; }
-
-      /* Inputs/textarea: fill width; avoid iOS zoom */
       .client-modal .field{
         width:100% !important; max-width:100% !important;
         min-height:44px; font-size:16px; line-height:1.3;
       }
       .client-modal input[type="date"].field{ width:100% !important; }
-
-      /* Tables inside modal: wrap text instead of pushing sideways */
       .client-modal table{ table-layout:fixed; width:100%; }
-      .client-modal table th,
-      .client-modal table td{
-        min-width:0; white-space:normal; word-break:break-word;
-        vertical-align:top;
+      .client-modal table th, .client-modal table td{
+        min-width:0; white-space:normal; word-break:break-word; vertical-align:top;
       }
-
-      /* Solid bg for sticky header cells over blurred areas */
       .client-modal .sticky-header thead th{ background:#fff; }
     }
   </style>
@@ -202,42 +172,53 @@
     <div class="absolute inset-0 wallpaper-glow"></div>
   </div>
 
-  <!-- Header (64px height; matches layout.css --header-h) -->
-  <header class="bg-gray-900/80 backdrop-blur fixed top-0 left-0 w-full z-[100] h-16 shadow" style="padding-top: env(safe-area-inset-top)">
+  <!-- Header -->
+  <header id="app-header"
+          class="bg-gray-900/80 backdrop-blur fixed top-0 left-0 w-full z-[2000] h-16 shadow"
+          style="padding-top: env(safe-area-inset-top)">
     <div class="relative h-full flex items-center justify-center">
       <!-- centered logo -->
-      <a href="{{ url_for('home.index') }}" class="absolute left-1/2 -translate-x-1/2">
-        <img id="figurella-logo" src="{{ url_for('static', filename='images/figurella-logo.png') }}"
-             alt="Figurella Logo" class="h-10 select-none" draggable="false" style="cursor:pointer;">
+      <a href="{{ url_for('home.index') }}"
+         class="absolute left-1/2 -translate-x-1/2 z-[2050] pointer-events-auto">
+        <img id="figurella-logo"
+             src="{{ url_for('static', filename='images/figurella-logo.png') }}"
+             alt="Figurella Logo"
+             class="h-10 select-none"
+             draggable="false"
+             style="cursor:pointer;">
       </a>
 
-      <!-- right-side profile / auth -->
-      <div class="absolute right-4 top-0 h-full flex items-center">
-        {% if current_user %}
-          <div class="relative flex items-center gap-2">
-            <div class="w-8 h-8 rounded-full bg-gray-800 text-white grid place-items-center border border-white/25"
-                 title="{{ current_user.name or current_user.username }}">
-              {{ (current_user.name or current_user.username)[:1] | upper }}
-            </div>
-            <button id="profile-menu-btn"
-                    class="text-white/90 hover:text-white bg-transparent px-2 py-1 rounded-md font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-figurella/40"
-                    aria-haspopup="menu" aria-expanded="false">
-              {{ current_user.name or current_user.username }} ▾
-            </button>
-
-            <!-- Dropdown -->
-            <div id="profile-menu"
-                 class="hidden absolute right-0 top-12 min-w-[180px] bg-gray-900 text-gray-200 border border-white/10 rounded-xl shadow-xl overflow-hidden z-[110]">
-              <a href="{{ url_for('profile.profit_sheet') }}" class="block px-3 py-2 hover:bg-gray-800">Profit & Costs</a>
-              <a href="{{ url_for('auth.logout') }}" class="block px-3 py-2 hover:bg-gray-800">Log out</a>
-            </div>
+      <!-- right-side Admin dropdown -->
+      <div class="absolute right-4 top-0 h-full flex items-center z-[2200] pointer-events-auto">
+        <div class="relative flex items-center gap-2">
+          <div class="w-8 h-8 rounded-full bg-gray-800 text-white grid place-items-center border border-white/25" title="Admin">
+            A
           </div>
-        {% else %}
-          <a href="{{ url_for('auth.login') }}"
-             class="inline-flex items-center gap-2 text-white/90 hover:text-white bg-figurella/90 hover:bg-figurella px-3 py-1.5 rounded-lg font-semibold shadow">
-            <i class="bi bi-box-arrow-in-right text-base"></i> Sign in
-          </a>
-        {% endif %}
+          <button id="profile-menu-btn" type="button"
+                  class="text-white/90 hover:text-white bg-transparent px-2 py-1 rounded-md font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-figurella/40 pointer-events-auto"
+                  aria-haspopup="menu" aria-expanded="false" aria-controls="profile-menu"
+                  onclick="window.__toggleProfileMenu && window.__toggleProfileMenu(event)">
+            Admin ▾
+          </button>
+
+          <!-- Dropdown: Home + Reports + Log out -->
+          <div id="profile-menu" role="menu"
+               class="hidden absolute right-0 top-12 min-w-[220px] bg-gray-900 text-gray-200 border border-white/10 rounded-xl shadow-xl overflow-hidden z-[2300]">
+            <a href="{{ url_for('home.index') }}"
+               class="flex items-center gap-2 px-3 py-2 hover:bg-gray-800" role="menuitem">
+              <i class="bi bi-house"></i>
+              <span>Home</span>
+            </a>
+            <a href="/figurella-reports/reports/home"
+               class="flex items-center gap-2 px-3 py-2 hover:bg-gray-800" role="menuitem">
+              <i class="bi bi-bar-chart"></i>
+              <span>Reports</span>
+            </a>
+            <div class="h-px bg-white/10 my-1"></div>
+            <a href="{{ url_for('auth.logout') }}" role="menuitem"
+               class="block px-3 py-2 hover:bg-gray-800">Log out</a>
+          </div>
+        </div>
       </div>
     </div>
   </header>
@@ -257,42 +238,28 @@
     </div>
   </div>
 
-  <!-- NOTE: no hard-coded #floating-modals here; client_modal.core.js creates it -->
-
-  <!-- Modular autosave -->
+  <!-- Scripts -->
   <script defer src="{{ url_for('static', filename='js/autosave/index.js') }}"></script>
   <script defer src="{{ url_for('static', filename='js/autosave/impl.disabled.js') }}"></script>
-
-  <!-- Frequency heatmap JS -->
   <script defer src="{{ url_for('static', filename='js/frequency.js') }}"></script>
 
+  <script defer src="{{ url_for('static', filename='js/charts/client_modal.core.js') }}?v=drag4"></script>
+  <script defer src="{{ url_for('static', filename='js/charts/client_modal.positioning.js') }}?v=drag4"></script>
+  <script defer src="{{ url_for('static', filename='js/charts/client_modal.js') }}?v=drag4"></script>
+  <script defer src="{{ url_for('static', filename='js/charts/client_modal.tabs.js') }}?v=2"></script>
 
-  <!-- Client modal (split modules)  >>> ORDER MATTERS -->
-  <script defer src="{{ url_for('static', filename='js/charts/client_modal.core.js') }}?v=drag3"></script>
-  <script defer src="{{ url_for('static', filename='js/charts/client_modal.js') }}?v=drag3"></script>
-  <script defer src="{{ url_for('static', filename='js/charts/client_modal.positioning.js') }}?v=drag3"></script>
-
-  <!-- Loader/opener used by the sidebar list -->
   <script defer src="{{ url_for('static', filename='js/charts/client_sidebar_filter.client_modal.content.js') }}?v=drag3"></script>
-
   <script defer src="{{ url_for('static', filename='js/charts/measures_asof.js') }}"></script>
-
-  <!-- Flags -->
   <script defer src="{{ url_for('static', filename='js/flags.js') }}"></script>
-
-  <!-- Movement video Lightbox -->
   <script defer src="{{ url_for('static', filename='js/move_preview.js') }}"></script>
-
-  <!-- Profile dropdown toggler (load ONCE) -->
-  <script defer src="{{ url_for('static', filename='js/profile_menu.js') }}"></script>
 
   <!-- Row click bootstrap -->
   <script>
     document.addEventListener('click', function(e){
       const tr =
-        e.target.closest('[data-open-chart="1"]') ||
-        e.target.closest('tr.client-row') ||
-        e.target.closest('tr[data-name]');
+        e.target.closest?.('[data-open-chart="1"]') ||
+        e.target.closest?.('tr.client-row') ||
+        e.target.closest?.('tr[data-name]');
       if (tr && typeof window.openClientChart === 'function') {
         e.preventDefault();
         window.openClientChart(tr);
@@ -303,7 +270,6 @@
   <!-- iOS-safe viewport height + device detection (.ios class on <html>) -->
   <script>
     (function () {
-      // Detect iOS / iPadOS (including iPadOS on Mac hardware)
       var ua = navigator.userAgent || navigator.vendor || '';
       var isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
       if (isIOS) document.documentElement.classList.add('ios');
@@ -316,7 +282,6 @@
       window.addEventListener('resize', setVh, { passive:true });
       window.addEventListener('orientationchange', setVh, { passive:true });
 
-      // Prevent Safari text inflation
       document.documentElement.style.setProperty('-webkit-text-size-adjust', '100%');
     })();
   </script>
@@ -328,44 +293,69 @@
     }
   </script>
 
-  <!-- >>> FREE-DRAG OVERRIDE PATCH: load LAST to neutralize any stragglers -->
+  <!-- Enable multi-modals globally -->
   <script>
-  (function(){
-    const MARGIN=8;
-    function clamp(el){
-      const cs=getComputedStyle(el);
-      const x=parseFloat(cs.getPropertyValue('--x'))||0;
-      const y=parseFloat(cs.getPropertyValue('--y'))||0;
-      const r=el.getBoundingClientRect();
-      const nx=Math.min(Math.max(MARGIN,x),Math.max(MARGIN,innerWidth-MARGIN-r.width));
-      const ny=Math.min(Math.max(MARGIN,y),Math.max(MARGIN,innerHeight-MARGIN-r.height));
-      el.style.setProperty('--x',nx+'px'); el.style.setProperty('--y',ny+'px');
-    }
-    function cap(el){
-      const r=el.getBoundingClientRect(),m=8;
-      const x=parseFloat(getComputedStyle(el).getPropertyValue('--x'))||0;
-      const y=parseFloat(getComputedStyle(el).getPropertyValue('--y'))||0;
-      const maxW=Math.max(240,innerWidth -m -x);
-      const maxH=Math.max(180,innerHeight-m -y);
-      if(r.width>maxW)  el.style.width =Math.floor(maxW)+'px';
-      if(r.height>maxH) el.style.height=Math.floor(maxH)+'px';
-    }
-    document.addEventListener('clientmodal:recenter',(e)=>{
-      const el=e.detail?.el; if(!el) return;
-      if(el.dataset.free==="1"){ clamp(el); cap(el); e.stopImmediatePropagation?.(); e.stopPropagation?.(); }
-    },{capture:true});
-    document.addEventListener('pointerdown',(e)=>{
-      const m=e.target?.closest?.('.client-modal'); if(!m) return;
-      m.dataset.free="1";
-      if(m.__rafTetherId){ try{ cancelAnimationFrame(m.__rafTetherId); }catch{} m.__rafTetherId=0; }
-      document.body.classList.add('drag-active');
-    },{passive:true});
-    document.addEventListener('pointerup',()=>document.body.classList.remove('drag-active'),{passive:true});
-    window.addEventListener('resize',()=>{
-      document.querySelectorAll('.client-modal[data-free="1"]').forEach(el=>{ clamp(el); cap(el); });
-    },{passive:true});
-  })();
+    window.addEventListener('load', function () {
+      try {
+        if (window.ClientModal && window.ClientModal.enableMulti) {
+          window.ClientModal.enableMulti();
+        } else {
+          window.CHARTS_SINGLETON = false;
+        }
+      } catch (e) {}
+    });
   </script>
+
+  <!-- Inline Admin dropdown toggler (single source of truth) -->
+  <script>
+    // Called by the button's onclick
+    window.__toggleProfileMenu = function (e) {
+      try {
+        e && (e.preventDefault(), e.stopPropagation());
+        var btn  = document.getElementById('profile-menu-btn');
+        var menu = document.getElementById('profile-menu');
+        if (!btn || !menu) return;
+        var isHidden = menu.classList.contains('hidden');
+        if (isHidden) {
+          menu.classList.remove('hidden');
+          btn.setAttribute('aria-expanded','true');
+        } else {
+          menu.classList.add('hidden');
+          btn.setAttribute('aria-expanded','false');
+        }
+      } catch (_) {}
+    };
+
+    // Close on outside click / Esc, ensure layering/clickability
+    (function(){
+      var btn  = document.getElementById('profile-menu-btn');
+      var menu = document.getElementById('profile-menu');
+      if (!btn || !menu) return;
+
+      document.addEventListener('click', function(ev){
+        if (!menu.classList.contains('hidden')) {
+          if (!menu.contains(ev.target) && !btn.contains(ev.target)) {
+            menu.classList.add('hidden');
+            btn.setAttribute('aria-expanded','false');
+          }
+        }
+      }, {capture:true});
+
+      document.addEventListener('keydown', function(ev){
+        if (ev.key === 'Escape' && !menu.classList.contains('hidden')) {
+          menu.classList.add('hidden');
+          btn.setAttribute('aria-expanded','false');
+        }
+      });
+
+      // Safety: make sure it can receive clicks and sits on top
+      menu.style.zIndex = '2300';
+      menu.style.pointerEvents = 'auto';
+    })();
+  </script>
+
+  <!-- Bottom “open charts” tabs bar container -->
+  <div id="modal-tabs-bar" hidden></div>
 
 </body>
 </html>

@@ -1,12 +1,193 @@
-<!-- File: app/templates/index.html -->
 {% extends "base.html" %}
-
 {% block content %}
-<div class="container-responsive max-w-7xl mx-auto">
 
+<div class="container-responsive max-w-7xl mx-auto">
   <h1 class="sr-only">Figurella Platform — Home</h1>
 
-  <!-- App launcher -->
+  <!-- Desktop scroll enable (keeps iPad scroll working too) -->
+  <style>
+    @media (min-width: 1024px) {
+      html, body { overflow-y: auto !important; height: auto; }
+      body { position: relative; }
+    }
+  </style>
+
+  <!-- =========================
+     ROW 1: Location Performance (full width) — Option 1 styling
+     ========================= -->
+<section class="mt-4">
+  <!-- Location Performance -->
+  <div class="mt-0">
+    <div class="rounded-2xl bg-gradient-to-br from-pink-50 to-white/90 backdrop-blur border border-pink-100 p-6 shadow-md">
+      <h2 class="text-lg font-semibold text-pink-700 mb-4 flex items-center gap-2">
+        <span class="inline-grid place-items-center h-6 w-6 rounded-md bg-pink-100 text-pink-700">
+          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <rect x="4" y="10" width="3" height="9" rx="1"></rect>
+            <rect x="10" y="6"  width="3" height="13" rx="1" opacity=".85"></rect>
+            <rect x="16" y="3"  width="3" height="16" rx="1" opacity=".7"></rect>
+          </svg>
+        </span>
+        Location Performance
+      </h2>
+
+      <!-- Top metrics -->
+      <div class="grid gap-4 sm:grid-cols-3">
+        <!-- Active Clients -->
+        <div class="p-4 rounded-xl border border-pink-100 bg-white/70 hover:bg-pink-50 transition">
+          <div class="text-xs text-pink-700 font-medium">Active Clients</div>
+          <div id="perf-active-clients" class="text-2xl font-bold text-gray-900">—</div>
+        </div>
+
+        <!-- New Clients (This Month) with Try / OK + Last Month -->
+        <div class="p-4 rounded-xl border border-pink-100 bg-white/70 hover:bg-pink-50 transition">
+          <div class="flex items-center justify-between">
+            <div>
+              <div class="text-xs text-pink-700 font-medium">New Clients (This Month)</div>
+              <div id="perf-new-clients-total" class="text-2xl font-bold text-gray-900">—</div>
+            </div>
+            <div class="flex gap-2">
+              <div class="px-3 py-1 rounded-lg bg-amber-100 text-amber-800 text-sm font-semibold">
+                Try: <span id="perf-new-try">—</span>
+              </div>
+              <div class="px-3 py-1 rounded-lg bg-emerald-100 text-emerald-800 text-sm font-semibold">
+                OK: <span id="perf-new-ok">—</span>
+              </div>
+            </div>
+          </div>
+          <div class="mt-2 text-sm text-gray-600">
+            <span class="text-gray-500">Last month:</span>
+            <span class="font-semibold text-gray-900" id="perf-last-month-total">—</span>
+            <span class="ml-1 text-amber-700">(Try: <span id="perf-last-month-try">—</span>)</span>
+            <span class="ml-2 text-emerald-700">(OK: <span id="perf-last-month-ok">—</span>)</span>
+          </div>
+        </div>
+
+        <!-- Current Week Attendance -->
+        <div class="p-4 rounded-xl border border-pink-100 bg-white/70 hover:bg-pink-50 transition">
+          <div class="text-xs text-pink-700 font-medium">Current Week Attendance</div>
+          <div id="perf-current-week-att" class="text-2xl font-bold text-gray-900">—</div>
+        </div>
+      </div>
+
+      <!-- Attendance goal + comparisons -->
+      <div class="mt-6 grid gap-4 lg:grid-cols-[290px,1fr]">
+        <!-- Goal box -->
+        <div class="p-4 rounded-xl border border-pink-100 bg-white/70 hover:bg-pink-50 transition">
+          <div class="flex items-center justify-between mb-2">
+            <div class="text-sm font-medium text-gray-800">Weekly Attendance Goal</div>
+            <button id="goal-reset" class="text-xs text-pink-700 hover:text-pink-800 underline">Reset</button>
+          </div>
+          <div class="flex items-center gap-3">
+            <input id="attendance-goal" type="number" min="0" step="1"
+                   class="w-28 rounded-lg border-pink-200 focus:ring-pink-300 focus:border-pink-300 text-gray-900"
+                   placeholder="e.g., 120">
+            <button id="goal-save"
+                    class="px-3 py-2 text-sm rounded-lg bg-pink-600 text-white font-medium hover:bg-pink-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-400">
+              Save
+            </button>
+          </div>
+          <div class="mt-3 text-sm text-gray-600">
+            Current week: <span id="att-current" class="font-semibold text-gray-900">—</span><br>
+            Goal gap: <span id="att-goal-gap" class="font-semibold">—</span>
+          </div>
+        </div>
+
+        <!-- Dynamic attendance table -->
+        <div class="rounded-xl border border-pink-100 overflow-hidden bg-white/70">
+          <div class="px-4 py-3 bg-pink-50 border-b border-pink-100 flex items-center justify-between">
+            <div class="text-sm font-medium text-pink-800">Attendance — Current vs Previous Weeks</div>
+            <div class="text-xs text-pink-700">Current week compares against each prior week</div>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+              <thead class="bg-pink-50 text-pink-700">
+                <tr>
+                  <th class="text-left px-4 py-2 border-b border-pink-100">Week</th>
+                  <th class="text-right px-4 py-2 border-b border-pink-100">Previous</th>
+                  <th class="text-right px-4 py-2 border-b border-pink-100">Current</th>
+                  <th class="text-right px-4 py-2 border-b border-pink-100">Δ</th>
+                  <th class="text-right px-4 py-2 border-b border-pink-100">% Change</th>
+                </tr>
+              </thead>
+              <tbody id="attendance-rows" class="divide-y divide-pink-100 text-gray-800"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-4 text-sm text-gray-600" id="trend-highlights" hidden>
+        <span class="font-medium">Trend Highlights:</span>
+        <span id="trend-text">—</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+ <!-- =========================
+     SALES (top-left) + LEADS (right, spans 2 rows) + LIFECYCLE (under Sales)
+     ========================= -->
+<section class="mt-6 grid gap-6 md:grid-cols-2 auto-rows-auto">
+  <!-- Row 1, Col 1 -->
+  <div class="md:col-span-1">
+    {% include "_sales_statistics.html" %}
+  </div>
+
+  <!-- Row 1–2, Col 2 (taller card spans two rows) -->
+  <div class="md:col-span-1 md:row-span-2">
+    {% include "_leads_statistics.html" %}
+  </div>
+
+  <!-- Row 2, Col 1 (moves up directly under Sales) -->
+  <div class="md:col-span-1">
+    {% include "_clients_lifecycle.html" %}
+  </div>
+</section>
+
+
+  <!-- =========================
+       Notifications
+       ========================= -->
+  <section class="mt-6" aria-label="Notifications">
+    <div id="notif-list"
+         class="mt-2 rounded-2xl bg-white/90 backdrop-blur border border-white/70 p-4 text-sm text-gray-700 shadow-sm">
+      {% if has_upcoming %}
+        <div class="flex items-start gap-3">
+          <svg class="w-5 h-5 text-figurella mt-0.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M8 7V6a4 4 0 118 0v1h3a1 1 0 011 1v11a2 2 0 01-2 2H6a2 2 0 01-2-2V8a1 1 0 011-1h3zm2-1a2 2 0 114 0v1h-4V6z"/>
+          </svg>
+          <div class="flex-1">
+            <div class="font-semibold text-gray-900">Today’s upcoming appointments</div>
+            <ul class="mt-1 space-y-1">
+              {% for it in upcoming_calendar %}
+                <li class="flex items-center gap-3">
+                  <div class="flex-1">
+                    <span class="font-medium">{{ it.when }}</span>
+                    • {{ it.client }}
+                    {% if it.room %}<span class="text-gray-500"> — {{ it.room }}</span>{% endif %}
+                    {% if it.notes %}<span class="text-gray-500"> • {{ it.notes }}</span>{% endif %}
+                  </div>
+                  <button
+                    class="done-btn inline-flex items-center rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-2 py-1"
+                    data-series="{{ it.series_id }}"
+                    data-occ="{{ it.occurrenceStart }}"
+                    aria-label="Mark done">
+                    Done
+                  </button>
+                </li>
+              {% endfor %}
+            </ul>
+          </div>
+        </div>
+      {% else %}
+        No tasks scheduled for today.
+      {% endif %}
+    </div>
+  </section>
+
+  <!-- =========================
+       App launcher tiles
+       ========================= -->
   <section class="mt-8" aria-label="App launcher">
     <div class="grid gap-6 [grid-template-columns:repeat(auto-fit,minmax(16rem,1fr))]">
 
@@ -109,13 +290,12 @@
         </div>
       </a>
 
-      <!-- Consultation (NEW) -->
+      <!-- Consultation -->
       <a id="tile-consultation"
          href="{{ (links.consultation if links and links.consultation else '/consultation/') }}"
          class="group rounded-2xl bg-white/90 backdrop-blur border border-white/70 p-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-figurella/40">
         <div class="flex items-center gap-4">
           <div class="h-12 w-12 rounded-xl bg-fuchsia-600 text-white grid place-items-center shadow-[0_8px_16px_rgba(192,38,211,.35)]">
-            <!-- bullseye icon -->
             <svg viewBox="0 0 24 24" class="h-6 w-6" fill="none" aria-hidden="true">
               <circle cx="12" cy="12" r="8" stroke="white" stroke-width="1.8" opacity=".95"/>
               <circle cx="12" cy="12" r="5" stroke="white" stroke-width="1.8" opacity=".9"/>
@@ -128,166 +308,188 @@
           </div>
         </div>
       </a>
-
     </div>
   </section>
-
-  <!-- Notifications -->
-  <section class="mt-10" aria-label="Notifications">
-    <div id="notif-list"
-         class="mt-2 rounded-2xl bg-white/90 backdrop-blur border border-white/70 p-4 text-sm text-gray-700 shadow-sm">
-      {% if has_upcoming %}
-        <div class="flex items-start gap-3">
-          <svg class="w-5 h-5 text-figurella mt-0.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-            <path d="M8 7V6a4 4 0 118 0v1h3a1 1 0 011 1v11a2 2 0 01-2 2H6a2 2 0 01-2-2V8a1 1 0 011-1h3zm2-1a2 2 0 114 0v1h-4V6z"/>
-          </svg>
-          <div class="flex-1">
-            <div class="font-semibold text-gray-900">Today’s upcoming appointments</div>
-            <ul class="mt-1 space-y-1">
-              {% for it in upcoming_calendar %}
-                <li class="flex items-center gap-3">
-                  <div class="flex-1">
-                    <span class="font-medium">{{ it.when }}</span>
-                    • {{ it.client }}
-                    {% if it.room %}<span class="text-gray-500"> — {{ it.room }}</span>{% endif %}
-                    {% if it.notes %}<span class="text-gray-500"> • {{ it.notes }}</span>{% endif %}
-                  </div>
-                  <button
-                    class="done-btn inline-flex items-center rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-2 py-1"
-                    data-series="{{ it.series_id }}"
-                    data-occ="{{ it.occurrenceStart }}"
-                    aria-label="Mark done">
-                    Done
-                  </button>
-                </li>
-              {% endfor %}
-            </ul>
-          </div>
-        </div>
-      {% else %}
-        No tasks scheduled for today.
-      {% endif %}
-    </div>
-  </section>
-
-  {% include "_performance_summary.html" %}
-
-  <div class="h-8" style="padding-bottom: env(safe-area-inset-bottom, 0px);"></div>
 </div>
 
+<!-- ======= PERF DATA / RENDER SCRIPTS (unchanged) ======= -->
+
+<!-- Seed default (used if server block missing) -->
 <script>
-  // Ensure tiles always navigate even if a links.* value is missing/None.
+  window.PERF_DATA = window.PERF_DATA || {
+    active_clients: "—",
+    new_clients: {
+      this_month: { total: 0, try: 0, ok: 0 },
+      last_month: { total: 0, try: 0, ok: 0 }
+    },
+    attendance: {
+      weeks: [
+        { label: "This Week", count: 0, current: true },
+        { label: "Last Week", count: 0 },
+        { label: "2 Weeks Ago", count: 0 }
+      ]
+    }
+  };
+</script>
+
+<!-- Server data safely embedded as JSON -->
+<script id="perf-data" type="application/json">
+{{ (PERF_DATA | default({})) | tojson | safe }}
+</script>
+
+<script>
   (function () {
-    function ensureNav(id, fallback){
-      var el = document.getElementById(id);
-      if (!el) return;
-      el.addEventListener('click', function(e){
-        var href = el.getAttribute('href');
-        if (!href || href === '#' || href === 'None'){ e.preventDefault(); location.assign(fallback); }
+    let perf = null;
+    try { perf = JSON.parse(document.getElementById('perf-data').textContent); } catch (e) {}
+    if (perf && typeof perf === 'object') {
+      window.PERF_DATA = perf;
+    } else {
+      window.PERF_DATA = null;  // allow fallback fetch below
+    }
+  })();
+</script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const el = (id) => document.getElementById(id);
+  const fmt = (n) => (Number.isFinite(n) ? n.toLocaleString() : "—");
+  const fmtPct = (v) => (Number.isFinite(v) ? `${(v * 100).toFixed(1)}%` : "—");
+
+  function renderPerf(data) {
+    if (!data) return;
+
+    const active = Number(data.active_clients);
+    el("perf-active-clients").textContent = Number.isFinite(active) ? fmt(active) : "—";
+
+    // this month
+    const tm = data?.new_clients?.this_month || { total: 0, try: 0, ok: 0 };
+    const tmTry = Number(tm.try) || 0;
+    const tmOk  = Number(tm.ok)  || 0;
+    const tmTot = Number.isFinite(Number(tm.total)) ? Number(tm.total) : (tmTry + tmOk);
+    el("perf-new-try").textContent = fmt(tmTry);
+    el("perf-new-ok").textContent  = fmt(tmOk);
+    el("perf-new-clients-total").textContent = fmt(tmTot);
+
+    // last month
+    const lm = data?.new_clients?.last_month || { total: 0, try: 0, ok: 0 };
+    const lmTry = Number(lm.try) || 0;
+    const lmOk  = Number(lm.ok)  || 0;
+    const lmTot = Number.isFinite(Number(lm.total)) ? Number(lm.total) : (lmTry + lmOk);
+    el("perf-last-month-total").textContent = fmt(lmTot);
+    el("perf-last-month-try").textContent   = fmt(lmTry);
+    el("perf-last-month-ok").textContent    = fmt(lmOk);
+
+    // attendance
+    const weeks = Array.isArray(data?.attendance?.weeks) ? data.attendance.weeks.slice() : [];
+    if (!weeks.length) return;
+    weeks.sort((a, b) => (b?.current === true) - (a?.current === true));
+    const current = weeks[0] || { label: "Current", count: 0 };
+    const previous = weeks.slice(1);
+
+    el("perf-current-week-att").textContent = fmt(Number(current.count) || 0);
+
+    // goal UI
+    (function () {
+      const GOAL_KEY = "figurella.attendance.goal";
+      const goalInput = el("attendance-goal");
+      const goalSave  = el("goal-save");
+      const goalReset = el("goal-reset");
+      const attCurrentEl = el("att-current");
+      const goalGapEl    = el("att-goal-gap");
+
+      const loadGoal = () => {
+        const v = localStorage.getItem(GOAL_KEY);
+        return v ? parseInt(v, 10) : NaN;
+      };
+      const setGoalUI = (g) => {
+        const cur = Number(current.count) || 0;
+        if (Number.isFinite(g)) {
+          goalInput.value = g;
+          const gap = g - cur;
+          attCurrentEl.textContent = fmt(cur);
+          goalGapEl.textContent = (gap === 0 ? "On goal" : (gap > 0 ? `${fmt(gap)} to goal` : `${fmt(-gap)} over goal`));
+          goalGapEl.className = "font-semibold " + (gap > 0 ? "text-amber-600" : (gap < 0 ? "text-emerald-600" : "text-gray-800"));
+        } else {
+          attCurrentEl.textContent = fmt(cur);
+          goalGapEl.textContent = "—";
+          goalGapEl.className = "font-semibold text-gray-500";
+        }
+      };
+      setGoalUI(loadGoal());
+      goalSave?.addEventListener("click", () => {
+        const val = parseInt(goalInput.value, 10);
+        if (Number.isFinite(val) && val >= 0) {
+          localStorage.setItem(GOAL_KEY, String(val));
+          setGoalUI(val);
+        }
       });
-    }
-    ensureNav('tile-charts',      '/charts/');
-    ensureNav('tile-contacts',    '/clients/');
-    ensureNav('tile-calendar',    '/calendar/');
-    ensureNav('tile-checkins',    '/daily-check-in/');
-    /* removed: ensureNav('tile-reports', '/figurella-reports/'); */
-    ensureNav('tile-nutrition',   '/nutrition/');
-    ensureNav('tile-consultation','/consultation/');
-  })();
-</script>
+      goalReset?.addEventListener("click", () => {
+        localStorage.removeItem(GOAL_KEY);
+        goalInput.value = "";
+        setGoalUI(NaN);
+      });
+    })();
 
-<script>
-  // Home notifications: mark occurrence "done" and sync immediately with Calendar
-  (function () {
-    const list = document.getElementById('notif-list');
-    if (!list) return;
+    // table
+    const tbody = el("attendance-rows");
+    if (tbody) {
+      tbody.innerHTML = "";
+      const cur = Number(current.count) || 0;
+      const makeDeltaCell = (delta) => {
+        const up = delta > 0, down = delta < 0;
+        const cls = up ? "text-emerald-700" : (down ? "text-rose-700" : "text-gray-700");
+        const badge = up ? "▲" : (down ? "▼" : "•");
+        return `<span class="${cls} font-semibold">${badge} ${fmt(delta)}</span>`;
+      };
+      const makePctCell = (pct) => {
+        const up = pct > 0, down = pct < 0;
+        const cls = up ? "text-emerald-700" : (down ? "text-rose-700" : "text-gray-700");
+        return `<span class="${cls} font-semibold">${fmtPct(pct)}</span>`;
+      };
+      previous.forEach((w) => {
+        const prev = Number(w.count) || 0;
+        const delta = cur - prev;
+        const pct = prev === 0 ? (cur === 0 ? 0 : 1) : (delta / prev);
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td class="px-4 py-2 text-gray-800">${w.label || "Previous"}</td>
+          <td class="px-4 py-2 text-right tabular-nums text-gray-800">${fmt(prev)}</td>
+          <td class="px-4 py-2 text-right tabular-nums text-gray-900 font-semibold">${fmt(cur)}</td>
+          <td class="px-4 py-2 text-right tabular-nums">${makeDeltaCell(delta)}</td>
+          <td class="px-4 py-2 text-right tabular-nums">${makePctCell(pct)}</td>
+        `;
+        tbody.appendChild(tr);
+      });
 
-    const DONE_KEY = 'fc_done_occurrences_v1';
-    function addToLocalDone(seriesId, occISO) {
-      try {
-        const arr = JSON.parse(localStorage.getItem(DONE_KEY) || '[]');
-        const day = (occISO || '').slice(0, 10);
-        const add = (k) => { if (k && !arr.includes(k)) arr.push(k); };
-        add(String(seriesId) + '|' + occISO);
-        add(String(seriesId) + '|' + day);
-        localStorage.setItem(DONE_KEY, JSON.stringify(arr));
-      } catch {}
-    }
-
-    function updatePillCount(delta) {
-      const pill = document.querySelector('a[href="{{ links.calendar }}"] .font-semibold .inline-flex');
-      if (!pill) return;
-      const next = Math.max(0, (parseInt(pill.textContent || '0', 10) || 0) + delta);
-      pill.textContent = next;
-      if (next === 0) pill.remove();
-    }
-
-    list.addEventListener('click', async (e) => {
-      const btn = e.target.closest('.done-btn');
-      if (!btn) return;
-
-      const series = btn.getAttribute('data-series');
-      const occ    = btn.getAttribute('data-occ');
-      if (!series || !occ) return;
-
-      btn.disabled = true;
-      btn.textContent = '...';
-
-      try {
-        const url = occ
-          ? `/calendar/api/events/${series}:${encodeURIComponent(occ)}`
-          : `/calendar/api/events/${series}`;
-
-        // First try PATCH
-        let ok = false;
-        {
-          const res = await fetch(url, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'same-origin',
-            body: JSON.stringify({ completed: true, occurrenceStart: occ })
-          });
-          ok = res.ok;
+      // trend
+      if (previous.length) {
+        const avgPrev = previous.reduce((s, w) => s + (Number(w.count) || 0), 0) / previous.length;
+        const deltaAvg = cur - avgPrev;
+        const pctAvg = avgPrev === 0 ? (cur === 0 ? 0 : 1) : (deltaAvg / avgPrev);
+        const trend = deltaAvg === 0
+          ? "Attendance is flat vs recent average."
+          : (deltaAvg > 0
+              ? `Attendance is up ${fmt(deltaAvg)} (${fmtPct(pctAvg)}) vs recent average.`
+              : `Attendance is down ${fmt(-deltaAvg)} (${fmtPct(pctAvg)}) vs recent average.`);
+        const tBox = document.getElementById("trend-highlights");
+        const tText = document.getElementById("trend-text");
+        if (tBox && tText) {
+          tText.textContent = trend;
+          tBox.hidden = false;
         }
-
-        // Fallback to legacy /complete POST if needed
-        if (!ok) {
-          const res2 = await fetch(`/calendar/api/events/${series}/complete`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'same-origin',
-            body: JSON.stringify({ completed: true, occurrenceStart: occ })
-          });
-          ok = res2.ok;
-        }
-
-        if (!ok) throw new Error('Server did not accept completion');
-
-        // ✅ Persisted successfully — now reflect locally and in UI
-        addToLocalDone(series, occ);
-        try { window.dispatchEvent(new Event('calendar:refresh')); } catch {}
-
-        const li = btn.closest('li');
-        if (li) {
-          li.style.opacity = '0.65';
-          li.style.textDecoration = 'line-through';
-          setTimeout(() => li.remove(), 220);
-        }
-
-        setTimeout(() => {
-          if (!list.querySelector('li')) {
-            list.innerHTML = 'No tasks scheduled for today.';
-          }
-        }, 240);
-
-        updatePillCount(-1);
-
-      } catch (err) {
-        alert('Could not mark as done. Please try again.');
-        btn.disabled = false;
-        btn.textContent = 'Done';
       }
-    });
-  })();
+    }
+  }
+
+  if (window.PERF_DATA && window.PERF_DATA.new_clients) {
+    renderPerf(window.PERF_DATA);
+  } else {
+    fetch("/figurella-reports/_perf/data")
+      .then(r => r.ok ? r.json() : Promise.reject(r.statusText))
+      .then(({ ok, data }) => ok && data ? renderPerf(data) : null)
+      .catch(err => console.warn("PERF fallback fetch failed:", err));
+  }
+});
 </script>
+
 {% endblock %}

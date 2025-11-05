@@ -1,4 +1,4 @@
-# app/charts/routes.py (read-only; saving disabled; blocks imported)
+# app/charts/routes.py (READ-ONLY; saving disabled; sidebar optional)
 
 from pathlib import Path
 from datetime import datetime, timezone
@@ -9,6 +9,9 @@ from sqlalchemy import func, or_, not_
 from app import db
 from app.models import Client, ChartEntry
 from .blocks import get_blocks  # workout presets (C*, V*, TO*, B*)
+
+# NEW: Customers history (Excel) reader for client picker
+from app.clients.services.customer_source import load_latest_customers
 
 # ---------- template folder detection ----------
 _here = Path(__file__).resolve()
@@ -118,8 +121,10 @@ def _build_sheets_for_client(client_name: str) -> dict:
 @charts_bp.get("/")
 def view_charts():
     """
-    Charts landing with server-side sidebar data.
-    Uses ?status=current (default) or ?status=all.
+    Charts landing. Legacy server-side sidebar data is still produced for
+    backwards compatibility, but the template can ignore it now that the
+    sidebar is removed.
+    Use ?status=current (default) or ?status=all.
     """
     status_mode = (request.args.get("status") or "current").strip().lower()
     filter_client = (request.args.get("client") or "").strip()
@@ -216,6 +221,31 @@ def client_card(client):
     except Exception as e:
         current_app.logger.error(f"[client_card/{client}] {e}")
         return f"<div style='padding:1rem;color:#b91c1c'>Template error: {e}</div>", 200
+
+# ------------------- NEW: JSON for client picker (Customers history Excel) -------------------
+@charts_bp.get("/clients.json")
+def charts_clients_json():
+    """
+    Serve a clean client list for the modal picker from the Customers history Excel.
+    Optional ?status=current|all to mimic the old filter semantics (default: all).
+    """
+    try:
+        items = load_latest_customers()  # [{'id','name','status'}, ...]
+        status_mode = (request.args.get("status") or "all").strip().lower()
+
+        if status_mode != "all":
+            # Lightweight client-side filtering similar to view_charts() rules
+            def is_current(status: str) -> bool:
+                s = (status or "").lower()
+                return (any(kw in s for kw in CURRENT_KEYWORDS)
+                        and not any(kw in s for kw in EXCLUDE_KEYWORDS))
+
+            items = [c for c in items if is_current(c.get("status", ""))]
+
+        return jsonify({"clients": items, "count": len(items)}), 200
+    except Exception as e:
+        current_app.logger.error(f"[charts_clients_json] {e}")
+        return jsonify({"clients": [], "count": 0, "error": "failed to load"}), 200
 
 # ------------------- workout blocks API (read-only) -------------------
 @charts_bp.get("/workout/blocks.json")

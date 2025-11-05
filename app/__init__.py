@@ -74,10 +74,10 @@ def create_app() -> Flask:
     from app.clients.routes               import clients_bp
     from app.daily_checkin.routes         import daily_checkin_bp
     from app.charts.routes                import charts_bp
-    from app.figurella_reports.routes     import (
-        reports_bp as figurella_reports_bp,
-        register_sub_blueprints,   # <-- ensure sub-BPs mount
-    )
+
+    # ✅ Figurella Reports (only the main reports_bp; no sub-blueprints helper needed)
+    from app.figurella_reports.routes     import reports_bp as figurella_reports_bp
+
     from app.ai_assistant.routes          import ai_bp as legacy_ai_bp
     from app.ai_assistant.umbrella        import umbrella_bp
     from app.calendar.routes              import calendar_bp
@@ -85,11 +85,10 @@ def create_app() -> Flask:
     from app.nutrition.routes             import bp as nutrition_bp  # ← Nutrition
     from app.profile.routes               import bp as profile_bp    # ← Profile
 
-    # ✅ NEW: Consultation
+    # ✅ Consultation
     from app.consultation.routes          import consultation_bp
 
-    # ✅ NEW: Simple reports endpoint for /reports/<name>
-    #    (This avoids 404 when clicking names in your Consultation “Added Contacts” list.)
+    # ✅ Simple reports endpoint for /reports/<name> (optional)
     try:
         from app.reports.routes           import reports_bp as simple_reports_bp
     except Exception:
@@ -103,8 +102,6 @@ def create_app() -> Flask:
 
     # IMPORTANT: reports_bp already carries url_prefix="/figurella-reports"
     app.register_blueprint(figurella_reports_bp)
-    # Mount sub-blueprints (agenda, contracts, last-session, payments-*, pip, customer-acquisitions)
-    register_sub_blueprints(app)
 
     app.register_blueprint(legacy_ai_bp,  url_prefix="/ai")
     app.register_blueprint(umbrella_bp,   url_prefix="/ai/assistant")

@@ -1,71 +1,158 @@
-{# app/templates/figurella_reports/reports_home.html #}
 {% extends "base.html" %}
-
-{% block extra_head %}
-<style>
-  :root{
-    --panel-bg: rgba(255,255,255,0.92);
-    --ring:#e9edf6;
-  }
-  html, body { margin:0; padding:0; height:100%; overflow:hidden; }
-
-  /* PAGE FRAME */
-  #home-main{
-    position:absolute; top:64px; bottom:44px; left:0; right:0;
-    display:flex; flex-direction:column; align-items:center; gap:1rem;
-    padding:1rem; box-sizing:border-box;
-    background:
-      radial-gradient(1200px 600px at 15% -10%, rgba(255,227,241,.6) 0%, transparent 60%),
-      radial-gradient(1200px 700px at 90% 110%, rgba(224,242,254,.6) 0%, transparent 55%),
-      radial-gradient(900px 450px at 50% 110%, rgba(255,190,150,.35) 0%, transparent 60%);
-  }
-
-  /* WRAPPER PANEL */
-  .panel-wrap{
-    width:min(1200px, 100%);
-    margin-inline:auto;
-    background:linear-gradient(180deg, var(--panel-bg), rgba(255,255,255,0.86));
-    border:1px solid rgba(255,255,255,.7);
-    border-radius:1.1rem;
-    box-shadow:0 12px 32px rgba(17, 12, 46, .08);
-    padding:2rem 1.5rem;
-    backdrop-filter: blur(6px);
-  }
-
-  /* PLACEHOLDER */
-  .empty-state{
-    display:flex; flex-direction:column; align-items:center; justify-content:center;
-    gap:.5rem; text-align:center; min-height:220px;
-  }
-  .empty-title{ font-weight:700; font-size:1.125rem; color:#0f172a; margin:0; }
-  .empty-sub{ color:#6b7280; margin:0; }
-  .empty-box{
-    border:1px dashed var(--ring);
-    background:#fff;
-    border-radius:1rem;
-    padding:1.25rem 1rem;
-    width:100%;
-  }
-</style>
-{% endblock %}
-
 {% block content %}
-<main id="home-main">
+<div class="max-w-6xl mx-auto p-4">
+  <h1 class="text-2xl font-semibold text-gray-900">Figurella Reports</h1>
+  <p class="text-sm text-gray-600 mb-6">
+    Pick a time window (max 1 year, past or future), then run the CLI sync to refresh Excel history.
+  </p>
 
-  <!-- All report icons/cards removed on purpose. Keeping a light placeholder. -->
-  <section id="home-pane" class="panel-wrap">
-    <div class="empty-box">
-      <div class="empty-state">
-        <h2 class="empty-title">Reports section disabled</h2>
-        <p class="empty-sub">
-          All report tiles and views have been temporarily removed.  
-          This page remains to avoid breaking routes while we decommission code step-by-step.
-        </p>
+  <!-- Date-range + CLI controls -->
+  <form id="rangeForm" class="flex flex-wrap items-end gap-3 mb-6 text-sm" method="post">
+    <div class="flex flex-col">
+      <label class="text-xs text-gray-600 mb-1">From</label>
+      <input name="from" id="fromDate" type="date" class="border rounded-md px-3 py-1.5" required>
+    </div>
+    <div class="flex flex-col">
+      <label class="text-xs text-gray-600 mb-1">To</label>
+      <input name="to" id="toDate" type="date" class="border rounded-md px-3 py-1.5" required>
+    </div>
+
+    <div class="flex flex-wrap gap-2">
+      <button id="btnRunAll"        type="button" class="px-3 py-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-500 transition">▶ Run All (CLI)</button>
+      <button id="btnRunCust"       type="button" class="px-3 py-1.5 rounded-lg bg-gray-800 text-white hover:bg-gray-700 transition">Customers</button>
+      <button id="btnRunPay"        type="button" class="px-3 py-1.5 rounded-lg bg-gray-800 text-white hover:bg-gray-700 transition">Payments</button>
+      <button id="btnRunAgenda"     type="button" class="px-3 py-1.5 rounded-lg bg-gray-800 text-white hover:bg-gray-700 transition">Agenda</button>
+      <button id="btnRunContracts"  type="button" class="px-3 py-1.5 rounded-lg bg-gray-800 text-white hover:bg-gray-700 transition">Contracts</button>
+      <!-- NEW: Notes -->
+      <button id="btnRunNotes"      type="button" class="px-3 py-1.5 rounded-lg bg-gray-800 text-white hover:bg-gray-700 transition">Notes</button>
+    </div>
+
+    <!-- Customers mode toggle (unchanged) -->
+    <label class="inline-flex items-center gap-2 text-sm text-gray-700 mt-2">
+      <input type="checkbox" id="fullRoster" class="accent-gray-700">
+      <span>Full roster for Customers (ignore date window)</span>
+    </label>
+
+    <div class="text-xs text-gray-500 ml-1">
+      Max span enforced to 1 year. Future dates allowed.
+      <div class="mt-1">
+        Contracts workbook contains two sheets:
+        <span class="font-medium">contracts</span> (merged) and
+        <span class="font-medium">sales</span> (detail). CSV uses the first sheet.
+      </div>
+      <div class="mt-1">
+        Notes use the window <span class="font-medium">From</span> date as the cutoff (noteCreatedAfter).
       </div>
     </div>
-  </section>
+  </form>
 
-</main>
+  <!-- Data cards -->
+  <div class="grid md:grid-cols-3 gap-5">
+    {% for key, m in files.items() %}
+    <div class="rounded-2xl border border-gray-200 bg-white/90 backdrop-blur p-4 shadow-sm">
+      <div class="flex items-center justify-between mb-2">
+        <h3 class="text-lg font-semibold capitalize text-gray-900">{{ key }}</h3>
+        {% if key == 'contracts' %}
+          <span class="text-[11px] text-gray-500">sheets: contracts, sales</span>
+        {% elif key == 'notes' %}
+          <span class="text-[11px] text-gray-500">cutoff = From</span>
+        {% endif %}
+      </div>
+
+      {% if m.csv.mtime %}
+        <p class="text-sm text-gray-700 mb-2">
+          ✅ <span class="font-medium">Available</span>
+          <span class="text-gray-600">
+            ({{ m.csv.rows if m.csv.rows is not none else '—' }} rows)
+          </span><br>
+          <span class="text-xs text-gray-500">Updated {{ m.csv.mtime }}</span>
+        </p>
+      {% else %}
+        <p class="text-sm text-amber-700 mb-2">⚠️ Not generated yet</p>
+      {% endif %}
+
+      <div class="mt-3 flex flex-wrap gap-2">
+        <a class="btn btn-light" href="/figurella-reports/reports/{{ key }}/history/view">Open</a>
+        {% if m.csv.mtime %}
+          <a class="btn btn-light" href="/figurella-reports/download/{{ key }}.csv">Download CSV</a>
+          <a class="btn btn-light" href="/figurella-reports/download/{{ key }}.xlsx">Download XLSX</a>
+        {% else %}
+          <span class="btn btn-light opacity-50 pointer-events-none">Download CSV</span>
+          <span class="btn btn-light opacity-50 pointer-events-none">Download XLSX</span>
+        {% endif %}
+      </div>
+
+      <div class="mt-4 border-t border-gray-100 pt-2 text-xs text-gray-500 break-all">
+        <div>CSV path: {{ m.csv.path }}</div>
+        <div>XLSX path: {{ m.xlsx.path }}</div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<script>
+  (function(){
+    const fmt = d => new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,10);
+    const today = new Date();
+    const addDays = (d,n)=> { const x=new Date(d); x.setDate(x.getDate()+n); return x; };
+
+    const from = document.getElementById('fromDate');
+    const to   = document.getElementById('toDate');
+
+    const min = addDays(today, -365), max = addDays(today, 365);
+    from.min = fmt(min); from.max = fmt(max);
+    to.min   = fmt(min); to.max   = fmt(max);
+
+    if (!from.value) from.value = fmt(addDays(today, -31));
+    if (!to.value)   to.value   = fmt(today);
+
+    function clampSpan(){
+      try{
+        const f = new Date(from.value), t = new Date(to.value);
+        const ms = t - f, yearMs = 365*24*3600*1000;
+        if (ms > yearMs) from.value = fmt(new Date(t.getTime() - yearMs));
+      }catch(e){}
+    }
+    from.addEventListener('change', clampSpan);
+    to.addEventListener('change', clampSpan);
+
+    function buildQS(mode){
+      const f = from.value ? from.value + "T00:00:00Z" : "";
+      const t = to.value   ? to.value   + "T23:59:59Z" : "";
+      const qs = new URLSearchParams();
+      if (f) qs.set('from', f);
+      if (t) qs.set('to', t);
+      if (mode) qs.set('mode', mode);
+
+      // Pass Customers mode toggle
+      const full = document.getElementById('fullRoster')?.checked;
+      qs.set('customers_mode', full ? 'all' : 'windowed');
+
+      return qs.toString();
+    }
+
+    async function postRun(mode, btn, label){
+      try {
+        btn.disabled = true; btn.textContent = 'Running…';
+        const r = await fetch(`/figurella-reports/_run/cli?` + buildQS(mode), { method: 'POST' });
+        const res = await r.json();
+        alert(res.ok ? `Done! ${res.message || ''}` : `Failed: ${res.error || 'Unknown error'}`);
+        if (res.refresh) location.reload();
+      } catch(e) {
+        alert('Run failed (network/server). Check console.');
+        console.error(e);
+      } finally {
+        btn.disabled = false; btn.textContent = label;
+      }
+    }
+
+    document.getElementById('btnRunAll').addEventListener('click',       () => postRun('all',        document.getElementById('btnRunAll'),       '▶ Run All (CLI)'));
+    document.getElementById('btnRunCust').addEventListener('click',      () => postRun('customers',  document.getElementById('btnRunCust'),      'Customers'));
+    document.getElementById('btnRunPay').addEventListener('click',       () => postRun('payments',   document.getElementById('btnRunPay'),       'Payments'));
+    document.getElementById('btnRunAgenda').addEventListener('click',    () => postRun('agenda',     document.getElementById('btnRunAgenda'),    'Agenda'));
+    document.getElementById('btnRunContracts').addEventListener('click', () => postRun('contracts',  document.getElementById('btnRunContracts'), 'Contracts'));
+    document.getElementById('btnRunNotes').addEventListener('click',     () => postRun('notes',      document.getElementById('btnRunNotes'),     'Notes'));
+  })();
+</script>
 {% endblock %}
-
-{% block scripts %}{% endblock %}

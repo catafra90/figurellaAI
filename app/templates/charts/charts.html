@@ -1,4 +1,4 @@
-{# templates/charts/charts.html (revised) #}
+{# templates/charts/charts.html (sidebar removed + client picker entrypoints, FAB top-right above modal) #}
 {% extends "base.html" %}
 
 {% block extra_head %}
@@ -7,75 +7,105 @@
   <script defer src="{{ url_for('static', filename='js/charts/loader.js') }}"></script>
   <script defer src="{{ url_for('static', filename='js/charts/autosave.js') }}"></script>
   <script defer src="{{ url_for('static', filename='js/charts/workout_rev1.js') }}"></script>
+  <script defer src="{{ url_for('static', filename='js/charts/client_picker.js') }}"></script>
 
   <style>
     /* Fill the parent <main id="app-main"> height */
     #charts-main { height: 100%; }
 
-    /* Grid shell: sidebar + optional right panel */
+    /* Single-pane layout */
     #charts-wrapper {
-      display: grid;
-      grid-template-columns: 380px 1fr;  /* sidebar + panel */
-      gap: 0;
+      display: block;
       width: 100%;
       height: 100%;
-      overflow: hidden;                  /* internal scrollers handle overflow */
-    }
-    #charts-wrapper.sidebar-only { grid-template-columns: 380px; }
-
-    /* Make the sidebar scroll independently */
-    .sidebar-scroll {
-      height: 100%;
-      overflow: auto;
-      -webkit-overflow-scrolling: touch;
+      overflow: hidden;
     }
 
-    /* Divider */
-    .sidebar-divider {
-      width: 10px;
-      flex: 0 0 10px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #64748b;
-    }
-
-    /* Right panel host: the card host becomes the scroller */
+    /* Content host scrolls internally */
     #card-host {
       height: 100%;
       overflow: auto;
       -webkit-overflow-scrolling: touch;
-      min-width: 0;                      /* prevent flex/grid overflow */
+      min-width: 0;
     }
 
-    /* Responsive: stack on small screens, keep both areas scrollable */
-    @media (max-width: 1024px) {
-      #charts-wrapper { grid-template-columns: 320px 1fr; }
+    /* Clients button pinned top-right, ALWAYS above modal & picker */
+    .clients-fab{
+      position: fixed;
+      right: 16px;
+      top: calc(var(--header-h, 64px) + 10px);
+      z-index: 10003;                      /* > picker(10002) > modal(4001) */
+      border: 0; border-radius: 999px;
+      padding: .5rem .9rem; font-weight: 700;
+      background: linear-gradient(90deg,#CC0066 0%, #AA0055 100%);
+      color: #fff; box-shadow: 0 8px 24px rgba(0,0,0,.18);
+      cursor: pointer;
     }
-    @media (max-width: 768px) {
-      #charts-wrapper.with-panel { grid-template-columns: 1fr; }  /* collapse: sidebar off-canvas pattern optional */
+    .clients-fab:hover{ filter: brightness(1.05); }
+    @media (max-width: 768px){
+      .clients-fab{
+        right: 12px;
+        top: calc(var(--header-h, 64px) + 8px);
+        padding: .45rem .8rem;
+        font-size: .9rem;
+      }
+    }
+
+    /* Force the client picker overlay ABOVE the modal layer */
+    #client-picker{
+      position: fixed !important;
+      inset: 0 !important;
+      z-index: 10002 !important;           /* sits above modal(4001) */
     }
   </style>
 {% endblock %}
 
 {% block content %}
-{# Toggle via query param: ?show=1 will render the right panel; default is sidebar-only #}
-{% set SHOW_CARD = (request.args.get('show') == '1') %}
-
 <div id="charts-main">
-  <div id="charts-wrapper" class="{{ 'with-panel' if SHOW_CARD else 'sidebar-only' }}">
-    <div class="sidebar-scroll">
-      {% include "charts/_sidebar.html" %}
+  <div id="charts-wrapper">
+    <div id="card-host">
+      {% include "charts/_card_host.html" %}
     </div>
-
-    {% if SHOW_CARD %}
-      <div class="sidebar-divider"><i class="bi bi-grip-horizontal"></i></div>
-      <div id="card-host">
-        {% include "charts/_card_host.html" %}
-      </div>
-    {% endif %}
   </div>
 </div>
+
+<button id="open-clients-fab" class="clients-fab" data-open-client-picker
+        title="Open client list" aria-label="Open client list">
+  Clients
+</button>
+
+{% include "charts/_client_picker.html" %}
 {% endblock %}
 
-{% block scripts %}{% endblock %}
+{% block scripts %}
+<script>
+/* Keep --header-h in sync so the FAB sits just under the header */
+(function(){
+  const header = document.querySelector('#app-header, header, .app-header');
+  function setHeaderVar(){
+    const h = header ? Math.round(header.getBoundingClientRect().height) : 64;
+    document.documentElement.style.setProperty('--header-h', h + 'px');
+  }
+  setHeaderVar();
+  window.addEventListener('resize', setHeaderVar, { passive:true });
+})();
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const params = new URLSearchParams(location.search);
+  const client = params.get('client');
+  if (client && typeof window.openClientChartByName === 'function') {
+    window.openClientChartByName(client, { mode: 'under-header' });
+  }
+});
+
+// Press "c" to open the client picker (ignored when typing in inputs)
+document.addEventListener('keydown', (e) => {
+  if (e.key.toLowerCase() === 'c' && !/input|textarea|select/i.test(e.target.tagName)) {
+    const btn = document.querySelector('[data-open-client-picker]');
+    btn?.click();
+  }
+});
+</script>
+{% endblock %}

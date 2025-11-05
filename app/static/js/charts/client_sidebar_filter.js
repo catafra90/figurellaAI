@@ -1,6 +1,15 @@
 // static/js/charts/client_sidebar_filter.js
+// Sidebar was removed; this becomes a no-op if #client-sidebar isn't present.
+// Safe to keep for backwards compatibility (won't error).
 (function () {
   const root = document;
+  const sidebar = root.querySelector('#client-sidebar');
+  if (!sidebar) {
+    // No sidebar in the new layout — nothing to do.
+    // console.info('[client_sidebar_filter] Sidebar not present; skipping.');
+    return;
+  }
+
   const searchInput = root.getElementById('clientSearch');
   const onlyCurrent = root.getElementById('onlyCurrent');
   const CURRENT_WORD = /\bcurrent\b/i; // matches "Current client", etc.

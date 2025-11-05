@@ -2,31 +2,43 @@
 
 {% block head_extra %}
 <style>
+  /* --- Global scroll defaults (all viewports) --- */
   html, body { height: auto; overflow-y: auto !important; }
   main { height: auto !important; overflow-y: visible !important; }
   html { scroll-behavior: smooth; }
+
+  /* --- Desktop: override layout locks from base.html (Tailwind classes, fixed shells, etc.) --- */
+  @media (min-width: 1024px) {
+    html, body { min-height: auto; height: auto !important; overflow-y: auto !important; }
+    /* common containers that sometimes set fixed height / hidden overflow */
+    #app, .app-shell, .layout-root, .page-root, .content, .container-responsive, main {
+      height: auto !important;
+      max-height: none !important;
+      overflow: visible !important;
+      position: static !important;
+    }
+  }
 
   .fade-in { animation: fadeIn .15s ease-out; }
   .fade-out { animation: fadeOut .12s ease-in forwards; }
   @keyframes fadeIn { from {opacity:0} to {opacity:1} }
   @keyframes fadeOut { from {opacity:1} to {opacity:0} }
 
-  /* Force contact links to be BLACK (override any text-white on parents) */
-  .contact-link,
-  .contact-link:visited {
+  /* Contact link styling */
+  .contact-link, .contact-link:visited {
     color: #000 !important;
     text-decoration: none;
     font-weight: 600;
   }
   .contact-link:hover {
-    color: #cc0066 !important; /* Figurella pink hover */
+    color: #cc0066 !important;
     text-decoration: underline;
   }
 
-  /* ✅ Strong rule for white consultation title */
+  /* White title inside colored bar */
   .consultation-title {
     color: #ffffff !important;
-    text-shadow: 0 0 6px rgba(0,0,0,0.35); /* glow for readability */
+    text-shadow: 0 0 6px rgba(0,0,0,0.35);
   }
 </style>
 {% endblock %}
@@ -37,7 +49,7 @@
   <form id="consultation-form" method="post" onsubmit="return false"
         class="space-y-6 rounded-2xl bg-white/90 backdrop-blur border border-white/70 p-6 shadow-sm relative overflow-hidden">
 
-    <!-- White Consultation Title now inside box -->
+    <!-- Title -->
     <h1 class="text-2xl font-bold consultation-title mb-6 bg-figurella text-center py-3 rounded-xl shadow-md">
       Consultation
     </h1>
@@ -187,6 +199,24 @@
   document.addEventListener('keydown', (e) => {
     if (!modal.classList.contains('hidden') && e.key === 'Escape') closeModal();
   });
+
+  /* --- Desktop scroll unlock (JS fallback, beats inline styles and Tailwind classes) --- */
+  try {
+    if (window.matchMedia('(min-width: 1024px)').matches) {
+      [document.documentElement, document.body].forEach(el => {
+        el.style.overflowY = 'auto';
+        el.style.height = 'auto';
+        el.classList.remove('overflow-hidden', 'h-screen', 'fixed');
+      });
+      const main = document.querySelector('main, #app, .app-shell, .layout-root, .page-root, .content, .container-responsive');
+      if (main) {
+        main.style.height = 'auto';
+        main.style.maxHeight = 'none';
+        main.style.overflowY = 'visible';
+        main.classList.remove('overflow-hidden', 'h-screen', 'fixed');
+      }
+    }
+  } catch (_) {}
 })();
 </script>
 {% endblock %}

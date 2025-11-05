@@ -1,221 +1,172 @@
-// client_modal.positioning.js — sidebar-tethered, right-aligned, animation-safe (revised)
+// static/js/charts/client_modal.positioning.js — wide (edge-gutter) placement + iPad/zoom safe
 (function () {
+  // Ensure utils exist (from core)
   if (!window.ClientModal || !window.ClientModal.utils) {
     window.ClientModal = window.ClientModal || { utils: {} };
     window.ClientModal.utils.setXY = (el,x,y)=>{ el.style.setProperty('--x', x+'px'); el.style.setProperty('--y', y+'px'); };
-    window.ClientModal.utils.clampIntoViewport = () => {};
-    window.ClientModal.utils.capSizeToViewport = () => {};
   }
-  const { setXY, clampIntoViewport, capSizeToViewport } = window.ClientModal.utils;
+  const { setXY } = window.ClientModal.utils;
 
-  const RIGHT_MARGIN = 12;
-  const LEFT_GUTTER  = 6;
-  const TETHER_MS    = 800;
-  const MIN_W        = 560;
-  const MAX_W        = 1400;
+  // ──────────────────────────────────────────────────────────────────────────
+  // Layout constants (match CSS gutters)
+  // ──────────────────────────────────────────────────────────────────────────
+  const EDGE_GUTTER = 16;      // px gutter left/right & bottom
+  const TOP_MARGIN  = 12;      // minimal top gap when centering
+  const MIN_W       = 560;     // don't shrink below this
+  const MAX_W       = 1920;    // hard cap for ultra-wide screens
 
-  const SIDEBAR_SELECTORS = ['#client-sidebar','.sidebar','[data-sidebar]','[aria-label="Clients sidebar"]'];
-  const TOGGLE_SELECTORS  = ['#sidebar-toggle','[data-sidebar-toggle]','[aria-controls="client-sidebar"]'];
-
-  function widthFractionFor(iw){
-    if (iw >= 1600) return 0.64;
-    if (iw >= 1440) return 0.66;
-    if (iw >= 1280) return 0.70;
-    if (iw >= 1120) return 0.74;
-    if (iw >= 1024) return 0.78;
-    if (iw >=  900) return 0.82;
-    if (iw >=  768) return 0.88;
-    return 0.96;
-  }
-  const isInteracting = (el) => el.classList.contains('dragging') || el.classList.contains('resizing');
-  const isFree = (el) => el?.dataset?.free === "1";
-
-  const findFirst = (sels) => sels.map((s)=>document.querySelector(s)).find(Boolean) || null;
-  const findSidebar = () => findFirst(SIDEBAR_SELECTORS);
-  const findToggle  = () => findFirst(TOGGLE_SELECTORS);
-
-  const readHeaderHeight = () => {
-    const root = getComputedStyle(document.documentElement);
-    return parseInt(root.getPropertyValue('--header-h')) || 64;
-  };
-
-  function sidebarRightPx(){
-    const sb = findSidebar();
-    if (sb) {
-      const r = sb.getBoundingClientRect();
-      return Math.max(0, Math.min(window.innerWidth, Math.round(r.right)));
+  // Visual-viewport box (works on zoom & iPad keyboard)
+  function vvBox(){
+    const vv = window.visualViewport;
+    if (vv) {
+      return {
+        w: Math.round(vv.width),
+        h: Math.round(vv.height),
+        left: Math.round(vv.pageLeft),
+        top:  Math.round(vv.pageTop)
+      };
     }
-    const root = getComputedStyle(document.documentElement);
-    const body = document.body;
-    const sbWBody = parseInt(getComputedStyle(body).getPropertyValue('--sb-w')) || 0;
-    const sbOpen  = parseInt(root.getPropertyValue('--sb-open')) || 280;
-    const sbGap   = parseInt(root.getPropertyValue('--sb-gap'))   || 16;
-    return (sbWBody || sbOpen) + sbGap;
+    return {
+      w: Math.round(window.innerWidth),
+      h: Math.round(window.innerHeight),
+      left: Math.round(window.scrollX || 0),
+      top:  Math.round(window.scrollY || 0)
+    };
+  }
+
+  // Throttle placement to once per frame
+  let rafId = 0;
+  function rafPlace(el){
+    if (rafId) return;
+    rafId = requestAnimationFrame(() => { rafId = 0; placeSafely(el); });
+  }
+  function rafPlaceAll(){
+    const list = document.querySelectorAll('#floating-modals .client-modal');
+    if (!list.length || rafId) return;
+    rafId = requestAnimationFrame(() => { rafId = 0; list.forEach(el => placeSafely(el)); });
   }
 
   function placeAtLayout(el){
+    const tabsH   = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--tabs-bar-h')) || 0;
+    const headerH = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--header-h')) || 64;
+    const { w: iw, h: ih, left: vvx, top: vvy } = vvBox();
+
+    // Fullscreen
     if (el.classList.contains('size-fullscreen')) {
-      el.style.width  = window.innerWidth + 'px';
-      el.style.height = window.innerHeight + 'px';
-      setXY(el, 0, 0);
+      el.style.width  = iw + 'px';
+      el.style.height = ih + 'px';
+      setXY(el, vvx, vvy);
       return;
     }
+
+    // Under header (fills width below header)
     if (el.classList.contains('size-full-under-header')) {
-      const headerH = readHeaderHeight();
-      el.style.width  = window.innerWidth + 'px';
-      el.style.height = Math.max(180, window.innerHeight - headerH) + 'px';
-      setXY(el, 0, headerH);
+      el.style.width  = iw + 'px';
+      el.style.height = Math.max(220, ih - headerH) + 'px';
+      setXY(el, vvx, vvy + headerH);
       return;
     }
 
-    const headerH = readHeaderHeight();
-    const leftMin = sidebarRightPx() + LEFT_GUTTER;
-    const top     = headerH + 8;
+    // Centered preset (size-xl): wide, pinned under header
+if (el.classList.contains('size-xl')) {
+  const maxWide = Math.min(iw - 2*EDGE_GUTTER, MAX_W);
+  const width   = Math.max(MIN_W, maxWide);
 
-    const iw = window.innerWidth;
-    const ih = window.innerHeight;
+  // Respect header at the top and tabs at the bottom
+  const topGap   = headerH + 8;                  // ⬅️ sit right below logo/header
+  const availH   = Math.max(220, ih - topGap - EDGE_GUTTER - tabsH);
+  const targetH  = Math.round(ih * 0.88);
+  const height   = Math.min(targetH, availH);
 
-    const rightEd = iw - RIGHT_MARGIN;
-    const availH  = Math.max(180, ih - top - RIGHT_MARGIN);
+  const left = Math.round(vvx + (iw - width)/2);
+  const top  = Math.round(vvy + topGap);         // ⬅️ fixed under header
 
-    let targetW;
-    if (el.classList.contains('size-full')) {
-      targetW = Math.max(240, rightEd - leftMin);
-    } else {
-      const frac = widthFractionFor(iw);
-      const rawW = Math.floor(iw * frac);
-      targetW = Math.min(
-        Math.max(rawW, MIN_W),
-        Math.min(rightEd - leftMin, MAX_W)
-      );
-    }
+  el.style.width  = width + 'px';
+  el.style.height = height + 'px';
+  setXY(el, left, top);
+  return;
+}
 
-    let left  = Math.max(leftMin, rightEd - targetW);
-    let width = rightEd - left;
 
-    if (width < 320) {
-      width = Math.max(240, rightEd - leftMin);
-      left  = rightEd - width;
-    }
+    // Default: near-full, right-aligned below header (legacy behavior but wider)
+    const top   = headerH + 8;
+    const width = Math.max(MIN_W, Math.min(iw - 2*EDGE_GUTTER, MAX_W));
+    const left  = EDGE_GUTTER;
+    const availH = Math.max(220, ih - top - EDGE_GUTTER - tabsH);
 
     el.style.width  = width + 'px';
     el.style.height = availH + 'px';
-    setXY(el, left, top);
+    setXY(el, vvx + left, vvy + top);
   }
 
-  const placeSafely = (el) => {
+  function placeSafely(el){
     if (!el) return;
-    if (isInteracting(el)) return;
-    if (isFree(el)) {                  // stay wherever user dropped it
-      clampIntoViewport(el);
-      capSizeToViewport(el);
-      return;
-    }
     placeAtLayout(el);
-    clampIntoViewport(el);
-    capSizeToViewport(el);
-  };
 
-  function startRafTether(el, ms = TETHER_MS){
-    if (!el || isFree(el)) return;     // free mode: no sidebar tethering
-    let rafId = 0, until = performance.now() + ms, lastRight = -1;
+    // Final clamp to visual viewport with same gutters
+    const r = el.getBoundingClientRect();
+    const { w: iw, h: ih, left: vvx, top: vvy } = vvBox();
 
-    const tick = () => {
-      const nowRight = sidebarRightPx();
-      if (lastRight !== -1 && nowRight !== lastRight) {
-        until = performance.now() + 120;
-      }
-      lastRight = nowRight;
+    let x = parseFloat(getComputedStyle(el).getPropertyValue('--x')) || 0;
+    let y = parseFloat(getComputedStyle(el).getPropertyValue('--y')) || 0;
 
-      placeSafely(el);
-      if (performance.now() < until) rafId = requestAnimationFrame(tick);
-    };
+    const minX = vvx + EDGE_GUTTER;
+    const maxX = vvx + iw - EDGE_GUTTER - r.width;
+    const minY = vvy + EDGE_GUTTER;
+    const maxY = vvy + ih - EDGE_GUTTER - r.height;
 
-    if (el.__rafTetherId) cancelAnimationFrame(el.__rafTetherId);
-    el.__rafTetherId = requestAnimationFrame(tick);
+    x = Math.round(Math.max(minX, Math.min(maxX, x)));
+    y = Math.round(Math.max(minY, Math.min(maxY, y)));
+
+    setXY(el, x, y);
   }
 
+  // ── Lifecycle hooks ───────────────────────────────────────────────────────
   document.addEventListener('clientmodal:opened', (e)=>{
-    const el = e.detail?.el; if (!el) return;
+    const el = e.detail && e.detail.el; if (!el) return;
 
-    if (!el.classList.contains('size-fullscreen') &&
-        !el.classList.contains('size-full-under-header')) {
+    // Normalize to XL (centered wide) unless fullscreen variants are explicit
+    if (!el.classList.contains('size-fullscreen') && !el.classList.contains('size-full-under-header')) {
+      el.classList.remove('size-full');
       el.classList.add('size-xl');
     }
 
-    requestAnimationFrame(() => {
-      placeSafely(el);
-      requestAnimationFrame(() => placeSafely(el));
-    });
+    // Double-pass for first paint
+    requestAnimationFrame(() => { placeSafely(el); requestAnimationFrame(() => placeSafely(el)); });
 
-    const onWinResize = () => placeSafely(el);
-    window.addEventListener('resize', onWinResize, { passive: true });
-    el.__pos_onWinResize = onWinResize;
-
-    const sb = findSidebar();
-    let sbResizeObs = null;
-    const onTrans = () => startRafTether(el);
-
-    if (!isFree(el)) {
-      if (sb && 'ResizeObserver' in window) {
-        sbResizeObs = new ResizeObserver(() => startRafTether(el, 900));
-        sbResizeObs.observe(sb);
-      }
-      if (sb) {
-        sb.addEventListener('transitionstart', onTrans, { passive:true });
-        sb.addEventListener('transitionrun',   onTrans, { passive:true });
-        sb.addEventListener('transitionend',   onTrans, { passive:true });
-      }
-      const tog = findToggle();
-      const onToggleClick = () => startRafTether(el);
-      if (tog) tog.addEventListener('click', onToggleClick, { passive:true });
-      el.__pos_onToggleClick = onToggleClick;
+    const onResize = () => rafPlace(el);
+    window.addEventListener('resize', onResize, { passive: true });
+    if (window.visualViewport) {
+      visualViewport.addEventListener('resize', onResize, { passive: true });
+      visualViewport.addEventListener('scroll',  onResize, { passive: true });
     }
 
-    const mo = new MutationObserver((ml) => {
-      if (isFree(el)) return;
-      for (const m of ml) {
-        if (m.type === 'attributes' && m.attributeName === 'class') {
-          startRafTether(el);
-          break;
-        }
+    el.__pos_off = () => {
+      window.removeEventListener('resize', onResize);
+      if (window.visualViewport) {
+        visualViewport.removeEventListener('resize', onResize);
+        visualViewport.removeEventListener('scroll',  onResize);
       }
-    });
-    mo.observe(document.body, { attributes: true });
+    };
 
     const onClosed = (ev) => {
-      if (ev.detail?.el !== el) return;
-      window.removeEventListener('resize', onWinResize);
+      if (!ev.detail || ev.detail.el !== el) return;
+      el.__pos_off?.();
       document.removeEventListener('clientmodal:closed', onClosed);
-      if (el.__pos_onToggleClick) {
-        const tog = findToggle();
-        if (tog) tog.removeEventListener('click', el.__pos_onToggleClick);
-      }
-      if (sb) {
-        sb.removeEventListener('transitionstart', onTrans);
-        sb.removeEventListener('transitionrun',   onTrans);
-        sb.removeEventListener('transitionend',   onTrans);
-      }
-      if (sbResizeObs) sbResizeObs.disconnect();
-      mo.disconnect();
-      if (el.__rafTetherId) cancelAnimationFrame(el.__rafTetherId);
     };
     document.addEventListener('clientmodal:closed', onClosed, { passive: true });
 
-    if ('ResizeObserver' in window) {
-      let done = false;
-      const ro = new ResizeObserver(() => {
-        if (done) return; done = true;
-        placeSafely(el);
-        ro.disconnect();
-      });
-      ro.observe(el);
-    }
-  });
+    // Extra recenter after keyboard/toolbar/tabs animations
+    setTimeout(() => rafPlace(el), 250);
+  }, { passive: true });
 
   document.addEventListener('clientmodal:recenter', (e)=>{
-    const el = e.detail?.el;
-    if (!el) return;
-    placeSafely(el);
+    const el = e.detail && e.detail.el; if (!el) return;
+    rafPlace(el);
+  }, { passive: true });
+
+  // Recenter ALL open modals when the tabs bar changes
+  document.addEventListener('clienttabs:updated', () => {
+    rafPlaceAll();
   }, { passive: true });
 })();

@@ -1,29 +1,33 @@
-<!-- Location Performance (with Current Week Attendance card) -->
-<div class="mt-6">
-  <div class="rounded-2xl bg-white/90 backdrop-blur border border-white/70 p-6 shadow-sm">
-    <h2 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-      <!-- Bar Chart Icon -->
-      <svg class="h-5 w-5 text-violet-600" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <rect x="4" y="10" width="3" height="9" rx="1" fill="currentColor"></rect>
-        <rect x="10" y="6" width="3" height="13" rx="1" fill="currentColor" opacity=".85"></rect>
-        <rect x="16" y="3" width="3" height="16" rx="1" fill="currentColor" opacity=".7"></rect>
-      </svg>
+{% extends "base.html" %}
+{% block content %}
+
+<!-- Location Performance (Option 1 — pink-accent glass style, features unchanged) -->
+<div class="mt-0">
+  <div class="rounded-2xl bg-gradient-to-br from-pink-50 to-white/90 backdrop-blur border border-pink-100 p-6 shadow-md">
+    <h2 class="text-lg font-semibold text-pink-700 mb-4 flex items-center gap-2">
+      <span class="inline-grid place-items-center h-6 w-6 rounded-md bg-pink-100 text-pink-700">
+        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <rect x="4" y="10" width="3" height="9" rx="1"></rect>
+          <rect x="10" y="6"  width="3" height="13" rx="1" opacity=".85"></rect>
+          <rect x="16" y="3"  width="3" height="16" rx="1" opacity=".7"></rect>
+        </svg>
+      </span>
       Location Performance
     </h2>
 
     <!-- Top metrics -->
     <div class="grid gap-4 sm:grid-cols-3">
       <!-- Active Clients -->
-      <div class="p-4 rounded-xl bg-gray-50 border border-gray-200">
-        <div class="text-sm text-gray-500">Active Clients</div>
+      <div class="p-4 rounded-xl border border-pink-100 bg-white/70 hover:bg-pink-50 transition">
+        <div class="text-xs text-pink-700 font-medium">Active Clients</div>
         <div id="perf-active-clients" class="text-2xl font-bold text-gray-900">—</div>
       </div>
 
-      <!-- New Clients (This Month) with Try / OK -->
-      <div class="p-4 rounded-xl bg-gray-50 border border-gray-200">
+      <!-- New Clients (This Month) with Try / OK + Last Month -->
+      <div class="p-4 rounded-xl border border-pink-100 bg-white/70 hover:bg-pink-50 transition">
         <div class="flex items-center justify-between">
           <div>
-            <div class="text-sm text-gray-500">New Clients (This Month)</div>
+            <div class="text-xs text-pink-700 font-medium">New Clients (This Month)</div>
             <div id="perf-new-clients-total" class="text-2xl font-bold text-gray-900">—</div>
           </div>
           <div class="flex gap-2">
@@ -35,11 +39,17 @@
             </div>
           </div>
         </div>
+        <div class="mt-2 text-sm text-gray-600">
+          <span class="text-gray-500">Last month:</span>
+          <span class="font-semibold text-gray-900" id="perf-last-month-total">—</span>
+          <span class="ml-1 text-amber-700">(Try: <span id="perf-last-month-try">—</span>)</span>
+          <span class="ml-2 text-emerald-700">(OK: <span id="perf-last-month-ok">—</span>)</span>
+        </div>
       </div>
 
-      <!-- Current Week Attendance (new) -->
-      <div class="p-4 rounded-xl bg-gray-50 border border-gray-200">
-        <div class="text-sm text-gray-500">Current Week Attendance</div>
+      <!-- Current Week Attendance -->
+      <div class="p-4 rounded-xl border border-pink-100 bg-white/70 hover:bg-pink-50 transition">
+        <div class="text-xs text-pink-700 font-medium">Current Week Attendance</div>
         <div id="perf-current-week-att" class="text-2xl font-bold text-gray-900">—</div>
       </div>
     </div>
@@ -47,22 +57,17 @@
     <!-- Attendance goal + comparisons -->
     <div class="mt-6 grid gap-4 lg:grid-cols-[290px,1fr]">
       <!-- Goal box -->
-      <div class="p-4 rounded-xl bg-gray-50 border border-gray-200">
+      <div class="p-4 rounded-xl border border-pink-100 bg-white/70 hover:bg-pink-50 transition">
         <div class="flex items-center justify-between mb-2">
           <div class="text-sm font-medium text-gray-800">Weekly Attendance Goal</div>
-          <button id="goal-reset" class="text-xs text-gray-500 hover:text-gray-700 underline">Reset</button>
+          <button id="goal-reset" class="text-xs text-pink-700 hover:text-pink-800 underline">Reset</button>
         </div>
         <div class="flex items-center gap-3">
-          <input
-            id="attendance-goal"
-            type="number"
-            min="0"
-            step="1"
-            class="w-28 rounded-lg border-gray-300 focus:ring-figurella/40 focus:border-figurella text-gray-900"
-            placeholder="e.g., 120">
-          <button
-            id="goal-save"
-            class="px-3 py-2 text-sm rounded-lg bg-pink-600 text-white font-medium hover:bg-pink-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-400">
+          <input id="attendance-goal" type="number" min="0" step="1"
+                 class="w-28 rounded-lg border-pink-200 focus:ring-pink-300 focus:border-pink-300 text-gray-900"
+                 placeholder="e.g., 120">
+          <button id="goal-save"
+                  class="px-3 py-2 text-sm rounded-lg bg-pink-600 text-white font-medium hover:bg-pink-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-400">
             Save
           </button>
         </div>
@@ -73,32 +78,29 @@
       </div>
 
       <!-- Dynamic attendance table -->
-      <div class="rounded-xl border border-gray-200 overflow-hidden">
-        <div class="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
-          <div class="text-sm font-medium text-gray-800">Attendance — Current vs Previous Weeks</div>
-          <div class="text-xs text-gray-500">Current week compares against each prior week</div>
+      <div class="rounded-xl border border-pink-100 overflow-hidden bg-white/70">
+        <div class="px-4 py-3 bg-pink-50 border-b border-pink-100 flex items-center justify-between">
+          <div class="text-sm font-medium text-pink-800">Attendance — Current vs Previous Weeks</div>
+          <div class="text-xs text-pink-700">Current week compares against each prior week</div>
         </div>
 
         <div class="overflow-x-auto">
           <table class="min-w-full text-sm">
-            <thead class="bg-gray-50 text-gray-600">
+            <thead class="bg-pink-50 text-pink-700">
               <tr>
-                <th class="text-left px-4 py-2 border-b">Week</th>
-                <th class="text-right px-4 py-2 border-b">Previous</th>
-                <th class="text-right px-4 py-2 border-b">Current</th>
-                <th class="text-right px-4 py-2 border-b">Δ</th>
-                <th class="text-right px-4 py-2 border-b">% Change</th>
+                <th class="text-left px-4 py-2 border-b border-pink-100">Week</th>
+                <th class="text-right px-4 py-2 border-b border-pink-100">Previous</th>
+                <th class="text-right px-4 py-2 border-b border-pink-100">Current</th>
+                <th class="text-right px-4 py-2 border-b border-pink-100">Δ</th>
+                <th class="text-right px-4 py-2 border-b border-pink-100">% Change</th>
               </tr>
             </thead>
-            <tbody id="attendance-rows" class="divide-y divide-gray-200">
-              <!-- rows injected by JS -->
-            </tbody>
+            <tbody id="attendance-rows" class="divide-y divide-pink-100 text-gray-800"></tbody>
           </table>
         </div>
       </div>
     </div>
 
-    <!-- Trend blurb (optional) -->
     <div class="mt-4 text-sm text-gray-600" id="trend-highlights" hidden>
       <span class="font-medium">Trend Highlights:</span>
       <span id="trend-text">—</span>
@@ -106,143 +108,184 @@
   </div>
 </div>
 
-<!-- PERF_DATA seed (remove if you inject from Flask earlier on the page) -->
+<!-- 0) Seed (will be overwritten if server block is present) -->
 <script>
-window.PERF_DATA = window.PERF_DATA || {
-  active_clients: "—",
-  new_clients: { "try": 0, "ok": 0 },
-  attendance: {
-    weeks: [
-      { label: "This Week", count: 0, current: true },
-      { label: "Last Week", count: 0 },
-      { label: "2 Weeks Ago", count: 0 }
-    ]
-  }
-};
+  window.PERF_DATA = window.PERF_DATA || {
+    active_clients: "—",
+    new_clients: {
+      this_month: { total: 0, try: 0, ok: 0 },
+      last_month: { total: 0, try: 0, ok: 0 }
+    },
+    attendance: {
+      weeks: [
+        { label: "This Week", count: 0, current: true },
+        { label: "Last Week", count: 0 },
+        { label: "2 Weeks Ago", count: 0 }
+      ]
+    }
+  };
+</script>
+
+<!-- Server data safely embedded as JSON -->
+<script id="perf-data" type="application/json">
+{{ (PERF_DATA | default({})) | tojson | safe }}
 </script>
 
 <script>
-(function () {
+  // Read JSON that Jinja rendered
+  (function () {
+    let perf = null;
+    try { perf = JSON.parse(document.getElementById('perf-data').textContent); } catch (e) {}
+    if (perf && typeof perf === 'object') {
+      window.PERF_DATA = perf;  // your render code will use this
+    } else {
+      window.PERF_DATA = null;  // allow fallback fetch
+    }
+  })();
+</script>
+
+<!-- 2) Render + fallback -->
+<script>
+document.addEventListener("DOMContentLoaded", function () {
   const el = (id) => document.getElementById(id);
   const fmt = (n) => (Number.isFinite(n) ? n.toLocaleString() : "—");
   const fmtPct = (v) => (Number.isFinite(v) ? `${(v * 100).toFixed(1)}%` : "—");
 
-  // ---- Load data ----
-  const data = window.PERF_DATA || {};
-  const active = Number(data.active_clients) || 0;
+  function renderPerf(data) {
+    if (!data) return;
 
-  // bracket-notation for reserved keys
-  const tries = Number(data?.new_clients?.['try']) || 0;
-  const oks   = Number(data?.new_clients?.['ok'])  || 0;
-  const totalNew = tries + oks;
+    const active = Number(data.active_clients);
+    el("perf-active-clients").textContent = Number.isFinite(active) ? fmt(active) : "—";
 
-  const weeks = Array.isArray(data?.attendance?.weeks) ? data.attendance.weeks.slice() : [];
-  if (!weeks.length) return;
+    // this month
+    const tm = data?.new_clients?.this_month || { total: 0, try: 0, ok: 0 };
+    const tmTry = Number(tm.try) || 0;
+    const tmOk  = Number(tm.ok)  || 0;
+    const tmTot = Number.isFinite(Number(tm.total)) ? Number(tm.total) : (tmTry + tmOk);
+    el("perf-new-try").textContent = fmt(tmTry);
+    el("perf-new-ok").textContent  = fmt(tmOk);
+    el("perf-new-clients-total").textContent = fmt(tmTot);
 
-  // Ensure first item is current week
-  weeks.sort((a, b) => (b.current === true) - (a.current === true));
-  const current = weeks[0] || { label: "Current", count: 0 };
-  const previous = weeks.slice(1);
+    // last month
+    const lm = data?.new_clients?.last_month || { total: 0, try: 0, ok: 0 };
+    const lmTry = Number(lm.try) || 0;
+    const lmOk  = Number(lm.ok)  || 0;
+    const lmTot = Number.isFinite(Number(lm.total)) ? Number(lm.total) : (lmTry + lmOk);
+    el("perf-last-month-total").textContent = fmt(lmTot);
+    el("perf-last-month-try").textContent   = fmt(lmTry);
+    el("perf-last-month-ok").textContent    = fmt(lmOk);
 
-  // ---- Render top metrics ----
-  el("perf-active-clients").textContent = fmt(active);
-  el("perf-new-try").textContent = fmt(tries);
-  el("perf-new-ok").textContent = fmt(oks);
-  el("perf-new-clients-total").textContent = fmt(totalNew);
+    // attendance
+    const weeks = Array.isArray(data?.attendance?.weeks) ? data.attendance.weeks.slice() : [];
+    if (!weeks.length) return;
+    weeks.sort((a, b) => (b?.current === true) - (a?.current === true));
+    const current = weeks[0] || { label: "Current", count: 0 };
+    const previous = weeks.slice(1);
 
-  // NEW: visible big number for current week
-  el("perf-current-week-att").textContent = fmt(Number(current.count) || 0);
+    el("perf-current-week-att").textContent = fmt(Number(current.count) || 0);
 
-  // ---- Goal handling (localStorage) ----
-  const GOAL_KEY = "figurella.attendance.goal";
-  const goalInput = el("attendance-goal");
-  const goalSave  = el("goal-save");
-  const goalReset = el("goal-reset");
-  const attCurrentEl = el("att-current");
-  const goalGapEl    = el("att-goal-gap");
+    // goal UI
+    (function () {
+      const GOAL_KEY = "figurella.attendance.goal";
+      const goalInput = el("attendance-goal");
+      const goalSave  = el("goal-save");
+      const goalReset = el("goal-reset");
+      const attCurrentEl = el("att-current");
+      const goalGapEl    = el("att-goal-gap");
 
-  const loadGoal = () => {
-    const v = localStorage.getItem(GOAL_KEY);
-    return v ? parseInt(v, 10) : NaN;
-  };
-  const setGoalUI = (g) => {
-    if (Number.isFinite(g)) {
-      goalInput.value = g;
-      const gap = g - (Number(current.count) || 0);
-      attCurrentEl.textContent = fmt(current.count);
-      goalGapEl.textContent = (gap === 0 ? "On goal" : (gap > 0 ? `${fmt(gap)} to goal` : `${fmt(-gap)} over goal`));
-      goalGapEl.className = "font-semibold " + (gap > 0 ? "text-amber-600" : (gap < 0 ? "text-emerald-600" : "text-gray-800"));
-    } else {
-      attCurrentEl.textContent = fmt(current.count);
-      goalGapEl.textContent = "—";
-      goalGapEl.className = "font-semibold text-gray-500";
+      const loadGoal = () => {
+        const v = localStorage.getItem(GOAL_KEY);
+        return v ? parseInt(v, 10) : NaN;
+      };
+      const setGoalUI = (g) => {
+        const cur = Number(current.count) || 0;
+        if (Number.isFinite(g)) {
+          goalInput.value = g;
+          const gap = g - cur;
+          attCurrentEl.textContent = fmt(cur);
+          goalGapEl.textContent = (gap === 0 ? "On goal" : (gap > 0 ? `${fmt(gap)} to goal` : `${fmt(-gap)} over goal`));
+          goalGapEl.className = "font-semibold " + (gap > 0 ? "text-amber-600" : (gap < 0 ? "text-emerald-600" : "text-gray-800"));
+        } else {
+          attCurrentEl.textContent = fmt(cur);
+          goalGapEl.textContent = "—";
+          goalGapEl.className = "font-semibold text-gray-500";
+        }
+      };
+      setGoalUI(loadGoal());
+      goalSave?.addEventListener("click", () => {
+        const val = parseInt(goalInput.value, 10);
+        if (Number.isFinite(val) && val >= 0) {
+          localStorage.setItem(GOAL_KEY, String(val));
+          setGoalUI(val);
+        }
+      });
+      goalReset?.addEventListener("click", () => {
+        localStorage.removeItem(GOAL_KEY);
+        goalInput.value = "";
+        setGoalUI(NaN);
+      });
+    })();
+
+    // table
+    const tbody = el("attendance-rows");
+    if (tbody) {
+      tbody.innerHTML = "";
+      const cur = Number(current.count) || 0;
+      const makeDeltaCell = (delta) => {
+        const up = delta > 0, down = delta < 0;
+        const cls = up ? "text-emerald-700" : (down ? "text-rose-700" : "text-gray-700");
+        const badge = up ? "▲" : (down ? "▼" : "•");
+        return `<span class="${cls} font-semibold">${badge} ${fmt(delta)}</span>`;
+      };
+      const makePctCell = (pct) => {
+        const up = pct > 0, down = pct < 0;
+        const cls = up ? "text-emerald-700" : (down ? "text-rose-700" : "text-gray-700");
+        return `<span class="${cls} font-semibold">${fmtPct(pct)}</span>`;
+      };
+      previous.forEach((w) => {
+        const prev = Number(w.count) || 0;
+        const delta = cur - prev;
+        const pct = prev === 0 ? (cur === 0 ? 0 : 1) : (delta / prev);
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td class="px-4 py-2 text-gray-800">${w.label || "Previous"}</td>
+          <td class="px-4 py-2 text-right tabular-nums text-gray-800">${fmt(prev)}</td>
+          <td class="px-4 py-2 text-right tabular-nums text-gray-900 font-semibold">${fmt(cur)}</td>
+          <td class="px-4 py-2 text-right tabular-nums">${makeDeltaCell(delta)}</td>
+          <td class="px-4 py-2 text-right tabular-nums">${makePctCell(pct)}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      // trend
+      if (previous.length) {
+        const avgPrev = previous.reduce((s, w) => s + (Number(w.count) || 0), 0) / previous.length;
+        const deltaAvg = cur - avgPrev;
+        const pctAvg = avgPrev === 0 ? (cur === 0 ? 0 : 1) : (deltaAvg / avgPrev);
+        const trend = deltaAvg === 0
+          ? "Attendance is flat vs recent average."
+          : (deltaAvg > 0
+              ? `Attendance is up ${fmt(deltaAvg)} (${fmtPct(pctAvg)}) vs recent average.`
+              : `Attendance is down ${fmt(-deltaAvg)} (${fmtPct(pctAvg)}) vs recent average.`);
+        const tBox = document.getElementById("trend-highlights");
+        const tText = document.getElementById("trend-text");
+        if (tBox && tText) {
+          tText.textContent = trend;
+          tBox.hidden = false;
+        }
+      }
     }
-  };
-
-  setGoalUI(loadGoal());
-
-  goalSave.addEventListener("click", () => {
-    const val = parseInt(goalInput.value, 10);
-    if (Number.isFinite(val) && val >= 0) {
-      localStorage.setItem(GOAL_KEY, String(val));
-      setGoalUI(val);
-    }
-  });
-  goalReset.addEventListener("click", () => {
-    localStorage.removeItem(GOAL_KEY);
-    goalInput.value = "";
-    setGoalUI(NaN);
-  });
-
-  // ---- Attendance comparison table ----
-  const tbody = el("attendance-rows");
-  tbody.innerHTML = "";
-
-  const cur = Number(current.count) || 0;
-
-  const makeDeltaCell = (delta) => {
-    const up = delta > 0, down = delta < 0;
-    const cls = up ? "text-emerald-700" : (down ? "text-rose-700" : "text-gray-700");
-    const badge = up ? "▲" : (down ? "▼" : "•");
-    return `<span class="${cls} font-semibold">${badge} ${fmt(delta)}</span>`;
-  };
-
-  const makePctCell = (pct) => {
-    const up = pct > 0, down = pct < 0;
-    const cls = up ? "text-emerald-700" : (down ? "text-rose-700" : "text-gray-700");
-    return `<span class="${cls} font-semibold">${fmtPct(pct)}</span>`;
-  };
-
-  previous.forEach((w) => {
-    const prev = Number(w.count) || 0;
-    const delta = cur - prev;
-    const pct = prev === 0 ? (cur === 0 ? 0 : 1) : (delta / prev);
-
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td class="px-4 py-2 text-gray-800">${w.label || "Previous"}</td>
-      <td class="px-4 py-2 text-right tabular-nums text-gray-800">${fmt(prev)}</td>
-      <td class="px-4 py-2 text-right tabular-nums text-gray-900 font-semibold">${fmt(cur)}</td>
-      <td class="px-4 py-2 text-right tabular-nums">${makeDeltaCell(delta)}</td>
-      <td class="px-4 py-2 text-right tabular-nums">${makePctCell(pct)}</td>
-    `;
-    tbody.appendChild(tr);
-  });
-
-  // ---- Optional trend sentence (current vs avg of previous) ----
-  if (previous.length) {
-    const avgPrev = previous.reduce((s, w) => s + (Number(w.count) || 0), 0) / previous.length;
-    const deltaAvg = cur - avgPrev;
-    const pctAvg = avgPrev === 0 ? (cur === 0 ? 0 : 1) : (deltaAvg / avgPrev);
-    const trend = deltaAvg === 0
-      ? "Attendance is flat vs recent average."
-      : (deltaAvg > 0
-          ? `Attendance is up ${fmt(deltaAvg)} (${fmtPct(pctAvg)}) vs recent average.`
-          : `Attendance is down ${fmt(-deltaAvg)} (${fmtPct(pctAvg)}) vs recent average.`);
-    const tBox = document.getElementById("trend-highlights");
-    const tText = document.getElementById("trend-text");
-    tText.textContent = trend;
-    tBox.hidden = false;
   }
-})();
+
+  if (window.PERF_DATA && window.PERF_DATA.new_clients) {
+    renderPerf(window.PERF_DATA);
+  } else {
+    fetch("/figurella-reports/_perf/data")
+      .then(r => r.ok ? r.json() : Promise.reject(r.statusText))
+      .then(({ ok, data }) => ok && data ? renderPerf(data) : null)
+      .catch(err => console.warn("PERF fallback fetch failed:", err));
+  }
+});
 </script>
+
+{% endblock %}

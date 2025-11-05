@@ -8,10 +8,26 @@
               class="bg-figurella text-white px-4 py-2 rounded hover:bg-pink-700 transition">
         + Add Row
       </button>
-      <!-- Removed: Import buttons that called old report APIs -->
+
+      <!-- Month picker (optional) -->
+      <input id="mp-month" type="month"
+             class="border rounded px-2 py-2 text-sm"
+             title="Choose month to import (optional)">
+
+      <!-- Import rows from expiring contracts -->
+      <button id="mp-import-expiring" type="button"
+              class="bg-gray-100 text-gray-800 px-3 py-2 rounded hover:bg-gray-200 transition">
+        Import Expiring Contracts
+      </button>
     </div>
     <div></div>
   </div>
+
+  <!-- Expose the JSON endpoint from routes.monthly_planning() -->
+  <script>
+    /* Provided by routes.monthly_planning() in routes.py */
+    window.MP_EXP_URL = "{{ MP_EXP_URL }}";
+  </script>
 
   <!-- Main Table -->
   <div class="p-4 overflow-x-auto">
@@ -20,7 +36,8 @@
         <tr>
           <th rowspan="2" class="border border-gray-300 bg-gray-100 px-4 py-2 font-semibold">Status</th>
           <th rowspan="2" class="border border-gray-300 bg-blue-100  px-4 py-2 font-semibold">Internal Planning</th>
-          <th rowspan="2" class="border border-gray-300 bg-blue-200  px-4 py-2 font-semibold">Closing Date</th>
+          <th rowspan="2" class="border border-gray-300 bg-blue-100  px-4 py-2 font-semibold">Current Contract</th>
+          <th rowspan="2" class="border border-gray-300 bg-blue-200  px-4 py-2 font-semibold">Expiration Date</th>
           <th colspan="2" class="border border-gray-300 bg-green-200  px-4 py-2 font-semibold">PROP 1 (Most Likely)</th>
           <th colspan="2" class="border border-gray-300 bg-yellow-200 px-4 py-2 font-semibold">PROP 2 (Plan B)</th>
           <th colspan="2" class="border border-gray-300 bg-red-200    px-4 py-2 font-semibold">PROP 3 (Worst)</th>
@@ -49,11 +66,19 @@
             </select>
           </td>
 
-          <!-- Internal Planning + Closing (History removed) -->
+          <!-- Internal Planning -->
           <td class="border border-gray-200 px-2 py-2">
             <input class="w-full border border-gray-200 rounded px-2 py-1 text-sm ip"
                    data-key="internal_planning" placeholder="internal planning">
           </td>
+
+          <!-- Current Contract -->
+          <td class="border border-gray-200 px-2 py-2">
+            <input class="w-full border border-gray-200 rounded px-2 py-1 text-sm"
+                   data-key="current_contract" placeholder="current contract">
+          </td>
+
+          <!-- Closing Date -->
           <td class="border border-gray-200 px-2 py-2">
             <input class="w-full border border-gray-200 rounded px-2 py-1 text-sm"
                    type="date" data-key="closing_date">
@@ -126,10 +151,17 @@
             <option>stop</option>
           </select>
         </td>
+
         <td class="border border-gray-200 px-2 py-2">
           <input class="w-full border border-gray-200 rounded px-2 py-1 text-sm ip"
                  data-key="internal_planning" placeholder="internal planning">
         </td>
+
+        <td class="border border-gray-200 px-2 py-2">
+          <input class="w-full border border-gray-200 rounded px-2 py-1 text-sm"
+                 data-key="current_contract" placeholder="current contract">
+        </td>
+
         <td class="border border-gray-200 px-2 py-2">
           <input class="w-full border border-gray-200 rounded px-2 py-1 text-sm"
                  type="date" data-key="closing_date">
@@ -191,60 +223,53 @@
   </div>
 </div>
 
-<!-- SECOND TABLE BELOW (1/3 width) -->
-<div class="flex mt-6">
-  <div class="bg-white rounded-2xl shadow w-1/3">
-    <div class="p-4 overflow-x-auto">
-      <table class="min-w-full border border-gray-200 text-sm">
-        <thead>
-          <tr>
-            <th class="border border-gray-300 bg-gray-100 px-4 py-2 text-left font-semibold">Metric</th>
-            <th class="border border-gray-300 bg-gray-100 px-4 py-2 text-left font-semibold">Value</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td class="border px-4 py-2">GOAL</td>
-            <td class="border px-4 py-2">
-              <input id="metric-goal" class="w-full border rounded px-2 py-1">
-            </td>
-          </tr>
-
-          <tr>
-            <td class="border px-4 py-2">PAYMENTS DUE</td>
-            <td class="border px-4 py-2 flex items-center gap-2">
-              <input id="metric-payments-due" class="w-full border rounded px-2 py-1">
-            </td>
-          </tr>
-
-          <tr>
-            <td class="border px-4 py-2">PAYMENTS DONE</td>
-            <td class="border px-4 py-2 flex items-center gap-2">
-              <input id="metric-payments-done" class="w-full border rounded px-2 py-1">
-            </td>
-          </tr>
-
-          <tr>
-            <td class="border px-4 py-2">SALES</td>
-            <td class="border px-4 py-2 flex items-center gap-2">
-              <input id="metric-sales" class="w-full border rounded px-2 py-1">
-            </td>
-          </tr>
-
-          <tr>
-            <td class="border px-4 py-2">MISSING</td>
-            <td class="border px-4 py-2">
-              <input id="metric-missing" class="w-full border rounded px-2 py-1" readonly>
-            </td>
-          </tr>
-
-          <tr><td class="border px-4 py-2">MISSING - AVERAGE</td><td class="border px-4 py-2"><input class="w-full border rounded px-2 py-1"></td></tr>
-          <tr><td class="border px-4 py-2">OK NEEDED</td><td class="border px-4 py-2"><input class="w-full border rounded px-2 py-1"></td></tr>
-          <tr><td class="border px-4 py-2">CONSU TO DO</td><td class="border px-4 py-2"><input class="w-full border rounded px-2 py-1"></td></tr>
-          <tr><td class="border px-4 py-2">LEADS TO ACTIVATE</td><td class="border px-4 py-2"><input class="w-full border rounded px-2 py-1"></td></tr>
-        </tbody>
-      </table>
-    </div>
+<!-- Metrics table (kept), without the white card wrapper -->
+<div class="mt-6">
+  <div class="overflow-x-auto">
+    <table class="min-w-full max-w-xl border border-gray-200 text-sm">
+      <thead>
+        <tr>
+          <th class="border border-gray-300 bg-gray-100 px-4 py-2 text-left font-semibold">Metric</th>
+          <th class="border border-gray-300 bg-gray-100 px-4 py-2 text-left font-semibold">Value</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="border px-4 py-2">GOAL</td>
+          <td class="border px-4 py-2">
+            <input id="metric-goal" class="w-full border rounded px-2 py-1">
+          </td>
+        </tr>
+        <tr>
+          <td class="border px-4 py-2">PAYMENTS DUE</td>
+          <td class="border px-4 py-2">
+            <input id="metric-payments-due" class="w-full border rounded px-2 py-1">
+          </td>
+        </tr>
+        <tr>
+          <td class="border px-4 py-2">PAYMENTS DONE</td>
+          <td class="border px-4 py-2">
+            <input id="metric-payments-done" class="w-full border rounded px-2 py-1">
+          </td>
+        </tr>
+        <tr>
+          <td class="border px-4 py-2">SALES</td>
+          <td class="border px-4 py-2">
+            <input id="metric-sales" class="w-full border rounded px-2 py-1">
+          </td>
+        </tr>
+        <tr>
+          <td class="border px-4 py-2">MISSING</td>
+          <td class="border px-4 py-2">
+            <input id="metric-missing" class="w-full border rounded px-2 py-1" readonly>
+          </td>
+        </tr>
+        <tr><td class="border px-4 py-2">MISSING - AVERAGE</td><td class="border px-4 py-2"><input class="w-full border rounded px-2 py-1"></td></tr>
+        <tr><td class="border px-4 py-2">OK NEEDED</td><td class="border px-4 py-2"><input class="w-full border rounded px-2 py-1"></td></tr>
+        <tr><td class="border px-4 py-2">CONSU TO DO</td><td class="border px-4 py-2"><input class="w-full border rounded px-2 py-1"></td></tr>
+        <tr><td class="border px-4 py-2">LEADS TO ACTIVATE</td><td class="border px-4 py-2"><input class="w-full border rounded px-2 py-1"></td></tr>
+      </tbody>
+    </table>
   </div>
 </div>
 
@@ -297,7 +322,14 @@
   }
   window.wirePackAuto = wirePackAuto;
 
-  // ===== Row helpers =====
+  // ===== Row creation =====
+  function setByKey(tr, key, val){
+    const el = tr.querySelector(`[data-key="${key}"]`);
+    if (!el) return;
+    if (el.tagName === 'SELECT') { el.value = val ?? ''; }
+    else { el.value = val ?? ''; }
+  }
+
   function createRowFromTemplate(){
     const body = getBody(), tpl = getTpl();
     if (!body || !tpl) return null;
@@ -305,6 +337,22 @@
     body.appendChild(tr);
     wirePackAuto(tr);
     if (typeof window.recalc === 'function') window.recalc(tr);
+    return tr;
+  }
+
+  function createRowWithData(rowData){
+    const tr = createRowFromTemplate();
+    if (!tr) return null;
+    setByKey(tr, 'internal_planning', rowData.internal_planning);
+    setByKey(tr, 'current_contract',  rowData.current_contract);
+    setByKey(tr, 'closing_date',      rowData.closing_date);
+    setByKey(tr, 'status',    rowData.status);
+    setByKey(tr, 'p1_pack',   rowData.p1_pack);
+    setByKey(tr, 'p1_price',  rowData.p1_price);
+    setByKey(tr, 'p2_pack',   rowData.p2_pack);
+    setByKey(tr, 'p2_price',  rowData.p2_price);
+    setByKey(tr, 'p3_pack',   rowData.p3_pack);
+    setByKey(tr, 'p3_price',  rowData.p3_price);
     return tr;
   }
 
@@ -322,22 +370,44 @@
     return isFinite(n) ? n : 0;
   }
   function updateMissing(){
-    const goal  = parseMoney(document.getElementById('metric-goal')?.value);
-    const due   = parseMoney(document.getElementById('metric-payments-due')?.value);
-    const done  = parseMoney(document.getElementById('metric-payments-done')?.value);
-    const sales = parseMoney(document.getElementById('metric-sales')?.value);
-    const missing = goal - (due + done + sales);
-    setCurrency(document.getElementById('metric-missing'), missing);
+  const goal  = parseMoney(document.getElementById('metric-goal')?.value);
+  const due   = parseMoney(document.getElementById('metric-payments-due')?.value);
+  const done  = parseMoney(document.getElementById('metric-payments-done')?.value);
+  const sales = parseMoney(document.getElementById('metric-sales')?.value);
+  const missing = goal - (due + done + sales);
+  setCurrency(document.getElementById('metric-missing'), missing);
+}
+
+
+  // ===== Import from backend =====
+  async function importExpiringContracts(){
+    try{
+      const base = window.MP_EXP_URL || '/daily-check-in/monthly-planning/expiring-contracts';
+      const monthVal = document.getElementById('mp-month')?.value; // yyyy-mm
+      const url = monthVal ? `${base}?month=${encodeURIComponent(monthVal)}` : base;
+
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const data = await resp.json();
+      const rows = Array.isArray(data.rows) ? data.rows : [];
+      if (!rows.length){
+        log('No expiring contracts for this month.');
+        return;
+      }
+      rows.forEach(r => createRowWithData(r));
+    } catch (err){
+      console.error('[MonthlyPlanning] import failed:', err);
+    }
   }
 
   // ===== Wire once =====
   function wire(){
-    // Add row
     document.getElementById('mp-add-row')?.addEventListener('click', (e)=>{
       e.preventDefault(); createRowFromTemplate();
     });
-
-    // Delete row (delegated)
+    document.getElementById('mp-import-expiring')?.addEventListener('click', (e)=>{
+      e.preventDefault(); importExpiringContracts();
+    });
     document.getElementById('mp-body')?.addEventListener('click', (e)=>{
       const btn = e.target.closest('.row-del');
       if (!btn) return;
@@ -348,16 +418,11 @@
       const body = document.getElementById('mp-body');
       if (body && body.rows.length === 0) createRowFromTemplate();
     });
-
-    // Wire pack→price for existing row(s)
     wirePackAuto(document);
-
-    // Recompute when any metric changes
     ['metric-goal','metric-payments-due','metric-payments-done','metric-sales']
       .forEach(id => document.getElementById(id)?.addEventListener('input', updateMissing));
-
-    // Initial missing compute (if any values prefilled)
     setTimeout(updateMissing, 0);
+    importExpiringContracts();
   }
 
   if (document.readyState === 'loading'){

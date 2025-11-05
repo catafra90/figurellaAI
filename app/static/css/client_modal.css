@@ -1,226 +1,287 @@
 /* ===== Client Modal (anchored; layout-placed by JS) ======================= */
 .client-modal{
   position: fixed;
-  /* Keep DOM origin at (0,0); move via CSS variables only */
-  left: 0 !important;
-  top:  0 !important;
-
-  /* Pixel offsets controlled by JS */
+  left: 0 !important; top: 0 !important;
   --x: 0px; --y: 0px;
-
-  /* GPU-accelerated translate (avoids iPad jitter) */
   transform: translate3d(var(--x), var(--y), 0) !important;
   -webkit-transform: translate3d(var(--x), var(--y), 0) !important;
-
-  /* Hint the compositor: we adjust all three during interaction */
   will-change: transform, width, height;
 
-  /* Large defaults (positioning.js can still set inline size) */
-  width: min(1280px, 97vw);
-  height: 86vh;
+  /* ⬇️ Wider + taller defaults (leave ~16px gutters each side) */
+  width: min(1800px, calc(100vw - 32px));
+  height: 88vh;
   max-height: 96vh;
 
-  /* Panel look */
-  background: #fff;
-  border: none;
-  box-shadow: none;
-  border-radius: 10px;
+  background:#fff;
+  border:none;
+  box-shadow:0 12px 32px rgba(15,23,42,.12);
+  border-radius:12px;
 
-  /* Above app chrome; layer is 4000 */
-  z-index: 4001;
-  display: none;                       /* .show/.open => flex */
-  flex-direction: column;
-  overflow: hidden;
+  z-index:4001;
+  display:none;                 /* .show/.open => flex */
+  flex-direction:column;
+  overflow:hidden;
 
-  pointer-events: auto;                /* layer has pointer-events:none */
-  box-sizing: border-box;
+  pointer-events:auto;
+  box-sizing:border-box;
+  contain:layout paint;
 
-  /* Contain layout & paint to reduce jank during resize/drag */
-  contain: layout paint;
+  backface-visibility:hidden;
+  -webkit-backface-visibility:hidden;
+  transform-origin:0 0;
 
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
-  transform-origin: 0 0;
+  /* keep safe-area gutters on phones with notches */
+  margin-left:max(0px, env(safe-area-inset-left, 0px));
+  margin-right:max(0px, env(safe-area-inset-right, 0px));
 
-  /* iOS safe areas */
-  margin-left:  max(0px, env(safe-area-inset-left, 0px));
-  margin-right: max(0px, env(safe-area-inset-right, 0px));
+  touch-action:auto;
+  overscroll-behavior:contain;
 
-  /* Prevent page scroll stealing during drag/resize */
-  touch-action: none;
-  overscroll-behavior: contain;
-
-  max-width: calc(100vw - 16px);
+  /* ⬇️ remove the old narrow clamp */
+  /* max-width:calc(100vw - 16px); */
 }
+
 .client-modal.show, .client-modal.open { display:flex; }
-.client-modal:focus { outline: none; }
+.client-modal:focus { outline:none; }
 
-/* Smooth opening growth — only when JS adds .opening briefly */
+/* Smooth opening */
 .client-modal.opening { transition: height .22s ease, width .22s ease; }
-@media (prefers-reduced-motion: reduce){ .client-modal.opening { transition: none !important; } }
+@media (prefers-reduced-motion: reduce){ .client-modal.opening{ transition:none !important; } }
 
-/* Optional: a tiny ease on release (JS may toggle .ease-release for ~120ms) */
-.client-modal.ease-release {
+/* Tiny ease when JS re-centers */
+.client-modal.ease-release{
   transition: transform .12s ease-out, width .12s ease-out, height .12s ease-out;
 }
-@media (prefers-reduced-motion: reduce){ .client-modal.ease-release { transition: none !important; } }
-
-/* Disable animation while interacting (prevents jitter) */
-.client-modal.dragging,
-.client-modal.resizing { transition: none !important; }
+@media (prefers-reduced-motion: reduce){ .client-modal.ease-release{ transition:none !important; } }
 
 /* ===== Size variants ===== */
 .client-modal.size-xl{
-  width: min(1320px, 98vw);
-  height: 90vh;
-  max-height: 98vh;
+  width: min(1800px, calc(100vw - 32px));
+  height: 84vh;
+  max-height: 92vh;
 }
 .client-modal.size-full{
-  width: 98vw;
+  width: calc(100vw - 32px);
   height: 96vh;
   max-height: 96vh;
-  border-radius: 10px;
+  border-radius:12px;
 }
 .client-modal.size-fullscreen{
-  width: 100vw !important;
-  height: 100vh !important;
-  max-width: none; max-height: none;
-  border-radius: 0;
+  width:100vw !important; height:100vh !important; max-width:none; max-height:none; border-radius:0;
 }
 .client-modal.size-full-under-header{
-  width: 100vw !important;
-  height: calc(var(--vh, 1vh) * 100 - var(--header-h, 64px));
-  max-height: none;
-  border-radius: 0;
+  width:100vw !important; height:calc(var(--vh,1vh)*100 - var(--header-h,64px)); max-height:none; border-radius:0;
 }
 
 /* ===== Header ===== */
 .client-modal .modal-header{
-  background: linear-gradient(90deg, #CC0066 0%, #AA0055 100%);
+  background:linear-gradient(90deg, #CC0066 0%, #AA0055 100%);
   color:#fff;
   display:flex; align-items:center; gap:.5rem;
-  padding:.5rem .9rem; height:56px;
-  cursor:move; user-select:none; -webkit-user-select:none;
-  /* Important on iPad: prevent scroll/zoom gestures from stealing drag */
-  touch-action:none;
-  -webkit-touch-callout: none;  /* avoid long-press callout on iOS */
-  -webkit-tap-highlight-color: transparent;
+  padding:.5rem .9rem; height:56px; flex:0 0 56px;
+  cursor:default; user-select:text; -webkit-user-select:text;
+  -webkit-touch-callout:none; -webkit-tap-highlight-color:transparent;
   border-bottom:1px solid rgba(255,255,255,.25);
-  flex:0 0 56px;
 }
-.client-modal .modal-title{
-  font-weight:700; font-size:1.05rem; margin:0;
-}
+.client-modal .modal-title{ font-weight:700; font-size:1.05rem; margin:0; letter-spacing:.2px; }
 .client-modal .modal-header .modal-close{
   margin-left:auto; display:inline-flex; align-items:center; justify-content:center;
-  width:32px; height:32px; border-radius:8px;
-  background: rgba(255,255,255,.18); color:#fff; font-size:20px; line-height:1;
+  width:32px; height:32px; border-radius:8px; background:rgba(255,255,255,.18);
+  color:#fff; font-size:20px; line-height:1;
 }
-.client-modal .modal-header .modal-close:hover{ background: rgba(255,255,255,.28); }
-@media (min-width: 769px){ .client-modal .modal-header .modal-close{ display:none; } }
+.client-modal .modal-header .modal-close:hover{ background:rgba(255,255,255,.28); }
+@media (min-width:769px){ .client-modal .modal-header .modal-close{ display:none; } }
 
-/* ===== Body (single scroller) ===== */
+/* ===== Body (single scroller) =========================================== */
 .client-modal .modal-body{
   flex:1 1 auto; display:flex; flex-direction:column; min-height:0;
   padding:.85rem; overflow:auto; -webkit-overflow-scrolling:touch;
   overscroll-behavior:contain; color:#0f172a;
-  scrollbar-gutter: stable both-edges;
-  contain: layout paint; /* isolate heavy tables while resizing */
+  scrollbar-gutter:stable both-edges;
+  contain:layout paint;
+
+  /* Reserve space for bottom tabs bar when present */
+  padding-bottom:calc(.85rem + var(--tabs-bar-h, 0px));
 }
 .client-modal .modal-body.no-outer-scroll{ overflow:hidden; }
+
+/* Let major content blocks stretch inside the body */
 .client-modal .modal-body > #client-chart-root,
-.client-modal .modal-body > .client-card{
+.client-modal .modal-body > .client-card,
+.client-modal .modal-body > .tab-panels{
   flex:1 1 auto; min-height:0; display:flex; flex-direction:column;
 }
 
-/* ===== Footer ===== */
+/* ===== Footer =========================================================== */
 .client-modal .modal-footer{
   padding:.6rem .8rem; background:#fff; border-top:1px solid #eef2f7;
   display:flex; justify-content:flex-end; gap:.5rem; flex:0 0 auto;
-  padding-bottom: calc(.6rem + env(safe-area-inset-bottom, 0px));
+  padding-bottom:calc(.6rem + env(safe-area-inset-bottom, 0px));
 }
 .client-modal .modal-footer .btn{
-  border:0; border-radius:6px; padding:.45rem .95rem; font-size:.95rem; font-weight:600; cursor:pointer;
+  border:0; border-radius:8px; padding:.45rem .95rem; font-size:.95rem; font-weight:600; cursor:pointer;
 }
 .client-modal .modal-footer .btn.btn-dark{ background:#111827; color:#fff; }
 .client-modal .modal-footer .btn.btn-dark:hover{ background:#000; }
 
-/* ===== Resize handle ===== */
-.client-modal .resize-handle{
-  position:absolute; right:4px; bottom:4px;
-  /* Larger touch target on iPad */
-  width:28px; height:28px;
-  cursor:nwse-resize; opacity:.9;
-  touch-action:none;                /* prevent two-finger scroll during resize */
-  -webkit-user-select:none; user-select:none;
-}
-.client-modal .resize-handle::after{
-  content:""; position:absolute; right:0; bottom:0; width:100%; height:100%;
-  border-right:2px solid #9ca3af; border-bottom:2px solid #9ca3af; border-radius:2px;
-}
-
-/* ===== Tables/cards in tabs ===== */
-.client-modal .chart-tab-body{
-  flex:1 1 auto; min-height:0; display:flex; flex-direction:column; gap:.75rem; min-width:0;
-}
-.client-modal .chart-table-card{
-  flex:1 1 auto; min-height:0; display:flex; flex-direction:column; min-width:0;
-  background:#fff; border-radius:12px; border:1px solid #eef2f7;
-  box-shadow:0 8px 24px rgba(15,23,42,.06);
-  contain: layout paint; /* isolate while changing size */
-}
-.client-modal .chart-table-scroll{
-  flex:1 1 auto; min-height:0; overflow:auto; -webkit-overflow-scrolling:touch;
-  overscroll-behavior: contain;
-}
-.client-modal .chart-table-scroll table{ width:100%; max-width:100%; table-layout:auto; }
-.client-modal .chart-table-card .sticky-header th{
-  position:sticky; top:0; background:rgba(249,250,251,0.95); z-index:5;
-  background-clip: padding-box;
-}
-
-/* ===== Interaction performance tweaks ===== */
-/* Lighter visuals during interaction to reduce compositing cost */
-.client-modal.dragging,
-.client-modal.resizing{
-  box-shadow: 0 4px 12px rgba(0,0,0,.08) !important;
-}
-/* Avoid inner hit-testing during gestures (prevents scroll jank) */
-.client-modal.dragging .chart-table-scroll,
-.client-modal.resizing .chart-table-scroll{
-  pointer-events: none;
-}
-
 /* ===== Short viewports ===== */
-@media (max-height: 700px){ .client-modal{ max-height: 90vh; } }
-@media (max-height: 520px){ .client-modal{ max-height: 95vh; } }
+@media (max-height:700px){ .client-modal{ max-height:90vh; } }
+@media (max-height:520px){ .client-modal{ max-height:95vh; } }
 
 /* ===== Phones ONLY (< 820px) ===== */
-@media (max-width: 819px){
+@media (max-width:819px){
   .client-modal{
-    width: 96vw;
-    height: auto;
-    max-height: 90vh;
-    border-radius: 10px;
+    width: calc(100vw - 16px);
+    height:auto;
+    max-height:90vh;
+    border-radius:12px;
   }
   .client-modal .modal-header{ height:52px; flex-basis:52px; }
   .client-modal .modal-title{ font-size:1rem; }
 }
 
-/* ===== Drag/resize feedback + background lock ===== */
-.client-modal.dragging{ cursor: grabbing; -webkit-user-select: none; user-select: none; }
-.client-modal.resizing{ cursor: nwse-resize; }
-body.noscroll{ overflow: hidden !important; }
+/* Lock page scroll while modal is open */
+html.modal-open, body.modal-open{ overflow:hidden !important; }
 
-/* ===== Overlay layer (must sit over the sidebar) ===== */
+/* ===== Overlay layer (sits over app) ===== */
 #floating-modals{
-  position: fixed;
-  inset: 0;
-  z-index: 4000 !important;
-  pointer-events: none;
+  position:fixed; inset:0; z-index:4000 !important; pointer-events:none;
+  padding-bottom:var(--tabs-bar-h, 0px);
+}
+#floating-modals .client-modal{ pointer-events:auto; }
+
+/* ====================================================================== */
+/* ================= Tabs System (Top tabs inside modal) ================= */
+/* ====================================================================== */
+
+/* Optional simple nav styling (safe, unobtrusive) */
+.client-modal .tabs-nav{
+  display:flex; flex-wrap:wrap; gap:.5rem .6rem;
+  align-items:center;
+  border-bottom:1px solid #e5e7eb;
+  padding:0 0 .6rem 0;
+  margin: 0 0 .6rem 0;
+}
+.client-modal .tabs-nav a,
+.client-modal .tabs-nav button{
+  appearance:none; -webkit-appearance:none;
+  background:#f3f4f6; color:#0f172a;
+  border:1px solid #e5e7eb; border-radius:999px;
+  padding:.35rem .75rem; font-size:.9rem; line-height:1; font-weight:600;
+  cursor:pointer;
+}
+.client-modal .tabs-nav a:hover,
+.client-modal .tabs-nav button:hover{ background:#fff; }
+
+/* Panels container */
+.tab-panels{
+  position: relative;
+  display:flex;
+  flex-direction:column;
+  min-height:0; /* allow inner scroll areas to size correctly */
 }
 
-/* Disable sidebar hitbox during drag/resize so drag doesn't die */
-body.drag-active #client-sidebar,
-body.drag-active .sidebar{ pointer-events: none !important; }
-body.drag-active{ user-select:none; cursor:grabbing; }
+/* Each panel defaults to hidden; JS toggles .is-active */
+.tab-panel{ display:none; }
+.tab-panel.is-active{
+  display:flex;
+  flex-direction:column;
+  min-height:0; /* allow internal scrollers/charts to grow */
+}
+
+/* Make typical inner blocks flex correctly inside panels */
+.tab-panel > .panel-body,
+.tab-panel .panel-scroll,
+.tab-panel #client-chart-root,
+.tab-panel .client-card{
+  flex:1 1 auto; min-height:0;
+}
+
+/* Enable inertial scrolling on iOS for panel scroll regions */
+.tab-panel .panel-scroll{ overflow:auto; -webkit-overflow-scrolling:touch; }
+
+/* If JS opts-in to layered (overlap) mode, keep behavior predictable */
+.tab-panels.layered { contain: layout paint; }
+.tab-panels.layered .tab-panel{ display:none; }
+.tab-panels.layered .tab-panel.is-active{ display:flex; }
+
+/* ========================================================================== */
+/* ================= Tabs Bar (Open Charts) — premium look ================== */
+/* ========================================================================== */
+
+:root{ --tabs-bar-h: 44px; }
+
+#modal-tabs-bar{
+  position:fixed; left:0; right:0; bottom:0;
+  z-index:4002;
+  height:var(--tabs-bar-h);
+  padding:6px 8px;
+  display:grid;
+  grid-template-columns:36px 1fr 36px;   /* chevron | scroller | chevron */
+  gap:6px;
+  background:rgba(255,255,255,.82);
+  backdrop-filter:blur(8px) saturate(115%);
+  border-top:1px solid #e5e7eb;
+  box-shadow:0 -8px 28px rgba(15,23,42,.10);
+  pointer-events:auto;
+}
+#modal-tabs-bar[hidden]{ display:none !important; }
+
+/* Scroll buttons */
+.tabs-chevron{
+  display:grid; place-items:center;
+  border:1px solid #e5e7eb; background:#f8fafc;
+  border-radius:10px; cursor:pointer; user-select:none;
+  font-size:18px; color:#475569;
+}
+.tabs-chevron[disabled]{ opacity:.35; cursor:default; }
+
+.tabs-scroller{
+  overflow-x:auto; overflow-y:hidden; white-space:nowrap;
+  scrollbar-width:thin;
+}
+
+/* Individual tab */
+.modal-tab{
+  position:relative;
+  display:inline-flex; align-items:center; gap:8px;
+  height:32px; padding:0 12px 0 10px;
+  border-radius:999px;
+  border:1px solid #e5e7eb;
+  background:#f3f4f6;
+  color:#0f172a; font-size:13px; line-height:1;
+  box-shadow:0 1px 0 rgba(0,0,0,.02);
+  max-width:260px; margin-right:6px;
+  cursor:pointer;
+  white-space:nowrap; text-overflow:ellipsis; overflow:hidden;
+}
+
+.modal-tab .avatar{
+  width:18px; height:18px; border-radius:50%;
+  background:#cc0066; color:#fff; font-weight:700;
+  display:grid; place-items:center; font-size:11px; letter-spacing:.2px;
+}
+.modal-tab .tab-title{ overflow:hidden; text-overflow:ellipsis; max-width:170px; }
+
+.modal-tab .tab-close{
+  width:18px; height:18px; display:grid; place-items:center;
+  border-radius:6px; border:0; background:transparent; color:#64748b;
+  cursor:pointer; flex:0 0 auto; opacity:0; transition:opacity .14s ease;
+}
+.modal-tab:hover .tab-close{ opacity:1; }
+@media (hover:none){ .modal-tab .tab-close{ opacity:1; } }
+
+.modal-tab.active{
+  background:#fff;
+  border-color:#fecdd3; /* light pink */
+  box-shadow:inset 0 0 0 1px #fda4af, 0 4px 12px rgba(204,0,102,.12);
+}
+.modal-tab.active .tab-title{ font-weight:600; }
+.modal-tab.active::after{
+  content:""; height:2px; width:60%;
+  position:absolute; bottom:-7px; left:20%;
+  background:#cc0066; border-radius:2px;
+}
+
+/* Keep bar visible even when modal is open */
+body.modal-open #modal-tabs-bar{ position:fixed; }

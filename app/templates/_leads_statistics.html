@@ -1,0 +1,79 @@
+<!-- File: app/templates/_leads_statistics.html -->
+<div class="rounded-2xl bg-gradient-to-br from-pink-50 to-white/90 backdrop-blur border border-pink-100 p-6 shadow-md">
+  <h3 class="text-lg font-semibold text-pink-700 flex items-center gap-2 mb-4">
+    <span class="inline-grid place-items-center h-6 w-6 rounded-md bg-pink-100 text-pink-700">
+      <i class="bi bi-person-lines-fill text-sm"></i>
+    </span>
+    Leads Statistics
+  </h3>
+
+  {% set L = LEADS_DATA or {} %}
+
+  <div class="grid gap-3 sm:grid-cols-2">
+    <!-- Top row -->
+    <div class="rounded-xl border border-pink-100 bg-white/70 p-4 hover:bg-pink-50 transition">
+      <div class="text-xs text-pink-700 font-medium">Total Leads</div>
+      <div class="text-2xl font-bold text-gray-900">
+        {{
+          (L.get('RENEW',0) or 0) +
+          (L.get('OK_paid',0) or 0) +
+          (L.get('OK_organic',0) or 0) +
+          (L.get('FLOP',0) or 0) +
+          (L.get('TRY_TO_OK',0) or 0) +
+          (L.get('TRY',0) or 0) +
+          (L.get('NV',0) or 0) +
+          (L.get('LEADS_paid',0) or 0) +
+          (L.get('LEADS_organic',0) or 0)
+        }}
+      </div>
+    </div>
+
+    <div class="rounded-xl border border-pink-100 bg-white/70 p-4 hover:bg-pink-50 transition">
+      <div class="text-xs text-pink-700 font-medium">Renewals</div>
+      <div class="text-2xl font-bold text-gray-900">{{ L.get('RENEW', 0) }}</div>
+    </div>
+
+    <!-- OKs -->
+    <div class="rounded-xl border border-pink-100 bg-white/70 p-4 hover:bg-pink-50 transition">
+      <div class="text-xs text-pink-700 font-medium">OK paid</div>
+      <div class="text-2xl font-bold text-gray-900">{{ L.get('OK_paid', 0) }}</div>
+    </div>
+
+    <div class="rounded-xl border border-pink-100 bg-white/70 p-4 hover:bg-pink-50 transition">
+      <div class="text-xs text-pink-700 font-medium">OK organic</div>
+      <div class="text-2xl font-bold text-gray-900">{{ L.get('OK_organic', 0) }}</div>
+    </div>
+
+    <!-- Middle -->
+    <div class="rounded-xl border border-rose-200 bg-white/70 p-4 hover:bg-rose-50 transition">
+      <div class="text-xs text-rose-700 font-medium">FLOP</div>
+      <div class="text-2xl font-bold text-rose-700">{{ L.get('FLOP', 0) }}</div>
+    </div>
+
+    <div class="rounded-xl border border-amber-200 bg-white/70 p-4 hover:bg-amber-50 transition">
+      <div class="text-xs text-amber-700 font-medium">(TRY TO OK)</div>
+      <div class="text-2xl font-bold text-amber-700">{{ L.get('TRY_TO_OK', 0) }}</div>
+    </div>
+
+    <!-- Bottom -->
+    <div class="rounded-xl border border-pink-100 bg-white/70 p-4 hover:bg-pink-50 transition">
+      <div class="text-xs text-pink-700 font-medium">TRY</div>
+      <div class="text-2xl font-bold text-gray-900">{{ L.get('TRY', 0) }}</div>
+    </div>
+
+    <div class="rounded-xl border border-pink-100 bg-white/70 p-4 hover:bg-pink-50 transition">
+      <div class="text-xs text-pink-700 font-medium">NV</div>
+      <div class="text-2xl font-bold text-gray-900">{{ L.get('NV', 0) }}</div>
+    </div>
+
+    <div class="rounded-xl border border-pink-100 bg-white/70 p-4 hover:bg-pink-50 transition">
+      <div class="text-xs text-pink-700 font-medium">LEADS paid</div>
+      <div class="text-2xl font-bold text-gray-900">{{ L.get('LEADS_paid', 0) }}</div>
+    </div>
+
+    <div class="rounded-xl border border-pink-100 bg-white/70 p-4 hover:bg-pink-50 transition">
+      <div class="text-xs text-pink-700 font-medium">LEADS organic</div>
+      <div class="text-2xl font-bold text-gray-900">{{ L.get('LEADS_organic', 0) }}</div>
+    </div>
+  </div>
+</div>

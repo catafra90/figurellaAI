@@ -1,0 +1,49 @@
+<!-- Client Picker (overlays modal) -->
+<div id="client-picker"
+     class="fixed inset-0 hidden"
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="client-picker-title"
+     tabindex="-1"
+     style="z-index:10002;">
+  <!-- Backdrop: click to dismiss -->
+  <div class="absolute inset-0 bg-black/30" data-dismiss="picker"></div>
+
+  <!-- Panel -->
+  <div data-picker-panel data-client-picker-card
+       class="absolute left-1/2 top-16 -translate-x-1/2 w-[min(920px,92vw)] max-h-[70vh]
+              bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden
+              pointer-events-auto">
+    <div class="flex items-center justify-between px-4 py-3 border-b">
+      <h2 id="client-picker-title" class="font-semibold text-slate-800 m-0">Select Client</h2>
+      <!-- (No close “×” per request) -->
+    </div>
+
+    <!-- Search -->
+    <div class="p-3">
+      <label for="client-picker-search" class="sr-only">Search by name or date</label>
+      <input id="client-picker-search"
+             type="text"
+             placeholder="Search by name or registration date…"
+             autocomplete="off"
+             class="w-full border rounded px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-fuchsia-500" />
+    </div>
+
+    <!-- List -->
+    <div class="px-3 pb-3 overflow-auto" style="max-height:54vh;">
+      <table class="w-full border-collapse text-sm">
+        <thead id="client-picker-head" class="sticky top-0 bg-white">
+          <tr>
+            <th scope="col" class="text-left py-2 border-b">Name</th>
+            <th scope="col" class="text-left py-2 border-b">Surname</th>
+            <th scope="col" class="text-left py-2 border-b">Registration</th>
+            <th scope="col" class="text-left py-2 border-b">Status</th>
+          </tr>
+        </thead>
+        <tbody id="client-picker-body">
+          <!-- filled by JS -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
