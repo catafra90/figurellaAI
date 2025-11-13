@@ -25,7 +25,7 @@ class Config:
     FIGURELLA_PASSWORD = os.getenv('FIGURELLA_PASSWORD', 'FiguMass2025$')
 
     # OpenAI API key for GPT-4 integration (must be set in environment)
-    OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+    # OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 
     # ─── Database ────────────────────────────────────────────────────────────
     # Use DATABASE_URL env var if set (e.g., postgres://...), otherwise SQLite in instance/

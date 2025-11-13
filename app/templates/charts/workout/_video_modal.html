@@ -1,0 +1,162 @@
+{# app/templates/charts/workout/_video_modal.html #}
+{# Bridge + Icon Hydrator for legacy move_preview.js (GIF/MP4 under /static/moves) #}
+
+<style>
+  /* Host wrapper so the play icon can overlay on the right of the input */
+  .mv-host { position: relative; padding-right: 1.8em; display: block; }
+
+  /* Always-visible inline play button */
+  .movement-cell-btn{
+    position: absolute; right: .35rem; top: 50%; transform: translateY(-50%);
+    width: 1.1em; height: 1.1em; padding: 0; margin: 0; border: 0; background: transparent;
+    display: flex; align-items: center; justify-content: center; line-height: 1; cursor: pointer;
+    color: #475569; z-index: 2;
+  }
+  .movement-cell-btn:hover{ color:#111827; }
+
+  /* Invisible proxy target — legacy static/js/move_preview.js listens on this */
+  .movement-cell { position: absolute; inset: 0; opacity: 0; pointer-events: none; }
+
+  /* ===== Lightweight modal styles for legacy previewer ===== */
+  .mv-overlay{
+    position: fixed; inset: 0; background: rgba(0,0,0,.45);
+    display: grid; place-items: center; z-index: 10060;
+  }
+  .mv-modal{
+    width: min(880px, 94vw);
+    background: #fff; border-radius: 16px; overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,.35);
+  }
+  .mv-head{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:.75rem 1rem; background:linear-gradient(135deg,#cc0066 0%,#ff3a8b 100%);
+    color:#fff;
+  }
+  .mv-title{ font-weight:700; }
+  .mv-close{
+    background: transparent; border: 0; font-size: 1.6rem; line-height: 1; color: #fff; cursor: pointer;
+  }
+  .mv-body{ background:#fafafa; }
+  .mv-video-wrap{ padding: 1rem; display:grid; place-items:center; background:#000; }
+  .mv-video-wrap video, .mv-video-wrap img{ max-width:100%; height:auto; border-radius: 8px; }
+  .mv-missing{ padding: 1.25rem; text-align: center; color: #777; }
+</style>
+
+<script>
+(function(){
+  if (window.__MV_BRIDGE__) return;            /* prevent double init */
+  window.__MV_BRIDGE__ = true;
+
+  /* If any experimental modal (#wv-modal) is still around, remove it to avoid conflicts */
+  var stray = document.getElementById('wv-modal'); if (stray) stray.remove();
+
+  var $  = function(sel, root){ return (root||document).querySelector(sel); };
+  var $$ = function(sel, root){ return Array.from((root||document).querySelectorAll(sel)); };
+
+  function currentRing(tr){
+    return (tr?.querySelector('.rev1-rings')?.value
+         || tr?.querySelector('.rev1-gk-rings')?.value
+         || tr?.querySelector('.rings-input')?.value
+         || '').trim();
+  }
+
+  function ensureIconForInput(input){
+    if (!input) return;
+
+    /* 1) Use the existing wrapper div (flex items-center gap-2) as the host */
+    var host = input.parentElement; if (!host) return;
+    host.classList.add('mv-host');
+
+    /* 2) Ensure the invisible proxy that legacy move_preview.js binds to (.movement-cell) */
+    var proxy = host.querySelector('.movement-cell');
+    if (!proxy){
+      proxy = document.createElement('span');
+      proxy.className = 'movement-cell';
+      host.appendChild(proxy);
+    }
+
+    /* 3) Create/remove the play button based on text presence */
+    var name = (input.value || '').trim();
+    var btn  = host.querySelector('.movement-cell-btn');
+
+    if (name && !btn){
+      btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'movement-cell-btn';   /* <<< IMPORTANT: do NOT add .movement-cell here */
+      btn.title = 'Preview movement video';
+      btn.setAttribute('aria-label', 'Preview');
+
+      /* Inline SVG → no dependency on bootstrap icons */
+      btn.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M8 5v14l11-7z"/></svg>';
+
+      host.appendChild(btn);
+    } else if (!name && btn){
+      btn.remove();
+      btn = null;
+    }
+
+    /* 4) Keep datasets in sync (both button and proxy) so legacy code reads them */
+    var tr = input.closest('tr');
+    var ring = currentRing(tr);
+    if (btn){ btn.dataset.name = name; btn.dataset.ring = ring; }
+    proxy.dataset.name = name;
+    proxy.dataset.ring = ring;
+  }
+
+  function hydrateAll(){
+    /* Program table */
+    $$('#rev1-table .rev1-workout').forEach(ensureIconForInput);
+    /* GK table */
+    $$('#gk-rev1-table .rev1-gk-workout').forEach(ensureIconForInput);
+  }
+
+  /* Initial run after paint (ensures tables exist) */
+  requestAnimationFrame(hydrateAll);
+
+  /* Keep icons up-to-date while editing names or rings */
+  document.addEventListener('input', function(e){
+    if (e.target.matches('#rev1-table .rev1-workout, #gk-rev1-table .rev1-gk-workout')){
+      ensureIconForInput(e.target);
+    } else if (e.target.matches('.rev1-rings, .rev1-gk-rings, .rings-input')){
+      var tr = e.target.closest('tr');
+      var inp = tr && tr.querySelector('.rev1-workout, .rev1-gk-workout');
+      if (inp) ensureIconForInput(inp);
+    }
+  });
+
+  /* Re-hydrate when workout Type changes (prefill often rewrites rows) */
+  document.addEventListener('change', function(e){
+    if (e.target && e.target.id === 'workout-rev1-type') hydrateAll();
+  });
+
+  /* Observe row mutations (drag reorder, prefill, etc.) */
+  ['#rev1-table tbody', '#gk-rev1-table tbody'].forEach(function(sel){
+    var tb = $(sel); if (!tb) return;
+    new MutationObserver(function(){ hydrateAll(); }).observe(tb, {childList:true, subtree:true});
+  });
+
+  /* Bridge: icon click → synthesize mousedown→mouseup→click on proxy (.movement-cell)
+     This matches your legacy move_preview.js dragGuard expectations. */
+  document.addEventListener('click', function(e){
+    var btn = e.target.closest('.movement-cell-btn');
+    if (!btn) return;
+
+    var host  = btn.closest('.mv-host') || btn.parentElement;
+    var proxy = host && host.querySelector('.movement-cell');
+    if (!proxy) return;
+
+    /* Sync datasets on the proxy */
+    proxy.dataset.name = btn.dataset.name || proxy.dataset.name || '';
+    proxy.dataset.ring = btn.dataset.ring || proxy.dataset.ring || '';
+    if (btn.dataset.file) proxy.dataset.file = btn.dataset.file;
+
+    var opts = { bubbles:true, cancelable:true, view:window, clientX:0, clientY:0 };
+    proxy.dispatchEvent(new MouseEvent('mousedown', opts));
+    document.dispatchEvent(new MouseEvent('mouseup', opts));       /* releases legacy dragGuard */
+    proxy.dispatchEvent(new MouseEvent('click', opts));
+
+    e.preventDefault();
+    e.stopPropagation();
+  }, true);
+})();
+</script>

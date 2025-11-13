@@ -1,99 +1,64 @@
+# app/ai_assistant/command_router.py
+# Offline / iPad-safe router – NO OpenAI
+
 import os
-import json
-from openai import OpenAI, OpenAIError
 from app.ai_assistant.daily_brain import run_full_summary, summarize_for_date
 from app.ai_assistant.gpt_wrapper import summarize_data, analyze_trends_and_suggest
 
+# Keep MODEL env var in case you ever re-enable AI later (but it's unused here)
 MODEL = os.getenv("GPT_FUNCTION_MODEL", "gpt-3.5-turbo")
-client = OpenAI()
 
-# Only expose pages we still support (no per-report names)
-FUNCTIONS = [
-    {
-        "name": "get_summary",
-        "description": "Today's gym summary",
-        "parameters": {"type": "object", "properties": {}}
-    },
-    {
-        "name": "get_deep_analysis",
-        "description": "Multi-month strategic trends",
-        "parameters": {"type": "object", "properties": {}}
-    },
-    {
-        "name": "get_for_date",
-        "description": "One-day summary+comparison",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "date": {"type": "string", "description": "YYYY-MM-DD"}
-            },
-            "required": ["date"]
-        }
-    },
-    {
-        "name": "navigate_to_page",
-        "description": "Navigate to a section of the app (home, daily, clients, reports).",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "page": {
-                    "type": "string",
-                    "description": "One of: home, daily, clients, reports"
-                }
-            },
-            "required": ["page"]
-        }
-    }
-]
 
 def route_command(user_input: str):
-    try:
-        resp = client.chat.completions.create(
-            model=MODEL,
-            messages=[{"role": "user", "content": user_input}],
-            functions=FUNCTIONS,
-            function_call="auto"
-        )
+    """
+    Offline command router.
 
-        msg = resp.choices[0].message
+    It returns either:
+      - {"redirect": "/some-url"}    for navigation
+      - "plain text"                 for simple replies
 
-        if msg.function_call:
-            name = msg.function_call.name
-            args = json.loads(msg.function_call.arguments or "{}")
+    No OpenAI, just keyword-based logic.
+    """
+    if not user_input:
+        return "No command received."
 
-            if name == "get_summary":
-                return summarize_data(run_full_summary())
+    text = user_input.strip()
+    lower = text.lower()
 
-            if name == "get_deep_analysis":
-                return analyze_trends_and_suggest(run_full_summary())
+    # ── Navigation intents ────────────────────────────────────────────────
+    # Home / main
+    if any(k in lower for k in ["home", "main menu", "dashboard"]):
+        return {"redirect": "/"}
 
-            if name == "get_for_date":
-                return summarize_for_date(args.get("date", ""))
+    # Daily report / check-in
+    if any(k in lower for k in ["daily", "check-in", "checkin", "report today", "daily report"]):
+        return {"redirect": "/report"}
 
-            if name == "navigate_to_page":
-                # Normalize and route only to supported top-level pages.
-                page = (args.get("page") or "").strip().lower()
+    # Clients
+    if "client" in lower or "clients" in lower:
+        return {"redirect": "/clients"}
 
-                # simple keyword mapping (no legacy report names / URLs)
-                if "home" in page:
-                    return {"redirect": "/"}
-                if "report" in page or "daily" in page or "check" in page:
-                    # daily check-in
-                    return {"redirect": "/report"}
-                if "client" in page:
-                    return {"redirect": "/clients"}
-                if "report" in page or "reports" in page:
-                    # reports shell (placeholder)
-                    return {"redirect": "/figurella-reports/"}
+    # Reports shell (placeholder route)
+    if "report" in lower or "reports" in lower:
+        return {"redirect": "/figurella-reports/"}
 
-                return {"message": f"❓ Unknown destination: {page}"}
+    # ── Data / analytics intents ─────────────────────────────────────────
+    if any(k in lower for k in ["summary", "today", "performance", "how did we do"]):
+        # High-level daily summary using offline gpt_wrapper
+        return summarize_data(run_full_summary())
 
-            return {"message": f"⚠ Function {name} not implemented."}
+    if any(k in lower for k in ["deep analysis", "strategy", "trend", "trends"]):
+        return analyze_trends_and_suggest(run_full_summary())
 
-        return msg.content or ""
+    if "yesterday" in lower:
+        # Let ai_assistant_routes handle most date parsing; here we just support a simple shortcut.
+        from datetime import date, timedelta
+        y = (date.today() - timedelta(days=1)).isoformat()
+        return summarize_for_date(y)
 
-    except OpenAIError as oe:
-        return f"❗ OpenAI API error: {oe}"
-
-    except Exception as e:
-        return f"❗ Internal error: {e}"
+    # ── Fallback generic reply ───────────────────────────────────────────
+    return (
+        "Offline assistant:\n"
+        "- Say things like 'open clients', 'go to daily report', or 'show today summary'.\n"
+        "- Deep AI chat is disabled in this build (no OpenAI)."
+    )

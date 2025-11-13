@@ -1,0 +1,53 @@
+{# app/templates/charts/chart_tab/_page_template.html #}
+
+{# 1) Safe defaults if rows aren't in context #}
+{% set r_DATE   = r_DATE   | default({}) %}
+{% set r_FA     = r_FA     | default({}) %}
+{% set r_Freq   = r_Freq   | default({}) %}
+{% set r_Reps   = r_Reps   | default({}) %}
+{% set r_STEP   = r_STEP   | default({}) %}
+{% set r_NC     = r_NC     | default({}) %}
+{% set r_Weight = r_Weight | default({}) %}
+
+{# 2) Import macros with a namespace "M" #}
+{% import 'charts/chart_tab/_macros.html' as M %}
+
+<template id="chart-page-template">
+  <div class="chart-page meas-scroll" data-page="">
+    <div class="meas-zoom">
+
+      <div class="meas-grid zebra-pink">
+        <table class="text-sm">
+          {{ M.colgroup10(1) }}
+          {{ M.header_range(1, 10) }}
+          <tbody>
+            {{ M.row_date('DATE', r_DATE, 1, 10) }}
+            {{ M.row_text('FA',     r_FA,     1, 10) }}
+            {{ M.row_text('Freq.',  r_Freq,   1, 10) }}
+            {{ M.row_text('Reps',   r_Reps,   1, 10) }}
+            {{ M.row_text('STEP',   r_STEP,   1, 10) }}
+            {{ M.row_text('NC',     r_NC,     1, 10) }}
+            {{ M.row_text('Weight', r_Weight, 1, 10) }}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="meas-grid zebra-pink">
+        <table class="text-sm">
+          {{ M.colgroup10(11) }}
+          {{ M.header_range(11, 20) }}
+          <tbody>
+            {{ M.row_date('DATE', r_DATE, 11, 20) }}
+            {{ M.row_text('FA',     r_FA,     11, 20) }}
+            {{ M.row_text('Freq.',  r_Freq,   11, 20) }}
+            {{ M.row_text('Reps',   r_Reps,   11, 20) }}
+            {{ M.row_text('STEP',   r_STEP,   11, 20) }}
+            {{ M.row_text('NC',     r_NC,     11, 20) }}
+            {{ M.row_text('Weight', r_Weight, 11, 20) }}
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
+</template>

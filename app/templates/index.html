@@ -1,495 +1,561 @@
 {% extends "base.html" %}
 {% block content %}
 
-<div class="container-responsive max-w-7xl mx-auto">
-  <h1 class="sr-only">Figurella Platform — Home</h1>
+<!-- ===== Slider styles (self-contained) ===== -->
+<style>
+  /* Horizontal slider with snap */
+  .home-slider {
+    display: flex;
+    overflow-x: auto;
+    overflow-y: visible;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    gap: 0;
+  }
+  .home-slide {
+    scroll-snap-align: start;
+    flex: 0 0 100%;
+    width: 100%;
+  }
+  .home-slider::-webkit-scrollbar { height: 10px; }
+  .home-slider::-webkit-scrollbar-thumb {
+    background: transparent; border-radius: 8px;
+  }
+  .home-slider:hover::-webkit-scrollbar-thumb {
+    background: rgba(203,213,225,.6);
+  }
 
-  <!-- Desktop scroll enable (keeps iPad scroll working too) -->
-  <style>
-    @media (min-width: 1024px) {
-      html, body { overflow-y: auto !important; height: auto; }
-      body { position: relative; }
-    }
-  </style>
+  /* Controls */
+  .hs-controls { position: sticky; bottom: 16px; z-index: 50; display:flex; justify-content:flex-end; gap:.5rem; pointer-events:none; }
+  .hs-controls > * { pointer-events:auto; }
+  .hs-dot { width: 9px; height: 9px; border-radius: 999px; background: rgba(255,255,255,.7); border: 1px solid rgba(0,0,0,.15); box-shadow: 0 2px 8px rgba(0,0,0,.15); }
+  .hs-dot[aria-current="true"] { background: #CC0066; border-color: rgba(255,255,255,.9); }
+  .hs-arrow { background: rgba(255,255,255,.9); border: 1px solid rgba(0,0,0,.08); box-shadow: 0 6px 18px rgba(0,0,0,.12); width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; }
+  .hs-arrow:hover { transform: translateY(-1px); }
+  .hs-wrap { position: relative; }
 
-  <!-- =========================
-     ROW 1: Location Performance (full width) — Option 1 styling
-     ========================= -->
-<section class="mt-4">
-  <!-- Location Performance -->
-  <div class="mt-0">
-    <div class="rounded-2xl bg-gradient-to-br from-pink-50 to-white/90 backdrop-blur border border-pink-100 p-6 shadow-md">
-      <h2 class="text-lg font-semibold text-pink-700 mb-4 flex items-center gap-2">
-        <span class="inline-grid place-items-center h-6 w-6 rounded-md bg-pink-100 text-pink-700">
-          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-            <rect x="4" y="10" width="3" height="9" rx="1"></rect>
-            <rect x="10" y="6"  width="3" height="13" rx="1" opacity=".85"></rect>
-            <rect x="16" y="3"  width="3" height="16" rx="1" opacity=".7"></rect>
-          </svg>
-        </span>
-        Location Performance
-      </h2>
+  /* Big logo */
+  .fig-logo-wrap { display:grid; place-items:center; padding-top: 1rem; }
+  .fig-logo {
+    height: 96px;
+    filter: drop-shadow(0 8px 22px rgba(0,0,0,.25));
+    user-select: none; -webkit-user-drag: none;
+  }
+  @media (max-width:1024px){ .fig-logo { height: 84px; } }
+  @media (max-width:640px){ .fig-logo { height: 72px; } }
 
-      <!-- Top metrics -->
-      <div class="grid gap-4 sm:grid-cols-3">
-        <!-- Active Clients -->
-        <div class="p-4 rounded-xl border border-pink-100 bg-white/70 hover:bg-pink-50 transition">
-          <div class="text-xs text-pink-700 font-medium">Active Clients</div>
-          <div id="perf-active-clients" class="text-2xl font-bold text-gray-900">—</div>
+  /* Desktop vertical scroll stays natural */
+  @media (min-width: 1024px) {
+    html, body { overflow-y: auto !important; height: auto; }
+    body { position: relative; }
+  }
+</style>
+
+<div class="hs-wrap">
+  <div id="homeSlider" class="home-slider">
+
+    <!-- ========== SLIDE 1 (FIRST): Logo + Notifications + App Launcher ========== -->
+    <section class="home-slide">
+      <div class="container-responsive max-w-7xl mx-auto">
+        <h1 class="sr-only">Figurella Platform — Home</h1>
+
+        <!-- Big centered brand -->
+        <div class="fig-logo-wrap">
+          <img
+            src="{{ url_for('static', filename='images/figurella-logo.png') }}"
+            alt="Figurella"
+            class="fig-logo"
+            draggable="false"
+          />
         </div>
 
-        <!-- New Clients (This Month) with Try / OK + Last Month -->
-        <div class="p-4 rounded-xl border border-pink-100 bg-white/70 hover:bg-pink-50 transition">
-          <div class="flex items-center justify-between">
-            <div>
-              <div class="text-xs text-pink-700 font-medium">New Clients (This Month)</div>
-              <div id="perf-new-clients-total" class="text-2xl font-bold text-gray-900">—</div>
-            </div>
-            <div class="flex gap-2">
-              <div class="px-3 py-1 rounded-lg bg-amber-100 text-amber-800 text-sm font-semibold">
-                Try: <span id="perf-new-try">—</span>
+        <!-- Notifications -->
+        <section class="mt-4" aria-label="Notifications">
+          <div id="notif-list"
+               class="mt-2 rounded-2xl bg-white/90 backdrop-blur border border-white/70 p-4 text-sm text-gray-700 shadow-sm">
+            {% if has_upcoming %}
+              <div class="flex items-start gap-3">
+                <svg class="w-5 h-5 text-figurella mt-0.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path d="M8 7V6a4 4 0 118 0v1h3a1 1 0 011 1v11a2 2 0 01-2 2H6a2 2 0 01-2-2V8a1 1 0 011-1h3zm2-1a2 2 0 114 0v1h-4V6z"/>
+                </svg>
+                <div class="flex-1">
+                  <div class="font-semibold text-gray-900">Today’s upcoming appointments</div>
+                  <ul class="mt-1 space-y-1">
+                    {% for it in upcoming_calendar %}
+                      <li class="flex items-center gap-3">
+                        <div class="flex-1">
+                          <span class="font-medium">{{ it.when }}</span>
+                          • {{ it.client }}
+                          {% if it.room %}<span class="text-gray-500"> — {{ it.room }}</span>{% endif %}
+                          {% if it.notes %}<span class="text-gray-500"> • {{ it.notes }}</span>{% endif %}
+                        </div>
+                        <button
+                          class="done-btn inline-flex items-center rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-2 py-1"
+                          data-series="{{ it.series_id }}"
+                          data-occ="{{ it.occurrenceStart }}"
+                          aria-label="Mark done">
+                          Done
+                        </button>
+                      </li>
+                    {% endfor %}
+                  </ul>
+                </div>
               </div>
-              <div class="px-3 py-1 rounded-lg bg-emerald-100 text-emerald-800 text-sm font-semibold">
-                OK: <span id="perf-new-ok">—</span>
+            {% else %}
+              No tasks scheduled for today.
+            {% endif %}
+          </div>
+        </section>
+
+        <!-- App launcher tiles -->
+        <section class="mt-8" aria-label="App launcher">
+          <div class="grid gap-6 [grid-template-columns:repeat(auto-fit,minmax(16rem,1fr))]">
+            <!-- Clients Mgmt -->
+            <a id="tile-charts" href="{{ links.charts }}"
+               class="group rounded-2xl bg-white/90 backdrop-blur border border-white/70 p-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-figurella/40">
+              <div class="flex items-center gap-4">
+                <div class="h-12 w-12 rounded-xl bg-pink-600 text-white grid place-items-center shadow-[0_8px_16px_rgba(236,72,153,.35)]">
+                  <svg viewBox="0 0 24 24" class="h-6 w-6" fill="none" aria-hidden="true">
+                    <rect x="3" y="11" width="3" height="9" rx="1.2" fill="currentColor"/>
+                    <rect x="9" y="7"  width="3" height="13" rx="1.2" fill="currentColor" opacity=".9"/>
+                    <rect x="15" y="4" width="3" height="16" rx="1.2" fill="currentColor" opacity=".85"/>
+                  </svg>
+                </div>
+                <div>
+                  <div class="font-semibold text-gray-900">Clients Mgmt</div>
+                  <div class="text-xs text-gray-600">Open client charts</div>
+                </div>
               </div>
-            </div>
-          </div>
-          <div class="mt-2 text-sm text-gray-600">
-            <span class="text-gray-500">Last month:</span>
-            <span class="font-semibold text-gray-900" id="perf-last-month-total">—</span>
-            <span class="ml-1 text-amber-700">(Try: <span id="perf-last-month-try">—</span>)</span>
-            <span class="ml-2 text-emerald-700">(OK: <span id="perf-last-month-ok">—</span>)</span>
-          </div>
-        </div>
+            </a>
 
-        <!-- Current Week Attendance -->
-        <div class="p-4 rounded-xl border border-pink-100 bg-white/70 hover:bg-pink-50 transition">
-          <div class="text-xs text-pink-700 font-medium">Current Week Attendance</div>
-          <div id="perf-current-week-att" class="text-2xl font-bold text-gray-900">—</div>
-        </div>
-      </div>
+            <!-- Contacts -->
+            <a id="tile-contacts" href="{{ links.clients }}"
+               class="group rounded-2xl bg-white/90 backdrop-blur border border-white/70 p-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-figurella/40">
+              <div class="flex items-center gap-4">
+                <div class="h-12 w-12 rounded-xl bg-indigo-600 text-white grid place-items-center shadow-[0_8px_16px_rgba(79,70,229,.35)]">
+                  <svg viewBox="0 0 24 24" class="h-6 w-6" fill="none" aria-hidden="true">
+                    <circle cx="9" cy="8" r="3" stroke="white" stroke-width="1.8"/>
+                    <path d="M3.8 17c2-4 8.4-4 10.4 0" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
+                    <circle cx="17.3" cy="9.5" r="2.3" stroke="white" stroke-width="1.6" opacity=".9"/>
+                    <path d="M14.7 17.1c1.2-2.3 4.7-2.3 5.9 0" stroke="white" stroke-width="1.6" stroke-linecap="round" opacity=".9"/>
+                  </svg>
+                </div>
+                <div>
+                  <div class="font-semibold text-gray-900">Contacts</div>
+                  <div class="text-xs text-gray-600">View all contacts</div>
+                </div>
+              </div>
+            </a>
 
-      <!-- Attendance goal + comparisons -->
-      <div class="mt-6 grid gap-4 lg:grid-cols-[290px,1fr]">
-        <!-- Goal box -->
-        <div class="p-4 rounded-xl border border-pink-100 bg-white/70 hover:bg-pink-50 transition">
-          <div class="flex items-center justify-between mb-2">
-            <div class="text-sm font-medium text-gray-800">Weekly Attendance Goal</div>
-            <button id="goal-reset" class="text-xs text-pink-700 hover:text-pink-800 underline">Reset</button>
-          </div>
-          <div class="flex items-center gap-3">
-            <input id="attendance-goal" type="number" min="0" step="1"
-                   class="w-28 rounded-lg border-pink-200 focus:ring-pink-300 focus:border-pink-300 text-gray-900"
-                   placeholder="e.g., 120">
-            <button id="goal-save"
-                    class="px-3 py-2 text-sm rounded-lg bg-pink-600 text-white font-medium hover:bg-pink-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-400">
-              Save
-            </button>
-          </div>
-          <div class="mt-3 text-sm text-gray-600">
-            Current week: <span id="att-current" class="font-semibold text-gray-900">—</span><br>
-            Goal gap: <span id="att-goal-gap" class="font-semibold">—</span>
-          </div>
-        </div>
-
-        <!-- Dynamic attendance table -->
-        <div class="rounded-xl border border-pink-100 overflow-hidden bg-white/70">
-          <div class="px-4 py-3 bg-pink-50 border-b border-pink-100 flex items-center justify-between">
-            <div class="text-sm font-medium text-pink-800">Attendance — Current vs Previous Weeks</div>
-            <div class="text-xs text-pink-700">Current week compares against each prior week</div>
-          </div>
-
-          <div class="overflow-x-auto">
-            <table class="min-w-full text-sm">
-              <thead class="bg-pink-50 text-pink-700">
-                <tr>
-                  <th class="text-left px-4 py-2 border-b border-pink-100">Week</th>
-                  <th class="text-right px-4 py-2 border-b border-pink-100">Previous</th>
-                  <th class="text-right px-4 py-2 border-b border-pink-100">Current</th>
-                  <th class="text-right px-4 py-2 border-b border-pink-100">Δ</th>
-                  <th class="text-right px-4 py-2 border-b border-pink-100">% Change</th>
-                </tr>
-              </thead>
-              <tbody id="attendance-rows" class="divide-y divide-pink-100 text-gray-800"></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      <div class="mt-4 text-sm text-gray-600" id="trend-highlights" hidden>
-        <span class="font-medium">Trend Highlights:</span>
-        <span id="trend-text">—</span>
-      </div>
-    </div>
-  </div>
-</section>
-
- <!-- =========================
-     SALES (top-left) + LEADS (right, spans 2 rows) + LIFECYCLE (under Sales)
-     ========================= -->
-<section class="mt-6 grid gap-6 md:grid-cols-2 auto-rows-auto">
-  <!-- Row 1, Col 1 -->
-  <div class="md:col-span-1">
-    {% include "_sales_statistics.html" %}
-  </div>
-
-  <!-- Row 1–2, Col 2 (taller card spans two rows) -->
-  <div class="md:col-span-1 md:row-span-2">
-    {% include "_leads_statistics.html" %}
-  </div>
-
-  <!-- Row 2, Col 1 (moves up directly under Sales) -->
-  <div class="md:col-span-1">
-    {% include "_clients_lifecycle.html" %}
-  </div>
-</section>
-
-
-  <!-- =========================
-       Notifications
-       ========================= -->
-  <section class="mt-6" aria-label="Notifications">
-    <div id="notif-list"
-         class="mt-2 rounded-2xl bg-white/90 backdrop-blur border border-white/70 p-4 text-sm text-gray-700 shadow-sm">
-      {% if has_upcoming %}
-        <div class="flex items-start gap-3">
-          <svg class="w-5 h-5 text-figurella mt-0.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-            <path d="M8 7V6a4 4 0 118 0v1h3a1 1 0 011 1v11a2 2 0 01-2 2H6a2 2 0 01-2-2V8a1 1 0 011-1h3zm2-1a2 2 0 114 0v1h-4V6z"/>
-          </svg>
-          <div class="flex-1">
-            <div class="font-semibold text-gray-900">Today’s upcoming appointments</div>
-            <ul class="mt-1 space-y-1">
-              {% for it in upcoming_calendar %}
-                <li class="flex items-center gap-3">
-                  <div class="flex-1">
-                    <span class="font-medium">{{ it.when }}</span>
-                    • {{ it.client }}
-                    {% if it.room %}<span class="text-gray-500"> — {{ it.room }}</span>{% endif %}
-                    {% if it.notes %}<span class="text-gray-500"> • {{ it.notes }}</span>{% endif %}
+            <!-- Tasks / Calendar -->
+            <a id="tile-calendar" href="{{ links.calendar }}"
+               class="group rounded-2xl bg-white/90 backdrop-blur border border-white/70 p-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-figurella/40">
+              <div class="flex items-center gap-4">
+                <div class="h-12 w-12 rounded-xl bg-emerald-600 text-white grid place-items-center shadow-[0_8px_16px_rgba(16,185,129,.35)]">
+                  <svg viewBox="0 0 24 24" class="h-6 w-6" fill="none" aria-hidden="true">
+                    <rect x="3" y="5" width="18" height="16" rx="2.2" stroke="white" stroke-width="1.8"/>
+                    <path d="M3 9h18" stroke="white" stroke-width="1.8"/>
+                    <path d="M8 3.6v3M16 3.6v3" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
+                    <circle cx="9" cy="13.4" r="1.6" fill="white"/>
+                  </svg>
+                </div>
+                <div>
+                  <div class="font-semibold text-gray-900 flex items-center gap-2">
+                    Tasks
+                    {% if has_upcoming %}
+                      <span class="inline-flex items-center rounded-full bg-green-600 text-white text-[10px] leading-none px-2 py-0.5">
+                        {{ upcoming_calendar|length }}
+                      </span>
+                    {% endif %}
                   </div>
-                  <button
-                    class="done-btn inline-flex items-center rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-2 py-1"
-                    data-series="{{ it.series_id }}"
-                    data-occ="{{ it.occurrenceStart }}"
-                    aria-label="Mark done">
-                    Done
-                  </button>
-                </li>
-              {% endfor %}
-            </ul>
-          </div>
-        </div>
-      {% else %}
-        No tasks scheduled for today.
-      {% endif %}
-    </div>
-  </section>
+                  <div class="text-xs text-gray-600">Appointments &amp; tasks</div>
+                </div>
+              </div>
+            </a>
 
-  <!-- =========================
-       App launcher tiles
-       ========================= -->
-  <section class="mt-8" aria-label="App launcher">
-    <div class="grid gap-6 [grid-template-columns:repeat(auto-fit,minmax(16rem,1fr))]">
+            <!-- Daily Checks -->
+            <a id="tile-checkins" href="{{ links.checkins }}"
+               class="group rounded-2xl bg-white/90 backdrop-blur border border-white/70 p-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-figurella/40">
+              <div class="flex items-center gap-4">
+                <div class="h-12 w-12 rounded-xl bg-amber-500 text-white grid place-items-center shadow-[0_8px_16px_rgba(245,158,11,.35)]">
+                  <svg viewBox="0 0 24 24" class="h-6 w-6" fill="none" aria-hidden="true">
+                    <rect x="5" y="4" width="14" height="16" rx="2.2" stroke="white" stroke-width="1.8"/>
+                    <rect x="9" y="2.8" width="6" height="2.6" rx="1.2" fill="white"/>
+                    <path d="M8.2 12.4l2.1 2.1 5-5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </div>
+                <div class="min-w-0">
+                  <div class="font-semibold text-gray-900">Daily Checks</div>
+                  <div class="text-xs text-gray-600">Record today’s check-ins</div>
+                </div>
+              </div>
+            </a>
 
-      <!-- Clients Mgmt -->
-      <a id="tile-charts" href="{{ links.charts }}"
-         class="group rounded-2xl bg-white/90 backdrop-blur border border-white/70 p-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-figurella/40">
-        <div class="flex items-center gap-4">
-          <div class="h-12 w-12 rounded-xl bg-pink-600 text-white grid place-items-center shadow-[0_8px_16px_rgba(236,72,153,.35)]">
-            <svg viewBox="0 0 24 24" class="h-6 w-6" fill="none" aria-hidden="true">
-              <rect x="3" y="11" width="3" height="9" rx="1.2" fill="currentColor"/>
-              <rect x="9" y="7"  width="3" height="13" rx="1.2" fill="currentColor" opacity=".9"/>
-              <rect x="15" y="4" width="3" height="16" rx="1.2" fill="currentColor" opacity=".85"/>
-            </svg>
-          </div>
-          <div>
-            <div class="font-semibold text-gray-900">Clients Mgmt</div>
-            <div class="text-xs text-gray-600">Open client charts</div>
-          </div>
-        </div>
-      </a>
+            <!-- Nutrition -->
+            <a id="tile-nutrition" href="/nutrition/"
+               class="group rounded-2xl bg-white/90 backdrop-blur border border-white/70 p-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-figurella/40">
+              <div class="flex items-center gap-4">
+                <div class="h-12 w-12 rounded-xl bg-teal-600 text-white grid place-items-center shadow-[0_8px_16px_rgba(13,148,136,.35)]">
+                  <svg viewBox="0 0 24 24" class="h-6 w-6" fill="none" aria-hidden="true">
+                    <path d="M14.7 6.2c1.4 0 2.6-.8 3.3-2a3.9 3.9 0 0 0-3.6-2.2c-1.5.1-3.1 1-3.8 2.4-.7 1.3-.6 2.8.3 3.7.8-.9 2-1.9 3.8-1.9Z" fill="white" opacity=".9"/>
+                    <path d="M19.7 12.1c0-2.5-1.8-4.2-4.2-4.2-1.1 0-2 .3-2.7 1-.7-.7-1.6-1-2.7-1-2.4 0-4.2 1.7-4.2 4.2 0 5 3.2 7.6 6.9 7.6s7-2.6 6.9-7.6Z" fill="white"/>
+                    <path d="M8.7 8.5c-.9.2-1.7.8-2.2 1.6" stroke="white" stroke-width="1.6" linecap="round" opacity=".85"/>
+                  </svg>
+                </div>
+                <div>
+                  <div class="font-semibold text-gray-900">Nutrition</div>
+                  <div class="text-xs text-gray-600">Plans, logs & insights</div>
+                </div>
+              </div>
+            </a>
 
-      <!-- Contacts -->
-      <a id="tile-contacts" href="{{ links.clients }}"
-         class="group rounded-2xl bg-white/90 backdrop-blur border border-white/70 p-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-figurella/40">
-        <div class="flex items-center gap-4">
-          <div class="h-12 w-12 rounded-xl bg-indigo-600 text-white grid place-items-center shadow-[0_8px_16px_rgba(79,70,229,.35)]">
-            <svg viewBox="0 0 24 24" class="h-6 w-6" fill="none" aria-hidden="true">
-              <circle cx="9" cy="8" r="3" stroke="white" stroke-width="1.8"/>
-              <path d="M3.8 17c2-4 8.4-4 10.4 0" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
-              <circle cx="17.3" cy="9.5" r="2.3" stroke="white" stroke-width="1.6" opacity=".9"/>
-              <path d="M14.7 17.1c1.2-2.3 4.7-2.3 5.9 0" stroke="white" stroke-width="1.6" stroke-linecap="round" opacity=".9"/>
-            </svg>
+            <!-- Consultation -->
+            <a id="tile-consultation"
+               href="{{ (links.consultation if links and links.consultation else '/consultation/') }}"
+               class="group rounded-2xl bg-white/90 backdrop-blur border border-white/70 p-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-figurella/40">
+              <div class="flex items-center gap-4">
+                <div class="h-12 w-12 rounded-xl bg-fuchsia-600 text-white grid place-items-center shadow-[0_8px_16px_rgba(192,38,211,.35)]">
+                  <svg viewBox="0 0 24 24" class="h-6 w-6" fill="none" aria-hidden="true">
+                    <circle cx="12" cy="12" r="8" stroke="white" stroke-width="1.8" opacity=".95"/>
+                    <circle cx="12" cy="12" r="5" stroke="white" stroke-width="1.8" opacity=".9"/>
+                    <circle cx="12" cy="12" r="2" fill="white"/>
+                  </svg>
+                </div>
+                <div>
+                  <div class="font-semibold text-gray-900">Consultation</div>
+                  <div class="text-xs text-gray-600">Create &amp; view recap reports</div>
+                </div>
+              </div>
+            </a>
           </div>
-          <div>
-            <div class="font-semibold text-gray-900">Contacts</div>
-            <div class="text-xs text-gray-600">View all contacts</div>
-          </div>
-        </div>
-      </a>
+        </section>
+      </div>
+    </section>
 
-      <!-- Tasks / Calendar -->
-      <a id="tile-calendar" href="{{ links.calendar }}"
-         class="group rounded-2xl bg-white/90 backdrop-blur border border-white/70 p-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-figurella/40">
-        <div class="flex items-center gap-4">
-          <div class="h-12 w-12 rounded-xl bg-emerald-600 text-white grid place-items-center shadow-[0_8px_16px_rgba(16,185,129,.35)]">
-            <svg viewBox="0 0 24 24" class="h-6 w-6" fill="none" aria-hidden="true">
-              <rect x="3" y="5" width="18" height="16" rx="2.2" stroke="white" stroke-width="1.8"/>
-              <path d="M3 9h18" stroke="white" stroke-width="1.8"/>
-              <path d="M8 3.6v3M16 3.6v3" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
-              <circle cx="9" cy="13.4" r="1.6" fill="white"/>
-            </svg>
-          </div>
-          <div>
-            <div class="font-semibold text-gray-900 flex items-center gap-2">
-              Tasks
-              {% if has_upcoming %}
-                <span class="inline-flex items-center rounded-full bg-green-600 text-white text-[10px] leading-none px-2 py-0.5">
-                  {{ upcoming_calendar|length }}
+    <!-- ========== SLIDE 2 (SECOND): Performance + Sales + Leads + Lifecycle ========== -->
+    <section class="home-slide">
+      <div class="container-responsive max-w-7xl mx-auto">
+        <!-- ROW 1: Location Performance -->
+        <section class="mt-4">
+          <div class="mt-0">
+            <div class="rounded-2xl bg-gradient-to-br from-pink-50 to-white/90 backdrop-blur border border-pink-100 p-6 shadow-md">
+              <h2 class="text-lg font-semibold text-pink-700 mb-4 flex items-center gap-2">
+                <span class="inline-grid place-items-center h-6 w-6 rounded-md bg-pink-100 text-pink-700">
+                  <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <rect x="4" y="10" width="3" height="9" rx="1"></rect>
+                    <rect x="10" y="6"  width="3" height="13" rx="1" opacity=".85"></rect>
+                    <rect x="16" y="3"  width="3" height="16" rx="1" opacity=".7"></rect>
+                  </svg>
                 </span>
-              {% endif %}
+                Location Performance
+              </h2>
+
+              <!-- Top metrics -->
+              <div class="grid gap-4 sm:grid-cols-3">
+                <div class="p-4 rounded-xl border border-pink-100 bg-white/70 hover:bg-pink-50 transition">
+                  <div class="text-xs text-pink-700 font-medium">Active Clients</div>
+                  <div id="perf-active-clients" class="text-2xl font-bold text-gray-900">—</div>
+                </div>
+
+                <div class="p-4 rounded-xl border border-pink-100 bg-white/70 hover:bg-pink-50 transition">
+                  <div class="flex items-center justify-between">
+                    <div>
+                      <div class="text-xs text-pink-700 font-medium">New Clients (This Month)</div>
+                      <div id="perf-new-clients-total" class="text-2xl font-bold text-gray-900">—</div>
+                    </div>
+                    <div class="flex gap-2">
+                      <div class="px-3 py-1 rounded-lg bg-amber-100 text-amber-800 text-sm font-semibold">Try: <span id="perf-new-try">—</span></div>
+                      <div class="px-3 py-1 rounded-lg bg-emerald-100 text-emerald-800 text-sm font-semibold">OK: <span id="perf-new-ok">—</span></div>
+                    </div>
+                  </div>
+                  <div class="mt-2 text-sm text-gray-600">
+                    <span class="text-gray-500">Last month:</span>
+                    <span class="font-semibold text-gray-900" id="perf-last-month-total">—</span>
+                    <span class="ml-1 text-amber-700">(Try: <span id="perf-last-month-try">—</span>)</span>
+                    <span class="ml-2 text-emerald-700">(OK: <span id="perf-last-month-ok">—</span>)</span>
+                  </div>
+                </div>
+
+                <div class="p-4 rounded-xl border border-pink-100 bg-white/70 hover:bg-pink-50 transition">
+                  <div class="text-xs text-pink-700 font-medium">Current Week Attendance</div>
+                  <div id="perf-current-week-att" class="text-2xl font-bold text-gray-900">—</div>
+                </div>
+              </div>
+
+              <!-- Goal + comparisons -->
+              <div class="mt-6 grid gap-4 lg:grid-cols-[290px,1fr]">
+                <div class="p-4 rounded-xl border border-pink-100 bg-white/70 hover:bg-pink-50 transition">
+                  <div class="flex items-center justify-between mb-2">
+                    <div class="text-sm font-medium text-gray-800">Weekly Attendance Goal</div>
+                    <button id="goal-reset" class="text-xs text-pink-700 hover:text-pink-800 underline">Reset</button>
+                  </div>
+                  <div class="flex items-center gap-3">
+                    <input id="attendance-goal" type="number" min="0" step="1"
+                           class="w-28 rounded-lg border-pink-200 focus:ring-pink-300 focus:border-pink-300 text-gray-900"
+                           placeholder="e.g., 120">
+                    <button id="goal-save"
+                            class="px-3 py-2 text-sm rounded-lg bg-pink-600 text-white font-medium hover:bg-pink-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-400">
+                      Save
+                    </button>
+                  </div>
+                  <div class="mt-3 text-sm text-gray-600">
+                    Current week: <span id="att-current" class="font-semibold text-gray-900">—</span><br>
+                    Goal gap: <span id="att-goal-gap" class="font-semibold">—</span>
+                  </div>
+                </div>
+
+                <div class="rounded-xl border border-pink-100 overflow-hidden bg-white/70">
+                  <div class="px-4 py-3 bg-pink-50 border-b border-pink-100 flex items-center justify-between">
+                    <div class="text-sm font-medium text-pink-800">Attendance — Current vs Previous Weeks</div>
+                    <div class="text-xs text-pink-700">Current week compares against each prior week</div>
+                  </div>
+
+                  <div class="overflow-x-auto">
+                    <table class="min-w-full text-sm">
+                      <thead class="bg-pink-50 text-pink-700">
+                        <tr>
+                          <th class="text-left px-4 py-2 border-b border-pink-100">Week</th>
+                          <th class="text-right px-4 py-2 border-b border-pink-100">Previous</th>
+                          <th class="text-right px-4 py-2 border-b border-pink-100">Current</th>
+                          <th class="text-right px-4 py-2 border-b border-pink-100">Δ</th>
+                          <th class="text-right px-4 py-2 border-b border-pink-100">% Change</th>
+                        </tr>
+                      </thead>
+                      <tbody id="attendance-rows" class="divide-y divide-pink-100 text-gray-800"></tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              <div class="mt-4 text-sm text-gray-600" id="trend-highlights" hidden>
+                <span class="font-medium">Trend Highlights:</span>
+                <span id="trend-text">—</span>
+              </div>
             </div>
-            <div class="text-xs text-gray-600">Appointments &amp; tasks</div>
           </div>
-        </div>
-      </a>
+        </section>
 
-      <!-- Daily Checks -->
-      <a id="tile-checkins" href="{{ links.checkins }}"
-         class="group rounded-2xl bg-white/90 backdrop-blur border border-white/70 p-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-figurella/40">
-        <div class="flex items-center gap-4">
-          <div class="h-12 w-12 rounded-xl bg-amber-500 text-white grid place-items-center shadow-[0_8px_16px_rgba(245,158,11,.35)]">
-            <svg viewBox="0 0 24 24" class="h-6 w-6" fill="none" aria-hidden="true">
-              <rect x="5" y="4" width="14" height="16" rx="2.2" stroke="white" stroke-width="1.8"/>
-              <rect x="9" y="2.8" width="6" height="2.6" rx="1.2" fill="white"/>
-              <path d="M8.2 12.4l2.1 2.1 5-5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
+        <!-- SALES + LEADS + LIFECYCLE -->
+        <section class="mt-6 grid gap-6 md:grid-cols-2 auto-rows-auto">
+          <div class="md:col-span-1">
+            {% include "_sales_statistics.html" %}
           </div>
-          <div class="min-w-0">
-            <div class="font-semibold text-gray-900">Daily Checks</div>
-            <div class="text-xs text-gray-600">Record today’s check-ins</div>
+          <div class="md:col-span-1 md:row-span-2">
+            {% include "_leads_statistics.html" %}
           </div>
-        </div>
-      </a>
+          <div class="md:col-span-1">
+            {% include "_clients_lifecycle.html" %}
+          </div>
+        </section>
+      </div>
+    </section>
 
-      <!-- Nutrition -->
-      <a id="tile-nutrition" href="/nutrition/"
-         class="group rounded-2xl bg-white/90 backdrop-blur border border-white/70 p-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-figurella/40">
-        <div class="flex items-center gap-4">
-          <div class="h-12 w-12 rounded-xl bg-teal-600 text-white grid place-items-center shadow-[0_8px_16px_rgba(13,148,136,.35)]">
-            <svg viewBox="0 0 24 24" class="h-6 w-6" fill="none" aria-hidden="true">
-              <path d="M14.7 6.2c1.4 0 2.6-.8 3.3-2a3.9 3.9 0 0 0-3.6-2.2c-1.5.1-3.1 1-3.8 2.4-.7 1.3-.6 2.8.3 3.7.8-.9 2-1.9 3.8-1.9Z" fill="white" opacity=".9"/>
-              <path d="M19.7 12.1c0-2.5-1.8-4.2-4.2-4.2-1.1 0-2 .3-2.7 1-.7-.7-1.6-1-2.7-1-2.4 0-4.2 1.7-4.2 4.2 0 5 3.2 7.6 6.9 7.6s7-2.6 6.9-7.6Z" fill="white"/>
-              <path d="M8.7 8.5c-.9.2-1.7.8-2.2 1.6" stroke="white" stroke-width="1.6" stroke-linecap="round" opacity=".85"/>
-            </svg>
-          </div>
-          <div>
-            <div class="font-semibold text-gray-900">Nutrition</div>
-            <div class="text-xs text-gray-600">Plans, logs & insights</div>
-          </div>
-        </div>
-      </a>
+  </div>
 
-      <!-- Consultation -->
-      <a id="tile-consultation"
-         href="{{ (links.consultation if links and links.consultation else '/consultation/') }}"
-         class="group rounded-2xl bg-white/90 backdrop-blur border border-white/70 p-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-figurella/40">
-        <div class="flex items-center gap-4">
-          <div class="h-12 w-12 rounded-xl bg-fuchsia-600 text-white grid place-items-center shadow-[0_8px_16px_rgba(192,38,211,.35)]">
-            <svg viewBox="0 0 24 24" class="h-6 w-6" fill="none" aria-hidden="true">
-              <circle cx="12" cy="12" r="8" stroke="white" stroke-width="1.8" opacity=".95"/>
-              <circle cx="12" cy="12" r="5" stroke="white" stroke-width="1.8" opacity=".9"/>
-              <circle cx="12" cy="12" r="2" fill="white"/>
-            </svg>
-          </div>
-          <div>
-            <div class="font-semibold text-gray-900">Consultation</div>
-            <div class="text-xs text-gray-600">Create &amp; view recap reports</div>
-          </div>
-        </div>
-      </a>
+  <!-- Controls -->
+  <div class="hs-controls max-w-7xl mx-auto px-4">
+    <div class="flex items-center gap-2">
+      <button id="hsPrev" class="hs-arrow" aria-label="Previous">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M15 18l-6-6 6-6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+      <div class="flex items-center gap-1.5">
+        <button class="hs-dot" data-slide="0" aria-current="true" aria-label="Go to screen 1"></button>
+        <button class="hs-dot" data-slide="1" aria-label="Go to screen 2"></button>
+      </div>
+      <button id="hsNext" class="hs-arrow" aria-label="Next">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M9 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
     </div>
-  </section>
+  </div>
 </div>
 
 <!-- ======= PERF DATA / RENDER SCRIPTS (unchanged) ======= -->
 
-<!-- Seed default (used if server block missing) -->
 <script>
   window.PERF_DATA = window.PERF_DATA || {
     active_clients: "—",
-    new_clients: {
-      this_month: { total: 0, try: 0, ok: 0 },
-      last_month: { total: 0, try: 0, ok: 0 }
-    },
-    attendance: {
-      weeks: [
-        { label: "This Week", count: 0, current: true },
-        { label: "Last Week", count: 0 },
-        { label: "2 Weeks Ago", count: 0 }
-      ]
-    }
+    new_clients: { this_month: { total: 0, try: 0, ok: 0 }, last_month: { total: 0, try: 0, ok: 0 } },
+    attendance: { weeks: [ { label: "This Week", count: 0, current: true }, { label: "Last Week", count: 0 }, { label: "2 Weeks Ago", count: 0 } ] }
   };
 </script>
 
-<!-- Server data safely embedded as JSON -->
 <script id="perf-data" type="application/json">
 {{ (PERF_DATA | default({})) | tojson | safe }}
 </script>
 
 <script>
-  (function () {
-    let perf = null;
-    try { perf = JSON.parse(document.getElementById('perf-data').textContent); } catch (e) {}
-    if (perf && typeof perf === 'object') {
-      window.PERF_DATA = perf;
-    } else {
-      window.PERF_DATA = null;  // allow fallback fetch below
-    }
+  (function initPerf(){
+    try {
+      const raw = document.getElementById('perf-data')?.textContent;
+      const parsed = raw ? JSON.parse(raw) : null;
+      window.PERF_DATA = (parsed && typeof parsed === 'object') ? parsed : window.PERF_DATA || null;
+    } catch (_) { window.PERF_DATA = window.PERF_DATA || null; }
   })();
-</script>
 
-<script>
-document.addEventListener("DOMContentLoaded", function () {
-  const el = (id) => document.getElementById(id);
-  const fmt = (n) => (Number.isFinite(n) ? n.toLocaleString() : "—");
-  const fmtPct = (v) => (Number.isFinite(v) ? `${(v * 100).toFixed(1)}%` : "—");
+  document.addEventListener("DOMContentLoaded", function () {
+    /* ---------- Slider controls ---------- */
+    const slider = document.getElementById('homeSlider');
+    const dots   = Array.from(document.querySelectorAll('.hs-dot'));
+    const prev   = document.getElementById('hsPrev');
+    const next   = document.getElementById('hsNext');
 
-  function renderPerf(data) {
-    if (!data) return;
+    function goTo(i){ if(!slider) return; const w = slider.clientWidth; slider.scrollTo({ left: i * w, behavior: 'smooth' }); }
+    function activeIndex(){ const w = slider.clientWidth; return Math.round(slider.scrollLeft / Math.max(1, w)); }
+    function updateDots(){ const i = activeIndex(); dots.forEach((d, idx)=> d.setAttribute('aria-current', String(idx===i))); }
 
-    const active = Number(data.active_clients);
-    el("perf-active-clients").textContent = Number.isFinite(active) ? fmt(active) : "—";
+    dots.forEach(d => d.addEventListener('click', ()=> goTo(Number(d.dataset.slide||0))));
+    prev?.addEventListener('click', ()=> goTo(Math.max(0, activeIndex()-1)));
+    next?.addEventListener('click', ()=> goTo(Math.min(1, activeIndex()+1)));
+    slider?.addEventListener('scroll', ()=> { requestAnimationFrame(updateDots); });
+    window.addEventListener('resize', ()=> { requestAnimationFrame(updateDots); });
 
-    // this month
-    const tm = data?.new_clients?.this_month || { total: 0, try: 0, ok: 0 };
-    const tmTry = Number(tm.try) || 0;
-    const tmOk  = Number(tm.ok)  || 0;
-    const tmTot = Number.isFinite(Number(tm.total)) ? Number(tm.total) : (tmTry + tmOk);
-    el("perf-new-try").textContent = fmt(tmTry);
-    el("perf-new-ok").textContent  = fmt(tmOk);
-    el("perf-new-clients-total").textContent = fmt(tmTot);
+    document.addEventListener('keydown', (e)=>{
+      if (e.key === 'ArrowLeft')  goTo(Math.max(0, activeIndex()-1));
+      if (e.key === 'ArrowRight') goTo(Math.min(1, activeIndex()+1));
+    });
 
-    // last month
-    const lm = data?.new_clients?.last_month || { total: 0, try: 0, ok: 0 };
-    const lmTry = Number(lm.try) || 0;
-    const lmOk  = Number(lm.ok)  || 0;
-    const lmTot = Number.isFinite(Number(lm.total)) ? Number(lm.total) : (lmTry + lmOk);
-    el("perf-last-month-total").textContent = fmt(lmTot);
-    el("perf-last-month-try").textContent   = fmt(lmTry);
-    el("perf-last-month-ok").textContent    = fmt(lmOk);
-
-    // attendance
-    const weeks = Array.isArray(data?.attendance?.weeks) ? data.attendance.weeks.slice() : [];
-    if (!weeks.length) return;
-    weeks.sort((a, b) => (b?.current === true) - (a?.current === true));
-    const current = weeks[0] || { label: "Current", count: 0 };
-    const previous = weeks.slice(1);
-
-    el("perf-current-week-att").textContent = fmt(Number(current.count) || 0);
-
-    // goal UI
-    (function () {
-      const GOAL_KEY = "figurella.attendance.goal";
-      const goalInput = el("attendance-goal");
-      const goalSave  = el("goal-save");
-      const goalReset = el("goal-reset");
-      const attCurrentEl = el("att-current");
-      const goalGapEl    = el("att-goal-gap");
-
-      const loadGoal = () => {
-        const v = localStorage.getItem(GOAL_KEY);
-        return v ? parseInt(v, 10) : NaN;
-      };
-      const setGoalUI = (g) => {
-        const cur = Number(current.count) || 0;
-        if (Number.isFinite(g)) {
-          goalInput.value = g;
-          const gap = g - cur;
-          attCurrentEl.textContent = fmt(cur);
-          goalGapEl.textContent = (gap === 0 ? "On goal" : (gap > 0 ? `${fmt(gap)} to goal` : `${fmt(-gap)} over goal`));
-          goalGapEl.className = "font-semibold " + (gap > 0 ? "text-amber-600" : (gap < 0 ? "text-emerald-600" : "text-gray-800"));
-        } else {
-          attCurrentEl.textContent = fmt(cur);
-          goalGapEl.textContent = "—";
-          goalGapEl.className = "font-semibold text-gray-500";
-        }
-      };
-      setGoalUI(loadGoal());
-      goalSave?.addEventListener("click", () => {
-        const val = parseInt(goalInput.value, 10);
-        if (Number.isFinite(val) && val >= 0) {
-          localStorage.setItem(GOAL_KEY, String(val));
-          setGoalUI(val);
-        }
-      });
-      goalReset?.addEventListener("click", () => {
-        localStorage.removeItem(GOAL_KEY);
-        goalInput.value = "";
-        setGoalUI(NaN);
-      });
+    // Open via ?screen=2
+    (function openFromQuery(){
+      const q = new URLSearchParams(location.search);
+      const s = Number(q.get('screen'));
+      if (s === 2) goTo(1);
     })();
 
-    // table
-    const tbody = el("attendance-rows");
-    if (tbody) {
-      tbody.innerHTML = "";
-      const cur = Number(current.count) || 0;
-      const makeDeltaCell = (delta) => {
-        const up = delta > 0, down = delta < 0;
-        const cls = up ? "text-emerald-700" : (down ? "text-rose-700" : "text-gray-700");
-        const badge = up ? "▲" : (down ? "▼" : "•");
-        return `<span class="${cls} font-semibold">${badge} ${fmt(delta)}</span>`;
-      };
-      const makePctCell = (pct) => {
-        const up = pct > 0, down = pct < 0;
-        const cls = up ? "text-emerald-700" : (down ? "text-rose-700" : "text-gray-700");
-        return `<span class="${cls} font-semibold">${fmtPct(pct)}</span>`;
-      };
-      previous.forEach((w) => {
-        const prev = Number(w.count) || 0;
-        const delta = cur - prev;
-        const pct = prev === 0 ? (cur === 0 ? 0 : 1) : (delta / prev);
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td class="px-4 py-2 text-gray-800">${w.label || "Previous"}</td>
-          <td class="px-4 py-2 text-right tabular-nums text-gray-800">${fmt(prev)}</td>
-          <td class="px-4 py-2 text-right tabular-nums text-gray-900 font-semibold">${fmt(cur)}</td>
-          <td class="px-4 py-2 text-right tabular-nums">${makeDeltaCell(delta)}</td>
-          <td class="px-4 py-2 text-right tabular-nums">${makePctCell(pct)}</td>
-        `;
-        tbody.appendChild(tr);
-      });
+    /* ---------- PERF rendering (your original logic) ---------- */
+    const el  = (id) => document.getElementById(id);
+    const fmt = (n) => (Number.isFinite(n) ? n.toLocaleString() : "—");
+    const fmtPct = (v) => (Number.isFinite(v) ? `${(v * 100).toFixed(1)}%` : "—");
 
-      // trend
-      if (previous.length) {
-        const avgPrev = previous.reduce((s, w) => s + (Number(w.count) || 0), 0) / previous.length;
-        const deltaAvg = cur - avgPrev;
-        const pctAvg = avgPrev === 0 ? (cur === 0 ? 0 : 1) : (deltaAvg / avgPrev);
-        const trend = deltaAvg === 0
-          ? "Attendance is flat vs recent average."
-          : (deltaAvg > 0
-              ? `Attendance is up ${fmt(deltaAvg)} (${fmtPct(pctAvg)}) vs recent average.`
-              : `Attendance is down ${fmt(-deltaAvg)} (${fmtPct(pctAvg)}) vs recent average.`);
-        const tBox = document.getElementById("trend-highlights");
-        const tText = document.getElementById("trend-text");
-        if (tBox && tText) {
-          tText.textContent = trend;
-          tBox.hidden = false;
+    function renderPerf(data) {
+      if (!data) return;
+
+      const active = Number(data.active_clients);
+      el("perf-active-clients").textContent = Number.isFinite(active) ? fmt(active) : "—";
+
+      const tm = data?.new_clients?.this_month || { total: 0, try: 0, ok: 0 };
+      const tmTry = Number(tm.try) || 0;
+      const tmOk  = Number(tm.ok)  || 0;
+      const tmTot = Number.isFinite(Number(tm.total)) ? Number(tm.total) : (tmTry + tmOk);
+      el("perf-new-try").textContent = fmt(tmTry);
+      el("perf-new-ok").textContent  = fmt(tmOk);
+      el("perf-new-clients-total").textContent = fmt(tmTot);
+
+      const lm = data?.new_clients?.last_month || { total: 0, try: 0, ok: 0 };
+      const lmTry = Number(lm.try) || 0;
+      const lmOk  = Number(lm.ok)  || 0;
+      const lmTot = Number.isFinite(Number(lm.total)) ? Number(lm.total) : (lmTry + lmOk);
+      el("perf-last-month-total").textContent = fmt(lmTot);
+      el("perf-last-month-try").textContent   = fmt(lmTry);
+      el("perf-last-month-ok").textContent    = fmt(lmOk);
+
+      const weeks = Array.isArray(data?.attendance?.weeks) ? data.attendance.weeks.slice() : [];
+      if (!weeks.length) return;
+      weeks.sort((a, b) => (b?.current === true) - (a?.current === true));
+      const current = weeks[0] || { label: "Current", count: 0 };
+      const previous = weeks.slice(1);
+
+      el("perf-current-week-att").textContent = fmt(Number(current.count) || 0);
+
+      (function goalUI(){
+        const GOAL_KEY = "figurella.attendance.goal";
+        const goalInput = el("attendance-goal");
+        const goalSave  = el("goal-save");
+        const goalReset = el("goal-reset");
+        const attCurrentEl = el("att-current");
+        const goalGapEl    = el("att-goal-gap");
+
+        const loadGoal = () => { const v = localStorage.getItem(GOAL_KEY); return v ? parseInt(v, 10) : NaN; };
+        const setGoalUI = (g) => {
+          const cur = Number(current.count) || 0;
+          if (Number.isFinite(g)) {
+            goalInput.value = g;
+            const gap = g - cur;
+            attCurrentEl.textContent = fmt(cur);
+            goalGapEl.textContent = (gap === 0 ? "On goal" : (gap > 0 ? `${fmt(gap)} to goal` : `${fmt(-gap)} over goal`));
+            goalGapEl.className = "font-semibold " + (gap > 0 ? "text-amber-600" : (gap < 0 ? "text-emerald-600" : "text-gray-800"));
+          } else {
+            attCurrentEl.textContent = fmt(cur);
+            goalGapEl.textContent = "—";
+            goalGapEl.className = "font-semibold text-gray-500";
+          }
+        };
+        setGoalUI(loadGoal());
+        goalSave?.addEventListener("click", () => {
+          const val = parseInt(goalInput.value, 10);
+          if (Number.isFinite(val) && val >= 0) {
+            localStorage.setItem(GOAL_KEY, String(val));
+            setGoalUI(val);
+          }
+        });
+        goalReset?.addEventListener("click", () => {
+          localStorage.removeItem(GOAL_KEY);
+          goalInput.value = "";
+          setGoalUI(NaN);
+        });
+      })();
+
+      const tbody = el("attendance-rows");
+      if (tbody) {
+        tbody.innerHTML = "";
+        const cur = Number(current.count) || 0;
+        const makeDeltaCell = (delta) => {
+          const up = delta > 0, down = delta < 0;
+          const cls = up ? "text-emerald-700" : (down ? "text-rose-700" : "text-gray-700");
+          const badge = up ? "▲" : (down ? "▼" : "•");
+          return `<span class="${cls} font-semibold">${badge} ${fmt(delta)}</span>`;
+        };
+        const makePctCell = (pct) => {
+          const up = pct > 0, down = pct < 0;
+          const cls = up ? "text-emerald-700" : (down ? "text-rose-700" : "text-gray-700");
+          return `<span class="${cls} font-semibold">${fmtPct(pct)}</span>`;
+        };
+        previous.forEach((w) => {
+          const prev = Number(w.count) || 0;
+          const delta = cur - prev;
+          const pct = prev === 0 ? (cur === 0 ? 0 : 1) : (delta / prev);
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td class="px-4 py-2 text-gray-800">${w.label || "Previous"}</td>
+            <td class="px-4 py-2 text-right tabular-nums text-gray-800">${fmt(prev)}</td>
+            <td class="px-4 py-2 text-right tabular-nums text-gray-900 font-semibold">${fmt(cur)}</td>
+            <td class="px-4 py-2 text-right tabular-nums">${makeDeltaCell(delta)}</td>
+            <td class="px-4 py-2 text-right tabular-nums">${makePctCell(pct)}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+
+        if (previous.length) {
+          const avgPrev = previous.reduce((s, w) => s + (Number(w.count) || 0), 0) / previous.length;
+          const deltaAvg = cur - avgPrev;
+          const pctAvg = avgPrev === 0 ? (cur === 0 ? 0 : 1) : (deltaAvg / avgPrev);
+          const trend = deltaAvg === 0
+            ? "Attendance is flat vs recent average."
+            : (deltaAvg > 0
+                ? `Attendance is up ${fmt(deltaAvg)} (${fmtPct(pctAvg)}) vs recent average.`
+                : `Attendance is down ${fmt(-deltaAvg)} (${fmtPct(pctAvg)}) vs recent average.`);
+          const tBox = document.getElementById("trend-highlights");
+          const tText = document.getElementById("trend-text");
+          if (tBox && tText) {
+            tText.textContent = trend;
+            tBox.hidden = false;
+          }
         }
       }
     }
-  }
 
-  if (window.PERF_DATA && window.PERF_DATA.new_clients) {
-    renderPerf(window.PERF_DATA);
-  } else {
-    fetch("/figurella-reports/_perf/data")
-      .then(r => r.ok ? r.json() : Promise.reject(r.statusText))
-      .then(({ ok, data }) => ok && data ? renderPerf(data) : null)
-      .catch(err => console.warn("PERF fallback fetch failed:", err));
-  }
-});
+    if (window.PERF_DATA && window.PERF_DATA.new_clients) {
+      renderPerf(window.PERF_DATA);
+    } else {
+      fetch("/figurella-reports/_perf/data")
+        .then(r => r.ok ? r.json() : Promise.reject(r.statusText))
+        .then(({ ok, data }) => ok && data ? renderPerf(data) : null)
+        .catch(err => console.warn("PERF fallback fetch failed:", err));
+    }
+  });
 </script>
 
 {% endblock %}

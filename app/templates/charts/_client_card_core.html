@@ -1,7 +1,8 @@
 {# templates/charts/_client_card_core.html — shared core for modal & page (SWAPPED) #}
 <div id="client-chart-root"
      class="space-y-6"
-     data-client="{{ client }}"
+     data-client-id="{{ client.id }}"
+     data-client-name="{{ client.name }}"
      data-workout-blocks='{{ workout_blocks_json | tojson }}'>
 
   <style>
@@ -66,17 +67,20 @@
   </section>
 
   <!-- Chart (NOW shows the classic chart + notes) -->
-  <section id="chart" class="tab-panel hidden">
-    <div class="tab-scroll">
-      <div class="chart-table-card">
-        <div class="chart-table-scroll">
-          <div class="card card-pad" style="background:#fff;border:0;box-shadow:none;padding:0;">
+<section id="chart" class="tab-panel hidden">
+  <div class="tab-scroll">
+    <div class="chart-table-card">
+      <div class="chart-table-scroll">
+        <div class="card card-pad" style="background:#fff;border:0;box-shadow:none;padding:0;">
+        
             {% include 'charts/_measures_table.html' %}
-          </div>
+         
         </div>
       </div>
     </div>
-  </section>
+  </div>
+</section>
+
 
   <!-- Measures (NOW shows Table A) -->
   <section id="measures-a" class="tab-panel hidden">

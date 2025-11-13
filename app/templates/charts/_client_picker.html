@@ -1,4 +1,20 @@
-<!-- Client Picker (overlays modal) -->
+<!-- Clients trigger (CENTERED & ABOVE ALL MODALS) -->
+<button id="client-picker-btn"
+        type="button"
+        class="fixed left-1/2 -translate-x-1/2 top-4 md:top-6 z-[5001] pointer-events-auto select-none
+               inline-flex items-center gap-2 px-4 h-10 rounded-full
+               bg-figurella text-white font-semibold shadow-[0_10px_24px_rgba(204,0,102,.35)]
+               hover:opacity-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-figurella/40"
+        aria-controls="client-picker" aria-expanded="false"
+        data-open-clients>
+  <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2">
+    <path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+    <circle cx="12" cy="7" r="4"/>
+  </svg>
+  Clients
+</button>
+
+<!-- Client Picker Modal (unchanged) -->
 <div id="client-picker"
      class="fixed inset-0 hidden"
      role="dialog"
@@ -6,17 +22,14 @@
      aria-labelledby="client-picker-title"
      tabindex="-1"
      style="z-index:10002;">
-  <!-- Backdrop: click to dismiss -->
   <div class="absolute inset-0 bg-black/30" data-dismiss="picker"></div>
 
-  <!-- Panel -->
   <div data-picker-panel data-client-picker-card
        class="absolute left-1/2 top-16 -translate-x-1/2 w-[min(920px,92vw)] max-h-[70vh]
               bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden
               pointer-events-auto">
     <div class="flex items-center justify-between px-4 py-3 border-b">
       <h2 id="client-picker-title" class="font-semibold text-slate-800 m-0">Select Client</h2>
-      <!-- (No close “×” per request) -->
     </div>
 
     <!-- Search -->
@@ -40,10 +53,73 @@
             <th scope="col" class="text-left py-2 border-b">Status</th>
           </tr>
         </thead>
-        <tbody id="client-picker-body">
-          <!-- filled by JS -->
-        </tbody>
+        <tbody id="client-picker-body"><!-- filled by JS --></tbody>
       </table>
     </div>
   </div>
 </div>
+
+<script>
+(function(){
+  const btn    = document.getElementById('client-picker-btn');
+  const modal  = document.getElementById('client-picker');
+  const search = document.getElementById('client-picker-search');
+
+  /* Hide any duplicate “Clients” button on the right */
+  document.querySelectorAll('button, a').forEach(el=>{
+    const txt=(el.textContent||'').trim().toLowerCase();
+    if(el!==btn && txt==='clients'){
+      el.style.display='none';
+    }
+  });
+
+  /* Local modal open/close (fallback) */
+  function openLocal(){
+    modal?.classList.remove('hidden');
+    btn?.setAttribute('aria-expanded','true');
+    document.dispatchEvent(new CustomEvent('clientpicker:open'));
+    setTimeout(()=>{ search?.focus(); }, 80);
+  }
+  function closeLocal(){
+    modal?.classList.add('hidden');
+    btn?.setAttribute('aria-expanded','false');
+    document.dispatchEvent(new CustomEvent('clientpicker:close'));
+    btn?.focus();
+  }
+
+  modal?.querySelector('[data-dismiss="picker"]')?.addEventListener('click', closeLocal);
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && modal && !modal.classList.contains('hidden')) closeLocal();
+  });
+  modal?.addEventListener('mousedown', e=>{
+    const panel = modal.querySelector('[data-picker-panel]');
+    if (panel && !panel.contains(e.target)) closeLocal();
+  });
+
+  /* Reuse your existing client loader when available; otherwise fallback */
+  function proxyToExisting(){
+    const fns=['openClientPicker','openClientList','loadClientPicker','loadClients'];
+    for(const name of fns){
+      const fn = window[name];
+      if (typeof fn === 'function'){ try{ fn(); return; }catch(e){} }
+    }
+    const triggers = document.querySelectorAll('#open-clients,[data-open-clients]:not(#client-picker-btn),.clients-fab');
+    for (const t of triggers){ try { t.click(); return; } catch(e){} }
+    openLocal();
+  }
+
+  btn?.addEventListener('click', e => { e.preventDefault(); proxyToExisting(); });
+
+  /* Optional proxy element for legacy code that expects #open-clients */
+  if (!document.getElementById('open-clients')) {
+    const proxy = document.createElement('button');
+    proxy.id = 'open-clients'; proxy.hidden = true;
+    proxy.addEventListener('click', ()=> btn?.click());
+    document.body.appendChild(proxy);
+  }
+
+  /* Ensure the chip stays above floating modals (which use ~4000) */
+  // Already z-[5001] via class; keep in case Tailwind purges.
+  btn.style.zIndex = '5001';
+})();
+</script>

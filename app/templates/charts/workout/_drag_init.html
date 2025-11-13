@@ -1,0 +1,175 @@
+<script>
+(function(){
+  const S = document.currentScript;
+  const SCOPE = (S && (S.closest('.client-modal') || S.closest('[data-client-id],[data-client-name]'))) || document;
+
+  const TBL = SCOPE.querySelector('#rev1-table');
+  if (!TBL || !TBL.tBodies || !TBL.tBodies[0]) return;
+
+  const ROOT = SCOPE.closest?.('[data-client-id],[data-client-name]') || SCOPE;
+
+  function slug(s){
+    return String(s || '')
+      .normalize('NFKD').replace(/[\u0300-\u036f]/g,'')
+      .replace(/[^a-zA-Z0-9]+/g,'-').replace(/^-+|-+$/g,'')
+      .toLowerCase();
+  }
+  const CLIENT_ID   = ROOT?.dataset?.clientId?.trim();
+  const CLIENT_NAME = ROOT?.dataset?.clientName?.trim();
+  const CLIENT_KEY  = (CLIENT_ID && `id:${CLIENT_ID}`)
+                   || (CLIENT_NAME && `name:${slug(CLIENT_NAME)}`)
+                   || 'unknown';
+
+  const BODY     = TBL.tBodies[0];
+  const TYPE_SEL = SCOPE.querySelector('#workout-rev1-type');
+  const LS_KEY   = (t)=> `workoutrev1:v3:${CLIENT_KEY}:order:${(String(t||'').trim()||'UNKNOWN')}`;
+
+  const raf=(fn)=>{ let id=0; return (...a)=>{ cancelAnimationFrame(id); id=requestAnimationFrame(()=>fn(...a)); }; };
+  const toast=(m)=>{ const t=SCOPE.querySelector('#rev1-toast'); if(!t) return; t.textContent=m||'Saved'; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),900); };
+
+  function renumber(){ Array.from(BODY.rows).forEach((tr,i)=>{ const c=tr.querySelector('.row-num'); if(c) c.textContent=String(i+1); }); }
+  const renumberRaf = raf(renumber);
+  function curOrder(){ return Array.from(BODY.rows).map(tr=> tr.getAttribute('data-rev1-id')||''); }
+  const saveOrderRaf = raf(()=>{ try{ localStorage.setItem(LS_KEY(TYPE_SEL?TYPE_SEL.value:'UNKNOWN'), JSON.stringify(curOrder())); toast('Reordered (local only)'); }catch(_){} });
+
+  function applySaved(){
+    try{
+      const raw=localStorage.getItem(LS_KEY(TYPE_SEL?TYPE_SEL.value:'UNKNOWN'));
+      if(!raw){ renumber(); return; }
+      const ids=JSON.parse(raw)||[];
+      if(!Array.isArray(ids)||!ids.length){ renumber(); return; }
+      const map=new Map(Array.from(BODY.rows).map(tr=>[tr.getAttribute('data-rev1-id'),tr]));
+      const used=new Set();
+      ids.forEach(id=>{ const tr=map.get(String(id)); if(tr && !used.has(tr)){ BODY.appendChild(tr); used.add(tr); }});
+      Array.from(map.values()).forEach(tr=>{ if(!used.has(tr)) BODY.appendChild(tr); });
+      renumber();
+    }catch(_){ renumber(); }
+  }
+
+  function attachSortable(){
+    if (!(window.Sortable && typeof window.Sortable.create==='function')) return false;
+    window.Sortable.create(BODY,{ handle:'.drag-handle', animation:120, onEnd(){ renumberRaf(); saveOrderRaf(); }});
+    return true;
+  }
+  function attachHTML5(){
+    let bound=false;
+    Array.from(BODY.rows).forEach(tr=>{
+      const h=tr.querySelector('.drag-handle'); if(!h) return;
+      bound=true; tr.draggable=true;
+      tr.addEventListener('dragstart', e=>{ tr.classList.add('dragging'); e.dataTransfer.setData('text/plain', tr.getAttribute('data-rev1-id')||''); });
+      tr.addEventListener('dragend',   ()=>{ tr.classList.remove('dragging'); renumberRaf(); saveOrderRaf(); });
+    });
+    BODY.addEventListener('dragover', e=>{
+      e.preventDefault();
+      const dragging=BODY.querySelector('tr.dragging'); if(!dragging) return;
+      const rows=Array.from(BODY.querySelectorAll('tr:not(.dragging)'));
+      const after=rows.find(r => e.clientY <= r.getBoundingClientRect().top + r.offsetHeight/2);
+      if(!after) BODY.appendChild(dragging); else BODY.insertBefore(dragging, after);
+    });
+    return bound;
+  }
+
+  function attachTouchGhost(){
+    let active=null, placeholder=null, ghost=null, pressTimer=null, started=false, startY=0;
+    const LONG=120, THRESH=6;
+    const SCROLLER = BODY.closest('.card-pad') || BODY.closest('.overflow-x-auto') || BODY.parentElement;
+
+    function y(e){ return (e.touches && e.touches[0] ? e.touches[0].clientY : (e.clientY ?? 0)); }
+    function rowFromPoint(clientY){
+      const rect=TBL.getBoundingClientRect();
+      const el=document.elementFromPoint(Math.max(rect.left+10,10), clientY);
+      const tr = el && el.closest ? el.closest('tr') : null;
+      return (tr && tr.parentElement===BODY) ? tr : null;
+    }
+    function disablePageScroll(){ document.documentElement.style.touchAction='none'; document.body.style.overscrollBehavior='contain'; }
+    function enablePageScroll(){ document.documentElement.style.touchAction=''; document.body.style.overscrollBehavior=''; }
+    function mkGhost(tr, atY){
+      const rect = tr.getBoundingClientRect();
+      const g = tr.cloneNode(true);
+      g.style.position='fixed'; g.style.left = rect.left+'px'; g.style.top  = (atY - rect.height/2) +'px';
+      g.style.width= rect.width+'px'; g.style.pointerEvents='none'; g.style.opacity='0.85'; g.style.zIndex='10050'; g.classList.add('shadow');
+      document.body.appendChild(g); return g;
+    }
+    function moveGhost(toY){ if (!ghost) return; const h = ghost.getBoundingClientRect().height; ghost.style.top = (toY - h/2) + 'px'; }
+    function autoScroll(cy){
+      if(!SCROLLER) return;
+      const r=SCROLLER.getBoundingClientRect(), pad=32;
+      if (cy < r.top+pad) SCROLLER.scrollTop -= 12;
+      else if (cy > r.bottom-pad) SCROLLER.scrollTop += 12;
+    }
+    function begin(tr, e){
+      started=true; active=tr; active.classList.add('touch-dragging');
+      const rect=tr.getBoundingClientRect();
+      placeholder=document.createElement('tr'); placeholder.className='rev1-placeholder';
+      placeholder.style.height = rect.height + 'px';
+      BODY.insertBefore(placeholder, tr.nextSibling);
+      ghost = mkGhost(tr, y(e));
+      tr.style.visibility='hidden';
+      disablePageScroll();
+      if (e.type==='pointerdown' && e.pointerId && e.target.setPointerCapture){ try{ e.target.setPointerCapture(e.pointerId); }catch(_){ } }
+    }
+    function move(e){
+      if(!active && !started){
+        const cy=y(e);
+        if (Math.abs(cy-startY) > THRESH){ const origin=rowFromPoint(startY)||BODY.querySelector('tr'); if(origin) begin(origin,e); }
+      }
+      if(!active) return;
+      e.preventDefault();
+      const cy=y(e);
+      moveGhost(cy); autoScroll(cy);
+      const target=rowFromPoint(cy);
+      if(target && target!==placeholder){
+        const r=target.getBoundingClientRect();
+        const before=(cy < r.top + r.height/2);
+        BODY.insertBefore(placeholder, before ? target : target.nextSibling);
+      }
+    }
+    function end(e){
+      if (pressTimer){ clearTimeout(pressTimer); pressTimer=null; }
+      if(started && active && placeholder){
+        BODY.insertBefore(active, placeholder);
+        active.classList.remove('touch-dragging');
+        active.style.visibility=''; 
+        placeholder.remove(); placeholder=null;
+        if (ghost){ ghost.remove(); ghost=null; }
+        renumberRaf(); saveOrderRaf();
+      }
+      enablePageScroll();
+      document.removeEventListener('touchmove', move, {passive:false});
+      document.removeEventListener('touchend', end);
+      document.removeEventListener('pointermove', move);
+      document.removeEventListener('pointerup', end);
+      if (e && e.type==='pointerup' && e.pointerId && e.target.releasePointerCapture){ try{ e.target.releasePointerCapture(e.pointerId); }catch(_){ } }
+      active=null; started=false;
+    }
+    Array.from(BODY.rows).forEach(tr=>{
+      const handle=tr.querySelector('.drag-handle'); if(!handle) return;
+      const start=(e)=>{
+        if(!e.target.closest('.drag-handle')) return;
+        if (e.type==='touchstart'){ e.preventDefault(); }
+        if (e.type==='pointerdown' && e.pointerType!=='mouse') e.preventDefault();
+        startY = y(e); started=false;
+        pressTimer = setTimeout(()=>{ const origin=rowFromPoint(startY)||tr; if(origin) begin(origin,e); }, LONG);
+        if (e.type==='touchstart'){
+          document.addEventListener('touchmove', move, {passive:false});
+          document.addEventListener('touchend', end);
+        } else {
+          document.addEventListener('pointermove', move);
+          document.addEventListener('pointerup', end);
+        }
+      };
+      handle.addEventListener('touchstart', start, {passive:false});
+      if (window.PointerEvent){ handle.addEventListener('pointerdown', start); }
+    });
+  }
+
+  applySaved();
+  if (!attachSortable()){
+    const html5OK = attachHTML5();
+    if (!html5OK || /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1)) {
+      attachTouchGhost();
+    }
+  }
+  if (TYPE_SEL){ TYPE_SEL.addEventListener('change', ()=>{ applySaved(); renumber(); }); }
+})();
+</script>

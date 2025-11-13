@@ -1,0 +1,39 @@
+{# app/templates/charts/workout/_main_table.html #}
+<div class="p-4">
+  <div class="card">
+    <div class="card-pad overflow-x-auto">
+      <table class="clean zebra-pink sticky-header" id="rev1-table">
+        <colgroup>
+          <col class="num"><col class="workout"><col class="rings"><col class="notes">
+        </colgroup>
+        <thead>
+          <tr><th>#</th><th>Movements</th><th>Rings</th><th>Notes</th></tr>
+        </thead>
+        <tbody>
+          {% for i in range(1,21) %}
+            {% set idx = (i - 1) + wr_offset %}
+            {% set row = (wrdata[idx] if wrdata|length > idx else {}) %}
+            {% set mv  = row.get('Workout','') %}
+            <tr data-rev1-id="{{ i }}">
+              <td class="row-num drag-handle text-center font-semibold" title="Drag to reorder">{{ i }}</td>
+              <td>
+                <div class="flex items-center gap-2">
+                  <input class="rev1-workout field auto-ch" type="text" value="{{ mv }}">
+                  {% if mv %}
+                    <button type="button" class="movement-cell movement-cell-btn text-gray-600 hover:text-gray-900" title="Preview movement video" data-name="{{ mv }}">
+                      <i class="bi bi-play-circle"></i>
+                    </button>
+                  {% endif %}
+                </div>
+              </td>
+              <td><input class="rev1-rings w-full field" type="text" value="{{ row.get('Rings','') }}"></td>
+              <td><input class="rev1-notes w-full field" type="text" value="{{ row.get('Notes','') }}"></td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{% include "charts/workout/_drag_init.html" %}

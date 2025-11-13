@@ -1,0 +1,82 @@
+{# app/templates/charts/workout/styles.html #}
+<style>
+  /* === Scope & base === */
+  .workout-zoom { zoom:.6; }
+  @supports not (zoom:.6){ .workout-zoom{ transform:scale(.6); transform-origin:top left; } }
+
+  .client-modal .zebra-pink .field,
+  #client-chart-root .zebra-pink .field{ background:#fff!important; border-color:#e5e7eb!important; box-shadow:none!important; }
+  .client-modal .zebra-pink tbody tr td,
+  #client-chart-root .zebra-pink tbody tr td{ background:transparent!important; }
+  .client-modal .zebra-pink .field:focus,
+  #client-chart-root .zebra-pink .field:focus{ border-color:#94a3b8!important; box-shadow:0 0 0 2px rgba(204,0,102,.25)!important; outline:none; }
+
+  /* Tables */
+  #rev1-table, #gk-rev1-table { table-layout:fixed; width:100%; }
+
+  /* Program column widths */
+  #rev1-table col.num     { width:4ch; }
+  #rev1-table col.workout { width:22ch; }
+  #rev1-table col.rings   { width:9ch; }
+  #rev1-table col.notes   { width:auto; }
+  #rev1-table th:first-child, #rev1-table td.row-num{ white-space:nowrap; padding:0 6px; }
+  #rev1-table th:nth-child(3), #rev1-table td:nth-child(3){ white-space:nowrap; text-align:center; }
+  #rev1-table .rev1-rings{ width:8ch!important; }
+  #rev1-table .rev1-notes{ width:100%!important; }
+
+  /* Movement cell overlay button */
+  #rev1-table td:nth-child(2) > div{ position:relative; padding-right:1.8em; display:block; }
+  #rev1-table .rev1-workout.field{
+    width:100%!important; white-space:nowrap!important; overflow:hidden!important; text-overflow:ellipsis!important; padding-right:.2rem;
+  }
+  #rev1-table .rev1-workout.field:focus{ position:relative; z-index:1; overflow:visible; box-shadow:0 0 0 2px rgba(204,0,102,.25); }
+  #rev1-table .movement-cell.movement-cell-btn{
+    position:absolute; right:.35rem; top:50%; transform:translateY(-50%);
+    width:1.1em; height:1.1em; padding:0; margin:0; border:none; background:transparent; line-height:1;
+    display:flex; align-items:center; justify-content:center;
+  }
+  #rev1-table .movement-cell.movement-cell-btn > i{ font-size:.95em; pointer-events:none; }
+
+  /* GK widths & overlay */
+  #gk-rev1-table col.num     { width:4ch; }
+  #gk-rev1-table col.workout { width:22ch; }
+  #gk-rev1-table col.rings   { width:8ch; }
+  #gk-rev1-table col.notes   { width:auto; }
+  #gk-rev1-table .rev1-gk-rings{ width:8ch!important; }
+  #gk-rev1-table .rev1-gk-notes{ width:100%!important; }
+  #gk-rev1-table td:nth-child(2) > div{ position:relative; padding-right:1.8em; display:block; }
+  #gk-rev1-table .movement-cell.movement-cell-btn{
+    position:absolute; right:.35rem; top:50%; transform:translateY(-50%);
+    width:1.1em; height:1.1em; padding:0; margin:0; border:none; background:transparent;
+    display:flex; align-items:center; justify-content:center;
+  }
+  #gk-rev1-table .movement-cell.movement-cell-btn > i{ font-size:.95em; pointer-events:none; }
+
+  /* Toolbar + toast */
+  .rev1-toolbar .toolbar-row{ display:flex; gap:.75rem; align-items:center; padding:1rem; }
+  .rev1-toast{ position:fixed; bottom:18px; right:18px; background:#111; color:#fff; padding:.5rem .75rem; border-radius:.5rem; opacity:0; pointer-events:none; transition:opacity .15s; z-index:10000; }
+  .rev1-toast.show{ opacity:1; }
+
+  /* Drag (iPad/desktop) */
+  .drag-handle{
+    touch-action:none; -webkit-user-drag:none; -webkit-touch-callout:none;
+    user-select:none; cursor:grab;
+  }
+  tr.touch-dragging { opacity:.9; background:rgba(0,0,0,.03); }
+  .rev1-placeholder { background:rgba(204,0,102,.12); outline:1px dashed rgba(204,0,102,.35); }
+  .card-pad { overscroll-behavior: contain; }
+  #rev1-table, #gk-rev1-table { -webkit-user-select:none; user-select:none; }
+
+  /* --- Workout video modal --- */
+  .wv-modal{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:10060; }
+  .wv-modal.show{ display:flex; }
+  .wv-backdrop{ position:absolute; inset:0; background:rgba(0,0,0,.5); }
+  .wv-card{ position:relative; background:#000; border-radius:14px; width:min(900px,96vw); }
+  .wv-header{ display:flex; align-items:center; justify-content:space-between; padding:.65rem .9rem; background:#111; border-radius:14px 14px 0 0; color:#fff; }
+  .wv-title{ font-weight:600; font-size:14px; }
+  .wv-close{ display:inline-flex; align-items:center; justify-content:center; width:34px; height:34px;
+             border-radius:8px; background:#1f1f1f; color:#fff; cursor:pointer; }
+  .wv-body{ padding:.5rem; background:#000; border-radius:0 0 14px 14px; }
+  .wv-body video,.wv-body iframe{ width:100%; height:min(62vw, 480px); border:0; background:#000; border-radius:10px; }
+  @media (min-width:900px){ .wv-body video,.wv-body iframe{ height:480px; } }
+</style>

@@ -4,7 +4,7 @@
 
   <!-- Back icon -->
   <div class="flex items-center mb-6">
-    <a href="/consultation" class="flex items-center text-figurella hover:opacity-80 transition">
+    <a href="{{ url_for('consultation.index') }}" class="flex items-center text-figurella hover:opacity-80 transition">
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
            stroke-width="2" stroke="currentColor" class="w-6 h-6 mr-2">
         <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
@@ -13,18 +13,65 @@
     </a>
   </div>
 
-  <!-- Report box (now also contains the title and client line) -->
+  <!-- Report box (renders values saved from the consultation form) -->
   <div class="rounded-2xl border p-6 bg-white/90">
     <h1 class="text-2xl font-bold mb-2">Client Report</h1>
-    <p class="text-gray-700 mb-4">
+
+    <div class="text-gray-700 text-sm mb-4">
       Opening report for:
       <span class="font-semibold">{{ client_name }}</span>
-    </p>
+      {# --- SAFE date rendering for str or datetime --- #}
+      {% if client.created_at %}
+        {% set _d = client.created_at %}
+        · <span class="text-gray-500">
+          created
+          {%- if _d is string -%}
+            {{ _d[:10] }}
+          {%- elif _d.strftime is defined -%}
+            {{ _d.strftime('%Y-%m-%d') }}
+          {%- else -%}
+            {{ _d }}
+          {%- endif -%}
+        </span>
+      {% endif %}
+    </div>
 
-    <!-- Placeholder for your real report (kept in parentheses) -->
-    <p class="text-sm text-gray-600">
-      (This is a placeholder. Hook this route to your Excel/DB lookup to render the actual client’s report.)
-    </p>
+    <div class="divide-y divide-gray-200">
+      {% macro row(label, value) -%}
+        {% set v = (value or '') %}
+        <div class="py-3 grid sm:grid-cols-4 gap-3">
+          <div class="sm:col-span-1 font-medium text-gray-800">{{ label }}</div>
+          <div class="sm:col-span-3 text-gray-700">
+            {% if v and v|string|trim %}
+              {{ v|replace('\n','<br>')|safe }}
+            {% else %}
+              <span class="text-gray-400">—</span>
+            {% endif %}
+          </div>
+        </div>
+      {%- endmacro %}
+
+      {{ row('Goals Recap',        client.goals) }}
+      {{ row('Needs Recap',        client.needs) }}
+      {{ row('Figurella Benefits', client.benefits) }}
+      {{ row('Ideal Program',      client.ideal_program) }}
+      {{ row('Suggestion',         client.suggestion) }}
+      {{ row('Other Options',      client.other_options) }}
+
+      {% if client.signature_path %}
+        <div class="py-3 grid sm:grid-cols-4 gap-3 items-start">
+          <div class="sm:col-span-1 font-medium text-gray-800">Consultation Signature</div>
+          <div class="sm:col-span-3">
+            {# Guard if signature_url helper isn't provided #}
+            {% if signature_url is defined %}
+              <img class="h-24 rounded-md border" src="{{ signature_url(client.signature_path) }}" alt="Signature">
+            {% else %}
+              <img class="h-24 rounded-md border" src="{{ client.signature_path }}" alt="Signature">
+            {% endif %}
+          </div>
+        </div>
+      {% endif %}
+    </div>
   </div>
 
   <!-- Divider -->
@@ -38,8 +85,13 @@
       Our journey together is a partnership. To help you achieve the results you came here for, we ask you to commit to the following:
     </p>
 
-    <!-- NOTE: prevent navigation by handling submit in JS -->
-    <form id="commitment-form" class="space-y-6 text-gray-800">
+    <!-- ✅ POST to backend -->
+    <form id="commitment-form"
+          action="{{ url_for('consultation.save_commitment', client_id=client.id) }}"
+          method="post"
+          class="space-y-6 text-gray-800">
+
+      {% set C = commitment or {} %}
 
       <!-- 1 -->
       <div>
@@ -47,7 +99,7 @@
         <p class="text-sm leading-relaxed">
           I will attend my sessions consistently, 2–3 times per week, as recommended, knowing that results come from regularity.
           <br><span class="font-medium">Initials:</span>
-          <input name="init_showup" type="text" maxlength="3"
+          <input name="init_showup" type="text" maxlength="3" value="{{ C.init_showup or '' }}"
                  class="ml-2 w-20 border-b border-gray-500 focus:border-figurella outline-none bg-transparent text-center font-semibold text-gray-700">
         </p>
       </div>
@@ -58,7 +110,7 @@
         <p class="text-sm leading-relaxed">
           If I can’t make it, I will do my best to reschedule in advance. I understand that respecting my time means respecting others' time too.
           <br><span class="font-medium">Initials:</span>
-          <input name="init_appointments" type="text" maxlength="3"
+          <input name="init_appointments" type="text" maxlength="3" value="{{ C.init_appointments or '' }}"
                  class="ml-2 w-20 border-b border-gray-500 focus:border-figurella outline-none bg-transparent text-center font-semibold text-gray-700">
         </p>
       </div>
@@ -69,7 +121,7 @@
         <p class="text-sm leading-relaxed">
           I will let the staff know if I have questions, concerns, discomfort, or need additional support — whether it’s about the method, the movements, my nutrition, or my progress.
           <br><span class="font-medium">Initials:</span>
-          <input name="init_speakup" type="text" maxlength="3"
+          <input name="init_speakup" type="text" maxlength="3" value="{{ C.init_speakup or '' }}"
                  class="ml-2 w-20 border-b border-gray-500 focus:border-figurella outline-none bg-transparent text-center font-semibold text-gray-700">
         </p>
       </div>
@@ -80,7 +132,7 @@
         <p class="text-sm leading-relaxed">
           I understand that the more open I am about my struggles, wins, and lifestyle, the better the team can help me.
           <br><span class="font-medium">Initials:</span>
-          <input name="init_honest" type="text" maxlength="3"
+          <input name="init_honest" type="text" maxlength="3" value="{{ C.init_honest or '' }}"
                  class="ml-2 w-20 border-b border-gray-500 focus:border-figurella outline-none bg-transparent text-center font-semibold text-gray-700">
         </p>
       </div>
@@ -91,7 +143,7 @@
         <p class="text-sm leading-relaxed">
           I trust the process and will follow the program tailored to me, including the nutrition plan and training recommendations.
           <br><span class="font-medium">Initials:</span>
-          <input name="init_method" type="text" maxlength="3"
+          <input name="init_method" type="text" maxlength="3" value="{{ C.init_method or '' }}"
                  class="ml-2 w-20 border-b border-gray-500 focus:border-figurella outline-none bg-transparent text-center font-semibold text-gray-700">
         </p>
       </div>
@@ -102,7 +154,7 @@
         <p class="text-sm leading-relaxed">
           I will stay focused on the goals I’ve set, knowing that change takes time, effort, and consistency. Goals can change and life happens! I will let the team know if that’s the case.
           <br><span class="font-medium">Initials:</span>
-          <input name="init_responsibility" type="text" maxlength="3"
+          <input name="init_responsibility" type="text" maxlength="3" value="{{ C.init_responsibility or '' }}"
                  class="ml-2 w-20 border-b border-gray-500 focus:border-figurella outline-none bg-transparent text-center font-semibold text-gray-700">
         </p>
       </div>
@@ -113,7 +165,7 @@
         <p class="text-sm leading-relaxed">
           I will be present, distraction-free (phones away), and respectful of the environment and those around me.
           <br><span class="font-medium">Initials:</span>
-          <input name="init_respect" type="text" maxlength="3"
+          <input name="init_respect" type="text" maxlength="3" value="{{ C.init_respect or '' }}"
                  class="ml-2 w-20 border-b border-gray-500 focus:border-figurella outline-none bg-transparent text-center font-semibold text-gray-700">
         </p>
       </div>
@@ -124,7 +176,7 @@
         <p class="text-sm leading-relaxed">
           I will give myself credit for small wins and stay motivated even when progress feels slow. I won’t compare my journey to others.
           <br><span class="font-medium">Initials:</span>
-          <input name="init_progress" type="text" maxlength="3"
+          <input name="init_progress" type="text" maxlength="3" value="{{ C.init_progress or '' }}"
                  class="ml-2 w-20 border-b border-gray-500 focus:border-figurella outline-none bg-transparent text-center font-semibold text-gray-700">
         </p>
       </div>
@@ -135,7 +187,7 @@
         <p class="text-sm leading-relaxed">
           I recognize that this is not a service being done to me — it’s a journey I’m taking <em>with</em> Figurella. I’m not alone, but I must do my part.
           <br><span class="font-medium">Initials:</span>
-          <input name="init_partner" type="text" maxlength="3"
+          <input name="init_partner" type="text" maxlength="3" value="{{ C.init_partner or '' }}"
                  class="ml-2 w-20 border-b border-gray-500 focus:border-figurella outline-none bg-transparent text-center font-semibold text-gray-700">
         </p>
       </div>
@@ -144,12 +196,12 @@
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-4 items-end">
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Signature</label>
-          <input name="signature" type="text"
+          <input name="signature" type="text" value="{{ C.signature_text or '' }}"
                  class="w-full border-b border-gray-700 bg-transparent outline-none h-8">
         </div>
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Date</label>
-          <input name="date" type="date"
+          <input name="date" type="date" value="{{ C.signed_date or '' }}"
                  class="w-48 border-b border-gray-700 bg-transparent outline-none h-8">
         </div>
       </div>
@@ -163,7 +215,11 @@
       </div>
     </form>
 
-    <!-- Tiny toast -->
+    {% if commitment %}
+      <p class="mt-4 text-xs text-gray-500">Last saved: {{ commitment.created_at }}</p>
+    {% endif %}
+
+    <!-- Tiny toast (kept; not required since we redirect after POST) -->
     <div id="commitment-toast"
          class="hidden mt-4 rounded-lg border border-green-200 bg-green-50 text-green-800 px-4 py-2 text-sm">
       Commitment saved.
@@ -171,20 +227,12 @@
   </div>
 </div>
 
+<!-- Optional: keep your old toast if you later switch to fetch() -->
 <script>
   (function(){
     const form = document.getElementById('commitment-form');
-    const toast = document.getElementById('commitment-toast');
-
-    form.addEventListener('submit', function(e){
-      e.preventDefault(); // prevent navigation / reload
-
-      // Optional: POST to backend here with fetch()
-      // fetch(`/reports/{{ client_name|urlencode }}/commitment`, { ... })
-
-      toast.classList.remove('hidden');
-      setTimeout(() => toast.classList.add('hidden'), 1800);
-    });
+    if (!form) return;
+    // If you later switch to fetch(), re-enable the toast logic here.
   })();
 </script>
 {% endblock %}

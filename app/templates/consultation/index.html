@@ -2,221 +2,225 @@
 
 {% block head_extra %}
 <style>
-  /* --- Global scroll defaults (all viewports) --- */
-  html, body { height: auto; overflow-y: auto !important; }
-  main { height: auto !important; overflow-y: visible !important; }
-  html { scroll-behavior: smooth; }
-
-  /* --- Desktop: override layout locks from base.html (Tailwind classes, fixed shells, etc.) --- */
-  @media (min-width: 1024px) {
-    html, body { min-height: auto; height: auto !important; overflow-y: auto !important; }
-    /* common containers that sometimes set fixed height / hidden overflow */
-    #app, .app-shell, .layout-root, .page-root, .content, .container-responsive, main {
-      height: auto !important;
-      max-height: none !important;
-      overflow: visible !important;
-      position: static !important;
-    }
+  /* ---- Guarantee full-page scrolling (desktop + iPad) ---- */
+  html, body {
+    height: auto !important;
+    min-height: 100% !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
   }
-
-  .fade-in { animation: fadeIn .15s ease-out; }
-  .fade-out { animation: fadeOut .12s ease-in forwards; }
-  @keyframes fadeIn { from {opacity:0} to {opacity:1} }
-  @keyframes fadeOut { from {opacity:1} to {opacity:0} }
-
-  /* Contact link styling */
-  .contact-link, .contact-link:visited {
-    color: #000 !important;
-    text-decoration: none;
-    font-weight: 600;
+  main, #app, .app-shell, .layout-root, .page-root, .content {
+    height: auto !important; max-height: none !important; overflow: visible !important;
   }
-  .contact-link:hover {
-    color: #cc0066 !important;
-    text-decoration: underline;
-  }
+  /* If any element uses h-screen, unlock it on this page */
+  :where(.h-screen){ height:auto !important; }
 
-  /* White title inside colored bar */
-  .consultation-title {
-    color: #ffffff !important;
-    text-shadow: 0 0 6px rgba(0,0,0,0.35);
-  }
+  /* Input focus + signature box (unchanged) */
+  .consultation-title { color:#fff !important; text-shadow:0 0 6px rgba(0,0,0,.35); }
+  .focus-fig:focus { outline: none; box-shadow: 0 0 0 3px rgba(204,0,102,.25); border-color: #f0a2c5; }
+  .sig-wrap { border:1px solid #e5e7eb; border-radius:.75rem; background:#fff; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="max-w-2xl mx-auto px-4 py-8">
+<div class="max-w-6xl mx-auto px-4 py-8">
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+    <!-- LEFT: Consultation (2/3) -->
+    <div class="lg:col-span-2">
+      <form id="consultation-form" action="{{ url_for('consultation.submit') }}" method="post"
+            class="space-y-6 rounded-2xl bg-white/90 backdrop-blur border border-white/70 p-6 shadow-sm">
+        <h1 class="text-2xl font-bold consultation-title bg-figurella text-center py-3 rounded-xl shadow-md mb-2">
+          Consultation
+        </h1>
+        <p class="text-xs text-gray-500 -mt-1 mb-4 text-right">
+          Fill the form and click Submit. The client appears in the list on the right.
+        </p>
 
-  <form id="consultation-form" method="post" onsubmit="return false"
-        class="space-y-6 rounded-2xl bg-white/90 backdrop-blur border border-white/70 p-6 shadow-sm relative overflow-hidden">
+        <!-- Names -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label for="first_name" class="block text-sm font-medium text-gray-700">First Name</label>
+            <input id="first_name" name="first_name" type="text"
+                   class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 focus-fig"
+                   placeholder="e.g., Maria">
+          </div>
+          <div>
+            <label for="last_name" class="block text-sm font-medium text-gray-700">Last Name</label>
+            <input id="last_name" name="last_name" type="text"
+                   class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 focus-fig"
+                   placeholder="e.g., Rossi">
+          </div>
+        </div>
 
-    <!-- Title -->
-    <h1 class="text-2xl font-bold consultation-title mb-6 bg-figurella text-center py-3 rounded-xl shadow-md">
-      Consultation
-    </h1>
+        {% for field in [
+          ('goals','Goals Recap','Summarize the client’s goals...'),
+          ('needs','Needs Recap','List or describe client needs...'),
+          ('benefits','Figurella Benefits','Explain benefits relevant to this client...'),
+          ('ideal_program','Ideal Program','Describe the recommended program...'),
+          ('suggestion','Suggestion Explanation','Explain reasoning for the suggested approach...'),
+          ('other_options','Other Options','List alternative options or considerations...')
+        ] %}
+          <div>
+            <label for="{{ field[0] }}" class="block text-sm font-medium text-gray-700">{{ field[1] }}</label>
+            <textarea id="{{ field[0] }}" name="{{ field[0] }}" rows="3"
+                      class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 resize-y focus-fig"
+                      placeholder="{{ field[2] }}"></textarea>
+          </div>
+        {% endfor %}
 
-    <!-- Names -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-      <div>
-        <label for="first_name" class="block text-sm font-medium text-gray-700">First Name</label>
-        <input id="first_name" name="first_name" type="text"
-               class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-figurella/40"
-               placeholder="e.g., Maria">
+        <!-- Signature -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Signature (optional)</label>
+          <div class="sig-wrap">
+            <div class="flex items-center justify-between px-3 py-2 border-b bg-gray-50 rounded-t-xl">
+              <span class="text-sm text-gray-600">Sign inside the box (mouse or touch)</span>
+              <button id="sig-clear" type="button" class="px-3 py-1.5 rounded border hover:bg-gray-100">Clear</button>
+            </div>
+            <div class="p-3">
+              <canvas id="sig-canvas" width="800" height="200" class="w-full h-48 rounded-md bg-white"></canvas>
+            </div>
+          </div>
+          <input type="hidden" id="signature_data" name="signature_data">
+        </div>
+
+        <div class="flex items-center justify-between pt-2">
+          <p id="form-error" class="text-sm text-red-600 invisible">Please enter at least a first or last name.</p>
+          <button id="btn-submit" type="button"
+                  class="inline-flex items-center rounded-xl bg-figurella text-white px-5 py-2 hover:opacity-90 transition">
+            Submit
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- RIGHT: Added Clients — use EXACT same Tailwind card as left -->
+    <aside class="rounded-2xl bg-white/90 backdrop-blur border border-white/70 p-0 shadow-sm"
+           style="position:sticky; top:16px; overflow:hidden;">
+      <!-- Neutral header (like a form section header) -->
+      <div class="px-6 py-3 border-b text-gray-700 flex items-center justify-between">
+        <h2 class="text-base font-semibold">Added Clients</h2>
+        <span class="text-xs px-2 py-0.5 rounded-full bg-gray-100 border border-gray-200 text-gray-700">
+          {% if clients %}{{ clients|length }}{% else %}0{% endif %}
+        </span>
       </div>
-      <div>
-        <label for="last_name" class="block text-sm font-medium text-gray-700">Last Name</label>
-        <input id="last_name" name="last_name" type="text"
-               class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-figurella/40"
-               placeholder="e.g., Rossi">
+
+      <!-- Scrollable body (keeps card height reasonable) -->
+      <div class="px-6 py-3" style="max-height: calc(100vh - 9.5rem); overflow-y:auto; -webkit-overflow-scrolling:touch;">
+        {% if clients and clients|length %}
+          <ul class="divide-y divide-gray-200">
+            {% for c in clients %}
+              <li class="py-3 flex items-center justify-between gap-3">
+                <a class="font-semibold text-gray-900 hover:text-figurella"
+                   href="{{ url_for('consultation.client_profile', client_id=c['id']) }}">
+                  {{ c['first_name'] }} {{ c['last_name'] }}
+                  <span class="text-gray-500 text-xs">– {{ (c['created_at'] or '')[:10] }}</span>
+                </a>
+                <form method="post"
+                      action="{{ url_for('consultation.delete_client', client_id=c['id']) }}"
+                      onsubmit="return confirm('Delete this contact? This cannot be undone.');">
+                  <button type="submit"
+                          class="text-xs px-2.5 py-1.5 rounded-md border border-red-200 text-red-700 hover:bg-red-50">
+                    Delete
+                  </button>
+                </form>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="text-sm text-gray-600">No clients yet. Add one from the form.</p>
+        {% endif %}
       </div>
-    </div>
+    </aside>
 
-    <!-- Text areas -->
-    {% for label, id, placeholder in [
-      ('Goals Recap', 'goals_recap', 'Summarize the client’s goals...'),
-      ('Needs Recap', 'needs_recap', 'List or describe client needs...'),
-      ('Figurella Benefits', 'figurella_benefits', 'Explain benefits relevant to this client...'),
-      ('Ideal Program', 'ideal_program', 'Describe the recommended program...'),
-      ('Suggestion Explanation', 'suggestion_explanation', 'Explain reasoning for the suggested approach...'),
-      ('Other Options', 'other_options', 'List alternative options or considerations...')
-    ] %}
-    <div>
-      <label for="{{ id }}" class="block text-sm font-medium text-gray-700">{{ label }}</label>
-      <textarea id="{{ id }}" name="{{ id }}" rows="3"
-                class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 resize-y focus:ring-2 focus:ring-figurella/40"
-                placeholder="{{ placeholder }}"></textarea>
-    </div>
-    {% endfor %}
-
-    <!-- Submit Button -->
-    <div class="flex items-center justify-between pt-2">
-      <p id="form-error" class="text-sm text-red-600 invisible">Please enter at least a first or last name.</p>
-      <button id="btn-open-confirm" type="button"
-              class="inline-flex items-center rounded-xl bg-figurella text-white px-5 py-2 hover:opacity-90 transition">
-        Submit
-      </button>
-    </div>
-  </form>
-
-  <!-- Added Contacts -->
-  <div class="mt-8 rounded-2xl bg-white/85 backdrop-blur border border-white/70 p-5 shadow-sm">
-    <h2 class="text-lg font-semibold mb-3">Added Contacts</h2>
-    <ul id="contact-list" class="list-disc pl-6 space-y-1 text-black"></ul>
-    <p id="empty-list-hint" class="text-sm text-gray-500">No contacts yet.</p>
   </div>
 </div>
 
-<!-- Confirmation Modal -->
-<div id="confirm-modal" class="fixed inset-0 z-[100] hidden">
+<!-- Minimal missing-name modal -->
+<div id="confirm-modal" class="fixed inset-0 z-[10060] hidden">
   <div id="confirm-overlay" class="absolute inset-0 bg-black/40"></div>
   <div class="absolute inset-0 flex items-center justify-center p-4">
-    <div class="fade-in w-full max-w-md rounded-2xl bg-white shadow-xl border border-gray-200">
+    <div class="w-full max-w-md rounded-2xl bg-white shadow-xl border border-gray-200">
       <div class="px-5 py-4 border-b">
-        <h3 class="text-lg font-semibold">Add contact to list?</h3>
+        <h3 class="text-lg font-semibold">Missing name</h3>
       </div>
-      <div class="px-5 py-4 space-y-2">
-        <p class="text-sm text-gray-700">
-          Do you want to add <span id="confirm-name" class="font-medium"></span> to the list?
-        </p>
+      <div class="px-5 py-4 text-sm text-gray-700">
+        Please enter at least a first or last name before submitting.
       </div>
       <div class="px-5 py-4 flex items-center justify-end gap-3 border-t">
-        <button id="btn-cancel" class="rounded-lg border px-4 py-2 text-gray-700 hover:bg-gray-50">
-          Cancel
-        </button>
-        <button id="btn-accept" class="rounded-lg bg-figurella text-white px-4 py-2 hover:opacity-90">
-          Accept
-        </button>
+        <button id="btn-close-modal" class="rounded-lg bg-figurella text-white px-4 py-2 hover:opacity-90">OK</button>
       </div>
     </div>
   </div>
 </div>
 
 <script>
-(function(){
+document.addEventListener("DOMContentLoaded", function () {
+  const form  = document.getElementById('consultation-form');
   const first = document.getElementById('first_name');
   const last  = document.getElementById('last_name');
+  const btn   = document.getElementById('btn-submit');
   const err   = document.getElementById('form-error');
-  const openBtn = document.getElementById('btn-open-confirm');
 
-  const modal = document.getElementById('confirm-modal');
-  const overlay = document.getElementById('confirm-overlay');
-  const btnAccept = document.getElementById('btn-accept');
-  const btnCancel = document.getElementById('btn-cancel');
-  const confirmName = document.getElementById('confirm-name');
+  // Modal
+  const mm = document.getElementById('confirm-modal');
+  const mo = document.getElementById('confirm-overlay');
+  const mx = document.getElementById('btn-close-modal');
+  function showMissing(){ if(!mm) return; mm.classList.remove('hidden'); }
+  function hideMissing(){ if(!mm) return; mm.classList.add('hidden'); }
+  [mo, mx].forEach(el => el && el.addEventListener('click', hideMissing));
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && mm && !mm.classList.contains('hidden')) hideMissing(); });
 
-  const list = document.getElementById('contact-list');
-  const emptyHint = document.getElementById('empty-list-hint');
+  // Signature pad
+  const sigCv = document.getElementById('sig-canvas');
+  const sigClear = document.getElementById('sig-clear');
+  const sigOut = document.getElementById('signature_data');
+  let drawing=false, dirty=false, lastPt=null, ctx=null;
 
-  function openModal(name){
-    confirmName.textContent = name || '(Unnamed)';
-    modal.classList.remove('hidden');
-    modal.classList.add('fade-in');
+  function resizeCanvasForDPR(canvas){
+    const ratio = Math.max(window.devicePixelRatio || 1, 1);
+    const r = canvas.getBoundingClientRect();
+    canvas.width = Math.max(1, Math.round(r.width * ratio));
+    canvas.height = Math.max(1, Math.round(r.height * ratio));
+    const c = canvas.getContext('2d'); c.setTransform(ratio,0,0,ratio,0,0); return c;
   }
-  function closeModal(){
-    modal.classList.add('fade-out');
-    setTimeout(() => {
-      modal.classList.add('hidden');
-      modal.classList.remove('fade-in','fade-out');
-    }, 120);
-  }
-  function addContact(name){
-    const li = document.createElement('li');
-    const a = document.createElement('a');
-    a.textContent = name || '(Unnamed)';
-    a.href = `/reports/${encodeURIComponent(name)}`;
-    a.className = 'contact-link';
-    li.appendChild(a);
-    list.appendChild(li);
-    if (list.children.length > 0) emptyHint.classList.add('hidden');
-  }
+  function getPos(e){ const r = sigCv.getBoundingClientRect(); const x=(e.touches?e.touches[0].clientX:e.clientX)-r.left; const y=(e.touches?e.touches[0].clientY:e.clientY)-r.top; return {x,y}; }
+  function begin(e){ drawing=true; dirty=true; lastPt=getPos(e); e.preventDefault(); }
+  function move(e){ if(!drawing||!ctx) return; const p=getPos(e); ctx.lineWidth=2; ctx.lineCap='round'; ctx.strokeStyle='#111'; ctx.beginPath(); ctx.moveTo(lastPt.x,lastPt.y); ctx.lineTo(p.x,p.y); ctx.stroke(); lastPt=p; e.preventDefault(); }
+  function end(){ drawing=false; lastPt=null; }
 
-  // Open modal
-  openBtn.addEventListener('click', function(){
-    const f = (first.value || '').trim();
-    const l = (last.value  || '').trim();
-    if (!f && !l){
-      err.classList.remove('invisible');
-      first.focus();
-      return;
+  if (sigCv){
+    ctx = resizeCanvasForDPR(sigCv);
+    window.addEventListener('resize', ()=>{ ctx=resizeCanvasForDPR(sigCv); dirty=false; if(sigOut) sigOut.value=''; });
+    sigCv.addEventListener('mousedown', begin);
+    sigCv.addEventListener('mousemove', move);
+    sigCv.addEventListener('mouseup', end);
+    sigCv.addEventListener('mouseleave', end);
+    sigCv.addEventListener('touchstart', begin, {passive:false});
+    sigCv.addEventListener('touchmove', move, {passive:false});
+    sigCv.addEventListener('touchend', end);
+    if (sigClear){
+      sigClear.addEventListener('click', ()=>{ ctx.clearRect(0,0,sigCv.width,sigCv.height); dirty=false; if(sigOut) sigOut.value=''; });
     }
+  }
+
+  // Submit with validation and signature export
+  let submitting=false;
+  btn.addEventListener('click', ()=>{
+    if (submitting) return;
+    const f=(first.value||'').trim(), l=(last.value||'').trim();
+    if(!f && !l){ err.classList.remove('invisible'); showMissing(); first.focus(); return; }
     err.classList.add('invisible');
-    const fullName = [f, l].filter(Boolean).join(' ');
-    openModal(fullName);
-  });
 
-  // Accept -> add to list
-  btnAccept.addEventListener('click', function(){
-    const f = (first.value || '').trim();
-    const l = (last.value  || '').trim();
-    const fullName = [f, l].filter(Boolean).join(' ');
-    addContact(fullName);
-    first.value = '';
-    last.value = '';
-    closeModal();
-  });
-
-  // Cancel and overlay close
-  [btnCancel, overlay].forEach(el => el.addEventListener('click', closeModal));
-  document.addEventListener('keydown', (e) => {
-    if (!modal.classList.contains('hidden') && e.key === 'Escape') closeModal();
-  });
-
-  /* --- Desktop scroll unlock (JS fallback, beats inline styles and Tailwind classes) --- */
-  try {
-    if (window.matchMedia('(min-width: 1024px)').matches) {
-      [document.documentElement, document.body].forEach(el => {
-        el.style.overflowY = 'auto';
-        el.style.height = 'auto';
-        el.classList.remove('overflow-hidden', 'h-screen', 'fixed');
-      });
-      const main = document.querySelector('main, #app, .app-shell, .layout-root, .page-root, .content, .container-responsive');
-      if (main) {
-        main.style.height = 'auto';
-        main.style.maxHeight = 'none';
-        main.style.overflowY = 'visible';
-        main.classList.remove('overflow-hidden', 'h-screen', 'fixed');
-      }
+    if (sigCv && sigOut){
+      if (dirty){
+        const tmp=document.createElement('canvas'); tmp.width=sigCv.width; tmp.height=sigCv.height;
+        const t=tmp.getContext('2d'); t.fillStyle='#fff'; t.fillRect(0,0,tmp.width,tmp.height); t.drawImage(sigCv,0,0);
+        sigOut.value=tmp.toDataURL('image/png');
+      } else { sigOut.value=''; }
     }
-  } catch (_) {}
-})();
+    submitting=true; form.submit();
+  });
+});
 </script>
 {% endblock %}

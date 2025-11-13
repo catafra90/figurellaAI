@@ -1,0 +1,331 @@
+<script>
+(function(){
+  // Scope to THIS chart section only (supports multiple open clients)
+  const script = document.currentScript;
+  const root   = script.closest('.measures-chart') || document.getElementById('measures-chart');
+  if (!root || root.dataset.chartInit === '1') return;
+  root.dataset.chartInit = '1';
+
+  const pages  = root.querySelector('#chart-pages');
+  const pager  = root.querySelector('#chart-pager');
+  const chips  = root.querySelector('#pg-pages');
+  const btnNew = root.querySelector('#btn-new-chart');
+  const btnDel = root.querySelector('#btn-del-chart');
+  const tpl    = root.querySelector('#chart-page-template');
+
+  // ---------- PER-CLIENT STORAGE KEY (robust) ----------
+const clientScope =
+  // Prefer the nearest wrapper that carries identity
+  root.closest('[data-client-id],[data-client-name]') ||
+  // Fallback: enclosing client modal (we’ll try to read its title)
+  root.closest('.client-modal,[data-client-modal],.modal') ||
+  // Last resort: page-level
+  document.body;
+
+function slug(s){
+  return String(s || '')
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-zA-Z0-9]+/g,'-')
+    .replace(/^-+|-+$/g,'')
+    .toLowerCase();
+}
+
+// Try 1: explicit dataset
+const CLIENT_ID   = clientScope?.dataset?.clientId?.trim();
+const CLIENT_NAME = clientScope?.dataset?.clientName?.trim();
+
+// Try 2: modal title text (if dataset missing)
+const TITLE_NAME = (clientScope?.querySelector?.('.modal-title,#client-modal-title')?.textContent || '').trim();
+
+// Try 3: per-instance index of this chart section (last fallback)
+const INSTANCE_IDX = (() => {
+  const all = Array.from(document.querySelectorAll('.measures-chart'));
+  const i = all.indexOf(root);
+  return i >= 0 ? `idx-${i}` : null;
+})();
+
+// Build final key: id → name → title → instance index → unknown
+const CLIENT_KEY =
+  (CLIENT_ID && `id:${CLIENT_ID}`) ||
+  (CLIENT_NAME && `name:${slug(CLIENT_NAME)}`) ||
+  (TITLE_NAME && `title:${slug(TITLE_NAME)}`) ||
+  (INSTANCE_IDX) ||
+  'unknown';
+
+// Bump to v3 to avoid any v1/v2 collisions
+const STORAGE_KEY = `meas_chart:v3:${CLIENT_KEY}`;
+
+// (optional while testing)
+// root.dataset.storageKey = STORAGE_KEY; console.debug('Chart STORAGE_KEY =', STORAGE_KEY);
+
+
+  const PAGE_WINDOW = 4;
+
+  // ------- Instance state (LAZY) -------
+  let active = 1;       // 1-based
+  let windowStart = 1;  // 1-based
+  /** Array<PageData>; only the active page is in the DOM. */
+  let pagesData = [];   // [{rows: { 'DATE': {'1':'','2':'',...}, 'FA': {...}, ... }}]
+
+  // ------- Enhancers (dropdowns/flags) -------
+  const DROPDOWN_MAP = { "STEP": ["","","1","2","3","4","5","MED","DTX","2DV","2DF"], "FA": ["","Kim","Aleeza","Julie","Chiara"] };
+  const FLAG_ROWS = ["NC"];
+  const hasWidget = td => td.querySelector('.meas-select,.meas-flag');
+
+  function mkSelect(opts, val){
+    const s=document.createElement('select'); s.className='meas-select';
+    for(const o of opts){ const opt=document.createElement('option'); opt.value=o; opt.textContent=o; if(String(o)===String(val||'')) opt.selected=true; s.appendChild(opt); }
+    return s;
+  }
+  function mkFlag(val){
+    const b=document.createElement('input'); b.type='checkbox'; b.className='meas-flag';
+    const v=(val||'').toString().toLowerCase(); if(['true','1','x','yes','checked'].includes(v)) b.checked=true; return b;
+  }
+  function fallbackEnhancePage(pageEl){
+    pageEl.querySelectorAll('tbody tr[data-row-label]').forEach(row=>{
+      const label=(row.getAttribute('data-row-label')||'').trim();
+      if (DROPDOWN_MAP[label]){
+        row.querySelectorAll('td:not([data-date-cell])').forEach(td=>{
+          if (hasWidget(td)) return;
+          const txt=td.textContent.trim(); td.textContent=''; td.removeAttribute('contenteditable');
+          td.appendChild(mkSelect(DROPDOWN_MAP[label], txt));
+        });
+      } else if (FLAG_ROWS.includes(label)){
+        row.querySelectorAll('td:not([data-date-cell])').forEach(td=>{
+          if (hasWidget(td)) return;
+          const txt=td.textContent.trim(); td.textContent=''; td.removeAttribute('contenteditable');
+          td.appendChild(mkFlag(txt));
+        });
+      }
+    });
+    pageEl.addEventListener('click', function(e){
+      const td=e.target.closest('td[data-date-cell]'); if(!td) return;
+      const input=td.querySelector('input[type="date"]'); if(!input) return;
+      if(e.target!==input){ input.focus({preventScroll:true}); if(input.showPicker){ try{ input.showPicker(); }catch{} } }
+    }, true);
+  }
+  function enhancePage(el){
+    if (window.MeasuresDropdowns && typeof window.MeasuresDropdowns.refresh==='function'){
+      window.MeasuresDropdowns.refresh(el);
+    } else {
+      fallbackEnhancePage(el);
+    }
+  }
+
+  // ------- Pager (max 4 chips) -------
+  function renderPager(){
+    chips.innerHTML='';
+    const total = pagesData.length;
+
+    const lastStart = Math.max(1, total - PAGE_WINDOW + 1);
+    if (active < windowStart) windowStart = active;
+    if (active > windowStart + PAGE_WINDOW - 1) windowStart = active - PAGE_WINDOW + 1;
+    windowStart = Math.min(Math.max(1, windowStart), lastStart);
+
+    const windowEnd = Math.min(windowStart + PAGE_WINDOW - 1, total);
+    for(let i=windowStart;i<=windowEnd;i++){
+      const b=document.createElement('button');
+      b.type='button'; b.className='pg-chip'+(i===active?' active':''); b.textContent=i;
+      b.addEventListener('click',()=>setActive(i));
+      chips.appendChild(b);
+    }
+
+    pager.querySelector('[data-act="prev"]').disabled = (active<=1);
+    pager.querySelector('[data-act="next"]').disabled = (active>=total);
+  }
+
+  // ------- Serialize / Hydrate one page -------
+  function readCell(td){
+    if (td.hasAttribute('data-date-cell')){
+      return td.querySelector('input[type="date"]')?.value || '';
+    }
+    const sel = td.querySelector('select.meas-select'); if (sel) return sel.value || '';
+    const cb  = td.querySelector('input.meas-flag[type="checkbox"]'); if (cb) return cb.checked ? '1' : '';
+    return td.textContent.trim();
+  }
+  function writeCell(td, val){
+    if (td.hasAttribute('data-date-cell')){
+      const input = td.querySelector('input[type="date"]'); if (input){ input.value = val || ''; }
+      return;
+    }
+    const sel = td.querySelector('select.meas-select'); if (sel){ sel.value = String(val ?? ''); return; }
+    const cb  = td.querySelector('input.meas-flag[type="checkbox"]'); if (cb){ cb.checked = !!(val && String(val).trim() !== '' && String(val) !== '0' && String(val).toLowerCase() !== 'false'); return; }
+    td.textContent = val ?? '';
+  }
+
+  function serializePageFromDOM(pageEl){
+    const rows = {};
+    pageEl.querySelectorAll('tbody tr[data-row-label]').forEach(tr=>{
+      const label = tr.getAttribute('data-row-label');
+      const row = {};
+      tr.querySelectorAll('td').forEach(td=>{
+        const col = td.getAttribute('data-col'); if (!col) return;
+        row[col] = readCell(td);
+      });
+      rows[label] = row;
+    });
+    return { rows };
+  }
+
+  function hydrateDOMFromPageData(pageEl, pageData){
+    enhancePage(pageEl);           // add widgets first
+    const data = pageData?.rows || {};
+    pageEl.querySelectorAll('tbody tr[data-row-label]').forEach(tr=>{
+      const label = tr.getAttribute('data-row-label');
+      const row = data[label] || {};
+      tr.querySelectorAll('td').forEach(td=>{
+        const col = td.getAttribute('data-col'); if (!col) return;
+        writeCell(td, row[col] ?? '');
+      });
+    });
+  }
+
+  function buildBlankPageData(){
+    // Keep it compact: empty rows; DOM will show blanks
+    return { rows: {} };
+  }
+
+  // ------- DOM management: only keep active page in DOM -------
+  function createPageDOM(index, pageData){
+    const node = tpl.content.firstElementChild.cloneNode(true);
+    node.dataset.page = String(index);
+    hydrateDOMFromPageData(node, pageData);
+    return node;
+  }
+
+  function captureActiveDOM(){
+    const exist = pages.firstElementChild;
+    if (!exist) return;
+    const idx = active - 1;
+    pagesData[idx] = serializePageFromDOM(exist);
+  }
+
+  function mountActiveDOM(){
+    // Remove old DOM, mount just the active page
+    pages.innerHTML = '';
+    const node = createPageDOM(active, pagesData[active-1]);
+    node.style.display = 'block';
+    pages.appendChild(node);
+  }
+
+  // ------- Notes (scoped) -------
+  function serializeNotes(){
+    const rows = Array.from(root.querySelectorAll('#meas-notes-rows .meas-notes-row:not(#meas-notes-template)'));
+    return rows.map(r=>({
+      date: r.querySelector('.meas-notes-date')?.value || '',
+      type: r.querySelector('.meas-notes-type')?.value || '',
+      text: r.querySelector('.meas-notes-text')?.value || ''
+    }));
+  }
+  function hydrateNotes(list){
+    if (!Array.isArray(list)) return;
+    const wrap = root.querySelector('#meas-notes-rows');
+    const tplN = root.querySelector('#meas-notes-template');
+    const current = Array.from(wrap.querySelectorAll('.meas-notes-row:not(#meas-notes-template)'));
+    // reset first row
+    if (!current.length){
+      const first = tplN.cloneNode(true); first.id=''; first.classList.remove('hidden'); wrap.appendChild(first);
+    }
+    const firstRow = wrap.querySelector('.meas-notes-row:not(#meas-notes-template)');
+    firstRow.querySelector('.meas-notes-date').value = list[0]?.date || '';
+    firstRow.querySelector('.meas-notes-type').value = list[0]?.type || '';
+    firstRow.querySelector('.meas-notes-text').value = list[0]?.text || '';
+    // remove extra
+    wrap.querySelectorAll('.meas-notes-row:not(#meas-notes-template)').forEach((row,i)=>{ if(i>0) row.remove(); });
+    // add others
+    for (let i=1;i<list.length;i++){
+      const clone = tplN.cloneNode(true);
+      clone.id=''; clone.classList.remove('hidden');
+      clone.querySelector('.meas-notes-date').value = list[i]?.date || '';
+      clone.querySelector('.meas-notes-type').value = list[i]?.type || '';
+      clone.querySelector('.meas-notes-text').value = list[i]?.text || '';
+      wrap.appendChild(clone);
+    }
+  }
+
+  // ------- Persistence -------
+  function saveState(){
+    try{
+      const payload = {
+        active, windowStart,
+        pagesData,
+        notes: serializeNotes()
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+    }catch(_){}
+  }
+  function loadState(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : null;
+    }catch(_){ return null; }
+  }
+
+  // ------- Pager actions -------
+  function setActive(n){
+    const total = pagesData.length; if(n<1||n>total) return;
+    captureActiveDOM();
+    active = n;
+    mountActiveDOM();
+    renderPager();
+    saveState();
+  }
+
+  function addPage(data){
+    captureActiveDOM();
+    pagesData.push(data || buildBlankPageData());
+    active = pagesData.length;
+    // slide window to show newest at the end
+    windowStart = Math.max(1, active - PAGE_WINDOW + 1);
+    mountActiveDOM();
+    renderPager();
+    saveState();
+  }
+
+  function deleteCurrentPage(){
+    if (pagesData.length <= 1){
+      // clear the only page
+      pagesData[0] = buildBlankPageData();
+      mountActiveDOM();
+      renderPager();
+      saveState();
+      return;
+    }
+    captureActiveDOM();
+    pagesData.splice(active-1, 1);
+    active = Math.min(active, pagesData.length);
+    if (active < windowStart) windowStart = active;
+    mountActiveDOM();
+    renderPager();
+    saveState();
+  }
+
+  // Pager buttons
+  pager.querySelector('[data-act="prev"]').addEventListener('click',()=> setActive(active-1));
+  pager.querySelector('[data-act="next"]').addEventListener('click',()=> setActive(active+1));
+  btnNew?.addEventListener('click', ()=> addPage(buildBlankPageData()));
+  btnDel?.addEventListener('click', deleteCurrentPage);
+
+  // ------- Init -------
+  (function init(){
+    const state = loadState();
+    if (state && Array.isArray(state.pagesData) && state.pagesData.length){
+      pagesData   = state.pagesData;
+      active      = Math.min(Math.max(1, state.active||1), pagesData.length);
+      windowStart = Math.min(Math.max(1, state.windowStart||1), Math.max(1, pagesData.length - 4 + 1));
+    } else {
+      pagesData = [buildBlankPageData()];
+      active = 1; windowStart = 1;
+    }
+    mountActiveDOM();
+    renderPager();
+    hydrateNotes(state?.notes || []);
+  })();
+
+  // ------- Autosave on edit (scoped, throttled) -------
+  const saveThrottled = (()=>{ let t=null; return ()=>{ clearTimeout(t); t=setTimeout(()=>{ captureActiveDOM(); saveState(); }, 150); }; })();
+  root.addEventListener('input',  saveThrottled, true);
+  root.addEventListener('change', saveThrottled, true);
+})();
+</script>

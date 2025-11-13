@@ -7,7 +7,6 @@
   /**
    * Optional explicit map: movement name (and optional ring) -> file name
    * Keys are case-insensitive. Use 'DEFAULT' for a fallback ring.
-   * Examples included for Chest Up and Kicks Side - I
    */
   const MOVE_MEDIA = {
     "CHEST UP": "chest_up.mp4",
@@ -17,186 +16,186 @@
       "DEFAULT": "kicks_side_I.gif"
     },
 
-  "KICK SIDE TURN": {
-    "I": "kick_side_turn_I.gif",
-    "DEFAULT": "kick_side_turn_I.gif"
-  },
+    "KICK SIDE TURN": {
+      "I": "kick_side_turn_I.gif",
+      "DEFAULT": "kick_side_turn_I.gif"
+    },
 
     "BICEPS SEATED": {
-    "I": "biceps_seated_I.gif",
-    "DEFAULT": "biceps_seated_I.gif"
-  },
+      "I": "biceps_seated_I.gif",
+      "DEFAULT": "biceps_seated_I.gif"
+    },
 
-     "ELBOW KNEES": {
-    "S": "elbow_knees_S.gif",
-    "DEFAULT": "elbow_knees_S.gif"
-  },
+    "ELBOW KNEES": {
+      "S": "elbow_knees_S.gif",
+      "DEFAULT": "elbow_knees_S.gif"
+    },
 
-  "SCISSORS": {
-    "S": "scissors_S.gif",
-    "DEFAULT": "scissors_S.gif"
-  },
+    "SCISSORS": {
+      "S": "scissors_S.gif",
+      "DEFAULT": "scissors_S.gif"
+    },
 
-  "EAGLE": {
-  "S": "eagle_S.gif",
-  "DEFAULT": "eagle_S.gif",
-  "caption": "Maintain hip tilted. Small motion without moving the back. Fast transition to work inner thighs."
-},
+    "EAGLE": {
+      "S": "eagle_S.gif",
+      "DEFAULT": "eagle_S.gif",
+      "caption": "Maintain hip tilted. Small motion without moving the back. Fast transition to work inner thighs."
+    },
 
+    "SWAY": {
+      "-": "sway.gif",
+      "DEFAULT": "sway.gif"
+    },
 
-  "SWAY": {
-  "-": "sway.gif",
-  "DEFAULT": "sway.gif"
-},
+    "STOMACH UP/DOWN": {
+      "-": "stomach_up_down.gif",
+      "DEFAULT": "stomach_up_down.gif"
+    },
 
-  "STOMACH UP/DOWN": {
-  "-": "stomach_up_down.gif",
-  "DEFAULT": "stomach_up_down.gif"
-},
+    "LEGS EXTENSION": {
+      "S": "leg_extensions_S.gif",
+      "DEFAULT": "leg_extensions_S.gif"
+    },
 
-"LEGS EXTENSION": {
-  "S": "leg_extensions_S.gif",
-  "DEFAULT": "leg_extensions_S.gif"
-},
+    "SIDE CIRCLES": {
+      "S": "side_circles_I.gif",
+      "DEFAULT": "side_circles_I.gif"
+    },
 
-"SIDE CIRCLES": {
-  "S": "side_circles_I.gif",
-  "DEFAULT": "side_circles_I.gif"
-},
+    "KICKS ON KNEE STR.": {
+      "I": "kicks_on_knees_straight_I.gif",
+      "DEFAULT": "kicks_on_knees_straight_I.gif"
+    },
 
-"KICKS ON KNEE STR.": {
-  "I": "kicks_on_knees_straight_I.gif",
-  "DEFAULT": "kicks_on_knees_straight_I.gif"
-},
+    "1/2 KICKS ON KNEE": {
+      "I": "half_kicks_on_knees_I.gif",
+      "DEFAULT": "half_kicks_on_knees_I.gif"
+    },
 
-"1/2 KICKS ON KNEE": {
-  "I": "half_kicks_on_knees_I.gif",
-  "DEFAULT": "half_kicks_on_knees_I.gif"
-},
+    "ARMS BACK/UP": {
+      "S": "arms_back_S.gif",
+      "DEFAULT": "arms_back_S.gif"
+    },
 
-"ARMS BACK/UP": {
-  "S": "arms_back_S.gif",
-  "DEFAULT": "arms_back_S.gif"
-},
+    "ARMS LIFT": {
+      "S": "arms_lift_S.gif",
+      "DEFAULT": "arms_lift_S.gif"
+    },
 
-"ARMS LIFT": {
-  "S": "arms_lift_S.gif",
-  "DEFAULT": "arms_lift_S.gif"
-},
+    "CHEST UP ALT": {
+      "-": "chest_up_alternate.gif",
+      "DEFAULT": "chest_up_alternate.gif"
+    },
 
-"CHEST UP ALT": {
-  "-": "chest_up_alternate.gif",
-  "DEFAULT": "chest_up_alternate.gif"
-},
+    "ROW SEATED": {
+      "I": "row_seated_I.gif",
+      "DEFAULT": "row_seated_I.gif"
+    },
 
-"ROW SEATED": {
-  "I": "row_seated_I.gif",
-  "DEFAULT": "row_seated_I.gif"
-},
-"SHOULDER UP": {
-  "-": "shoulder_up.gif",
-  "DEFAULT": "shoulder_up.gif"
-},
+    "SHOULDER UP": {
+      "-": "shoulder_up.gif",
+      "DEFAULT": "shoulder_up.gif"
+    },
 
-"SIDE TRIANGLES": {
-  "I": "side_triangles_I.gif",
-  "DEFAULT": "side_triangles_I.gif"
-},
+    "SIDE TRIANGLES": {
+      "I": "side_triangles_I.gif",
+      "DEFAULT": "side_triangles_I.gif"
+    },
 
-"KNEES TO CHEST": {
-  "I": "knees_to_chest_I.gif",
-  "DEFAULT": "knees_to_chest_I.gif"
-},
+    "KNEES TO CHEST": {
+      "I": "knees_to_chest_I.gif",
+      "DEFAULT": "knees_to_chest_I.gif"
+    },
 
-"CHEST UP 90": {
-  "-": "chest_up_90.gif",
-  "DEFAULT": "chest_up_90.gif"
-},
+    "CHEST UP 90": {
+      "-": "chest_up_90.gif",
+      "DEFAULT": "chest_up_90.gif"
+    },
 
-"KNEES TWIST STRAIGHT": {
-  "S": "knees_twist_straight_S.gif",
-  "DEFAULT": "knees_twist_straight_S.gif"
-},
+    "KNEES TWIST STRAIGHT": {
+      "S": "knees_twist_straight_S.gif",
+      "DEFAULT": "knees_twist_straight_S.gif"
+    },
 
-"REVERSE CRUNCH": {
-  "-": "reverse_crunch.gif",
-  "DEFAULT": "reverse_crunch.gif"
-},
+    "REVERSE CRUNCH": {
+      "-": "reverse_crunch.gif",
+      "DEFAULT": "reverse_crunch.gif"
+    },
 
-"DOUBLE KICKS TURN": {
-  "S": "double_kicks_turn_S.gif",
-  "DEFAULT": "double_kicks_turn_S.gif"
-},
-"FROGGY": {
-  "S": "froggy_S.gif",
-  "DEFAULT": "froggy_S.gif"
-},
-"DIAGONAL KICKS": {
-  "S": "diagonal_kick_S.gif",
-  "DEFAULT": "diagonal_kick_S.gif"
-},
-"STOMACH TRIANGLES": {
-  "-": "stomach_triangles.gif",
-  "DEFAULT": "stomach_triangles.gif"
-},
+    "DOUBLE KICKS TURN": {
+      "S": "double_kicks_turn_S.gif",
+      "DEFAULT": "double_kicks_turn_S.gif"
+    },
 
-"1/2 KICK SIDE": {
-  "I": "half_kick_side_I.gif",
-  "DEFAULT": "shalf_kick_side_I.gif"
-},
-"SIDE BEND & EXTEND": {
-  "I": "side_bend_extend_I.gif",
-  "DEFAULT": "side_bend_extend_I.gif"
-},
-"PELVIS UP": {
-  "-": "pelvis_up.gif",
-  "DEFAULT": "pelvis_up.gif"
-},
+    "FROGGY": {
+      "S": "froggy_S.gif",
+      "DEFAULT": "froggy_S.gif"
+    },
 
-"CIRCLES ON KNEE": {
-  "-": "circle_on_knees_I.gif",
-  "DEFAULT": "circle_on_knees_I.gif"
-},
+    "DIAGONAL KICKS": {
+      "S": "diagonal_kick_S.gif",
+      "DEFAULT": "diagonal_kick_S.gif"
+    },
 
-"1/2 TRIANGLES O.K.": {
-  "I": "half_triangles_on_knees_I.gif",
-  "DEFAULT": "half_triangles_on_knees_I.gif"
-},
+    "STOMACH TRIANGLES": {
+      "-": "stomach_triangles.gif",
+      "DEFAULT": "stomach_triangles.gif"
+    },
 
-"BOXING": {
-  "S": "boxing_S.gif",
-  "DEFAULT": "boxing_S.gif"
-},
+    "1/2 KICK SIDE": {
+      "I": "half_kick_side_I.gif",
+      "DEFAULT": "half_kick_side_I.gif"
+    },
 
-"SIDE ARM TURN": {
-  "I": "side_arm_turn_I.gif",
-  "DEFAULT": "side_arm_turn_I.gif"
-},
+    "SIDE BEND & EXTEND": {
+      "I": "side_bend_extend_I.gif",
+      "DEFAULT": "side_bend_extend_I.gif"
+    },
 
-"CROSSED ROW": {
-  "I": "crossed_rows.gif",
-  "DEFAULT": "crossed_rows.gif"
-},
+    "PELVIS UP": {
+      "-": "pelvis_up.gif",
+      "DEFAULT": "pelvis_up.gif"
+    },
 
-"PUSH LEGS": {
-  "S": "push_legs_S.gif",
-  "DEFAULT": "push_legs_S.gif"
-},
+    "CIRCLES ON KNEE": {
+      "I": "circle_on_knees_I.gif",
+      "DEFAULT": "circle_on_knees_I.gif"
+    },
 
-"FROG": {
-  "S": "frog_S.gif",
-  "DEFAULT": "frog_S.gif"
-},
+    "1/2 TRIANGLES O.K.": {
+      "I": "half_triangles_on_knees_I.gif",
+      "DEFAULT": "half_triangles_on_knees_I.gif"
+    },
 
-"BICYCLE": {
-  "S": "bicycle_S.gif",
-  "DEFAULT": "bicycle_S.gif"
-},
+    "BOXING": {
+      "S": "boxing_S.gif",
+      "DEFAULT": "boxing_S.gif"
+    },
 
+    "SIDE ARM TURN": {
+      "I": "side_arm_turn_I.gif",
+      "DEFAULT": "side_arm_turn_I.gif"
+    },
 
-    // Add more:
-    // "PUSH LEGS": "push_legs.mp4",
-    // "SIDE TRIANGLES": { "S": "side_triangles_S.mp4", "S+S":"side_triangles_S+S.gif", "DEFAULT":"side_triangles_S.mp4" },
+    "CROSSED ROW": {
+      "I": "crossed_rows.gif",
+      "DEFAULT": "crossed_rows.gif"
+    },
+
+    "PUSH LEGS": {
+      "S": "push_legs_S.gif",
+      "DEFAULT": "push_legs_S.gif"
+    },
+
+    "FROG": {
+      "S": "frog_S.gif",
+      "DEFAULT": "frog_S.gif"
+    },
+
+    "BICYCLE": {
+      "S": "bicycle_S.gif",
+      "DEFAULT": "bicycle_S.gif"
+    }
   };
 
   // ========= Drag guard (avoid click after drag) =========
@@ -241,7 +240,6 @@
     }
 
     const sources = toSources(resolvedPath);
-
     openMoveVideo({ title: decorateTitle(title, ring), sources });
   });
 
@@ -343,31 +341,32 @@
 `;
 
     document.body.appendChild(overlay);
-// ---- inject caption text (if provided in MOVE_MEDIA) ----
-const captionEl = overlay.querySelector('.mv-caption');
 
-// base movement name (strip " — RING" from decorated title)
-const baseTitle = (title || '').split('—')[0].trim().toUpperCase();
-// ring, if present in the decorated title
-const ringFromTitle = (title || '').includes('—')
-  ? (title.split('—')[1] || '').trim().toUpperCase()
-  : '';
+    // ---- inject caption text (if provided in MOVE_MEDIA) ----
+    const captionEl = overlay.querySelector('.mv-caption');
 
-const entry = MOVE_MEDIA[baseTitle];
+    // base movement name (strip " — RING" from decorated title)
+    const baseTitle = (title || '').split('—')[0].trim().toUpperCase();
+    // ring, if present in the decorated title
+    const ringFromTitle = (title || '').includes('—')
+      ? (title.split('—')[1] || '').trim().toUpperCase()
+      : '';
 
-if (entry && typeof entry === 'object') {
-  // support either a single "caption" or future per-ring captions
-  const perRingCaption = entry.captions?.[ringFromTitle]; // e.g., { captions: { "S": "...", "I": "..." } }
-  const caption = perRingCaption || entry.caption;
+    const entry = MOVE_MEDIA[baseTitle];
 
-  if (caption && caption.length) {
-    captionEl.textContent = caption;
-  } else {
-    captionEl.remove(); // no text -> remove bar
-  }
-} else {
-  captionEl.remove();
-}
+    if (entry && typeof entry === 'object') {
+      // support either a single "caption" or future per-ring captions
+      const perRingCaption = entry.captions?.[ringFromTitle]; // e.g., { captions: { "S": "...", "I": "..." } }
+      const caption = perRingCaption || entry.caption;
+
+      if (caption && caption.length) {
+        captionEl.textContent = caption;
+      } else {
+        captionEl.remove(); // no text -> remove bar
+      }
+    } else {
+      captionEl.remove();
+    }
 
     const wrap = overlay.querySelector('.mv-video-wrap');
     const gif = sources.find(s => s.type === 'image/gif');
@@ -417,9 +416,7 @@ if (entry && typeof entry === 'object') {
 
   function escapeHtml(s){
     return String(s || '').replace(/[&<>"']/g, function(m){
-      return ({
-        '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
-      })[m];
+      return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m];
     });
   }
 })();

@@ -1,8 +1,10 @@
 # File: run.py
 import os
 import json
+import sqlite3                          # ⬅︎ NEW
+from urllib.parse import unquote         # ⬅︎ NEW
 from pathlib import Path
-from flask import send_from_directory, render_template, jsonify
+from flask import send_from_directory, render_template, jsonify, url_for, redirect  # + redirect
 from jinja2 import TemplateNotFound
 from app import create_app
 
@@ -31,6 +33,34 @@ app = create_app()
 app.config['PROPAGATE_EXCEPTIONS'] = True
 if start_scheduler:
     start_scheduler(app)  # no-op unless ENABLE_INTERNAL_SCHEDULER=1
+
+# ── NEW: Consultation blueprint registration ──────────────────────
+try:
+    from app.consultation.routes import bp as consultation_bp
+    app.register_blueprint(consultation_bp)
+    print("✅ consultation blueprint registered")
+except Exception as e:
+    print("⚠️ consultation blueprint not available:", e)
+
+# ── NEW: serve saved signature images from instance/ ──────────────
+@app.route("/u/signatures/<path:filename>")
+def serve_signature(filename: str):
+    sig_dir = os.path.join(app.instance_path, "uploads", "signatures")
+    return send_from_directory(sig_dir, filename)
+
+# ── NEW: jinja helper to build signature URL from absolute path ───
+@app.context_processor
+def _inject_helpers():
+    def signature_url(abs_path: str | None):
+        """Turn an absolute file path saved in DB into a public URL."""
+        if not abs_path:
+            return None
+        try:
+            fname = os.path.basename(abs_path)
+            return url_for("serve_signature", filename=fname)
+        except Exception:
+            return None
+    return dict(signature_url=signature_url)
 
 # ── Perf payload helper (uses cache; recompute only when sources change)
 def _build_perf_payload() -> dict:
@@ -127,6 +157,53 @@ def sales_data_api():
     except Exception as e:
         print("⚠️ sales data api error:", e)
     return jsonify(_build_sales_payload())
+
+# ── NEW: Legacy /reports/<name> → redirect to new profile route ───
+def _conn_instance():
+    dbp = Path(app.instance_path) / "figurella.db"
+    dbp.parent.mkdir(parents=True, exist_ok=True)
+    con = sqlite3.connect(dbp)
+    con.row_factory = sqlite3.Row
+    return con
+
+@app.route("/reports/<path:name>")
+def legacy_reports_redirect(name):
+    """
+    Keep old links working:
+    /reports/Maria%20Rossi  →  /consultation/client/<id>
+    /reports/Rossi          →  /consultation/client/<id> (last-name only)
+    """
+    q = unquote(name or "").strip()
+    if not q:
+        return "Missing client name.", 400
+
+    parts = [p for p in q.split() if p]
+    with _conn_instance() as c:
+        if len(parts) == 1:
+            # match either first or last name
+            rows = c.execute(
+                """
+                SELECT id FROM clients
+                WHERE lower(first_name)=lower(?) OR lower(last_name)=lower(?)
+                ORDER BY id DESC LIMIT 1
+                """,
+                (q, q),
+            ).fetchall()
+        else:
+            first = parts[0]
+            last  = " ".join(parts[1:])
+            rows = c.execute(
+                """
+                SELECT id FROM clients
+                WHERE lower(first_name)=lower(?) AND lower(last_name)=lower(?)
+                ORDER BY id DESC LIMIT 1
+                """,
+                (first, last),
+            ).fetchall()
+
+    if rows:
+        return redirect(url_for("consultation.client_profile", client_id=rows[0]["id"]), code=302)
+    return f"No client found matching '{q}'.", 404
 
 # ── Entrypoint ────────────────────────────────────────────────────
 if __name__ == "__main__":

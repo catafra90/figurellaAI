@@ -1,0 +1,273 @@
+{# Workout Rev1 – Versions bar (anchored to #workout-versions-slot) #}
+<style>
+  #workout-rev1-root .wv-topbar{ display:flex; align-items:center; gap:.45rem; flex-wrap:wrap; }
+  #workout-rev1-root .wv-nav, #workout-rev1-root .wv-page, #workout-rev1-root .wv-icon, #workout-rev1-root .wv-add{
+    height:2rem; min-width:2rem; border-radius:.5rem; border:1px solid #e5e7eb; background:#fff; display:grid; place-items:center; font-weight:600; color:#111827;
+  }
+  #workout-rev1-root .wv-nav{ width:2rem; background:#f8fafc; }
+  #workout-rev1-root .wv-nav[disabled]{ opacity:.45; cursor:not-allowed }
+  #workout-rev1-root .wv-page{ padding:0 .4rem }
+  #workout-rev1-root .wv-page.active{ background:#111827; color:#fff; border-color:#111827 }
+  #workout-rev1-root .wv-icon, #workout-rev1-root .wv-add{ width:2.2rem; height:2.2rem; border-radius:9999px; box-shadow:0 6px 20px rgba(0,0,0,.12) }
+  #workout-rev1-root .wv-icon:hover, #workout-rev1-root .wv-add:hover{ box-shadow:0 8px 26px rgba(0,0,0,.18) }
+  #workout-rev1-root .wv-stamp{ font-size:.75rem; color:#6b7280; margin-left:.25rem; white-space:nowrap }
+  #workout-rev1-root.rev1-readonly .field,
+  #workout-rev1-root.rev1-readonly input[type="text"],
+  #workout-rev1-root.rev1-readonly input[type="number"],
+  #workout-rev1-root.rev1-readonly input[type="date"],
+  #workout-rev1-root.rev1-readonly input[type="checkbox"],
+  #workout-rev1-root.rev1-readonly textarea,
+  #workout-rev1-root.rev1-readonly select{ background:#f9fafb!important; color:#6b7280!important; cursor:not-allowed!important; pointer-events:none; }
+  #workout-rev1-root.rev1-readonly .movement-cell-btn{ opacity:.5; pointer-events:none; }
+</style>
+
+<div id="wv-template" hidden>
+  <div class="wv-topbar">
+    <button id="wv-page-prev" class="wv-nav" title="Newer" aria-label="Newer">‹</button>
+    <div id="wv-pages" class="flex gap-2"></div>
+    <button id="wv-page-next" class="wv-nav" title="Older" aria-label="Older">›</button>
+    <span id="wv-stamp" class="wv-stamp"></span>
+    <button id="wv-delete" class="wv-icon" title="Delete table" aria-label="Delete table">🗑</button>
+    <button id="wv-add" class="wv-add" title="New table" aria-label="New table">＋</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  const SCRIPT = document.currentScript;
+
+  // Find the correct workout panel even if this script is outside the root.
+  function resolveRoot(){
+    // Prefer the closest (if script was included inside the root)
+    const inRoot = SCRIPT?.closest?.('#workout-rev1-root');
+    if (inRoot) return inRoot;
+
+    // Otherwise, pick the last workout panel rendered before this script tag.
+    const roots = Array.from(document.querySelectorAll('#workout-rev1-root'));
+    if (roots.length === 0) return null;
+
+    // Choose the last one that appears before the script in the DOM order
+    let chosen = null;
+    for (const r of roots){
+      if (r.compareDocumentPosition(SCRIPT) & Node.DOCUMENT_POSITION_FOLLOWING) {
+        chosen = r; // r is before script
+      }
+    }
+    return chosen || roots[roots.length - 1];
+  }
+
+  const ROOT = resolveRoot();
+  if (!ROOT || ROOT.dataset.wvInit === '1') return;
+  ROOT.dataset.wvInit = '1';
+
+  // ---- Robust per-client key: id -> name -> per-panel index ----
+function slug(s){
+  return String(s||'')
+    .normalize('NFKD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-zA-Z0-9]+/g,'-')
+    .replace(/^-+|-+$/g,'')
+    .toLowerCase();
+}
+
+function buildClientKey(root){
+  const wrap = root.closest('[data-client-id],[data-client-name]') || root.closest('.client-modal') || null;
+  const id   = wrap?.dataset?.clientId?.trim();
+  const name = wrap?.dataset?.clientName?.trim();
+  if (id)   return `id:${id}`;
+  if (name) return `name:${slug(name)}`;
+
+  // Fallback: unique panel index (ensures independence across open charts)
+  const allRoots = Array.from(document.querySelectorAll('#workout-rev1-root'));
+  const idx = allRoots.indexOf(root);
+  return `panel:${idx >= 0 ? idx : 'unknown'}`;
+}
+
+const CLIENT_KEY = buildClientKey(ROOT);
+
+  // Keys
+  const LS_KEY  = `workoutrev1:v3:${CLIENT_KEY}:versions`;
+  const IDX_KEY = `workoutrev1:v3:${CLIENT_KEY}:current_idx`;
+  const PAGE_WINDOW = 4;
+  let pageWindowStart = 0;
+
+  // Mount into slot (no fallback; clear to avoid duplicates)
+  const slot = ROOT.querySelector('#workout-versions-slot');
+  const tmpl = document.getElementById('wv-template');
+  const bar  = tmpl.firstElementChild.cloneNode(true);
+  // remove any legacy inline rows from older code
+  ROOT.querySelectorAll('.wv-inline-row').forEach(n => n.remove());
+
+  if (!slot) return;        // if no slot present, do nothing
+  slot.innerHTML = '';
+  slot.appendChild(bar);
+
+  const elPagesWrap = bar.querySelector('#wv-pages');
+  const elPagePrev  = bar.querySelector('#wv-page-prev');
+  const elPageNext  = bar.querySelector('#wv-page-next');
+  const elAdd       = bar.querySelector('#wv-add');
+  const elDelete    = bar.querySelector('#wv-delete');
+  const elStamp     = bar.querySelector('#wv-stamp');
+
+  const elType  = ROOT.querySelector('#workout-rev1-type')     || ROOT.querySelector('[name="workout_type"]');
+  const elKG    = ROOT.querySelector('#workout-kg')            || ROOT.querySelector('input[name="workout_kg"]');
+  const elTools = ROOT.querySelector('#workout-tools')         || ROOT.querySelector('input[name="workout_tools"]');
+  const elProg  = ROOT.querySelector('#workout-program')       || ROOT.querySelector('select[name="workout_program"]');
+
+  const mainRows = () => Array.from(ROOT.querySelectorAll('#rev1-table tbody tr'));
+  const gkRows   = () => Array.from(ROOT.querySelectorAll('#gk-rev1-table tbody tr'));
+
+  function readHeader(){ return { program: elProg?.value||'', type: elType?.value||'', kg: elKG?.value||'', tools: elTools?.value||'' }; }
+  function writeHeader(h){
+    if (!h) return;
+    if (elProg)  elProg.value  = h.program ?? elProg.value;
+    if (elType)  elType.value  = h.type    ?? elType.value;
+    if (elKG)    elKG.value    = h.kg      ?? elKG.value;
+    if (elTools) elTools.value = h.tools   ?? elTools.value;
+    if (elType)  elType.dispatchEvent(new Event('change', {bubbles:true}));
+    if (elProg)  elProg.dispatchEvent(new Event('change', {bubbles:true}));
+  }
+  function readMain(){ return mainRows().map(tr=>({ workout: tr.querySelector('.rev1-workout')?.value||'', rings: tr.querySelector('.rev1-rings')?.value||'', notes: tr.querySelector('.rev1-notes')?.value||'' })); }
+  function writeMain(rows){
+    const trs = mainRows();
+    trs.forEach((tr,i)=>{
+      const r = rows[i] || {workout:'',rings:'',notes:''};
+      const w = tr.querySelector('.rev1-workout'); if (w){ w.value=r.workout; w.setAttribute('value', r.workout); }
+      const g = tr.querySelector('.rev1-rings');   if (g){ g.value=r.rings;   g.setAttribute('value', r.rings); }
+      const n = tr.querySelector('.rev1-notes');   if (n){ n.value=r.notes;   n.setAttribute('value', r.notes); }
+    });
+    document.dispatchEvent(new Event('input'));
+  }
+  function readGK(){ return gkRows().map(tr=>({ workout: tr.querySelector('.rev1-gk-workout')?.value||'', rings: tr.querySelector('.rev1-gk-rings')?.value||'', notes: tr.querySelector('.rev1-gk-notes')?.value||'' })); }
+  function writeGK(rows){
+    const trs = gkRows();
+    trs.forEach((tr,i)=>{
+      const r = rows[i] || {workout:'',rings:'',notes:''};
+      const w = tr.querySelector('.rev1-gk-workout'); if (w){ w.value=r.workout; w.setAttribute('value', r.workout); }
+      const g = tr.querySelector('.rev1-gk-rings');   if (g){ g.value=r.rings;   g.setAttribute('value', r.rings); }
+      const n = tr.querySelector('.rev1-gk-notes');   if (n){ n.value=r.notes;   n.setAttribute('value', r.notes); }
+    });
+    document.dispatchEvent(new Event('input'));
+  }
+
+  const loadAll = () => { try{ return JSON.parse(localStorage.getItem(LS_KEY)||'[]')||[] } catch{ return [] } };
+  const saveAll = (arr) => localStorage.setItem(LS_KEY, JSON.stringify(arr));
+  const loadIdx = () => { const n=+localStorage.getItem(IDX_KEY); return Number.isFinite(n)? n : 0; };
+  const saveIdx = (i) => localStorage.setItem(IDX_KEY, String(i));
+
+  function snapshot(label, header, data){
+    return { id: Date.now(), label: label || 'Table', created_at: new Date().toISOString(),
+             header: header || readHeader(), data: data || { main: readMain(), gk: readGK() } };
+  }
+
+  function setReadonly(isRO){
+    ROOT.classList.toggle('rev1-readonly', isRO);
+    [elProg, elType, elKG, elTools].forEach(el=>{ if (el){ el.disabled=isRO; el.readOnly=isRO; } });
+  }
+
+  function setIndex(newIdx){
+    const all = loadAll(); if (!all.length) return;
+    const n = all.length;
+    const clamped = Math.min(Math.max(newIdx, 0), n - 1);
+    saveIdx(clamped);
+    pageWindowStart = Math.floor(clamped / PAGE_WINDOW) * PAGE_WINDOW;
+    applySnapshot(all[clamped]);
+  }
+  function prevVersion(){ setIndex(loadIdx() + 1); } // OLDER
+  function nextVersion(){ setIndex(loadIdx() - 1); } // NEWER
+
+  function renderPager(){
+    const all = loadAll(); const idx = loadIdx(); const n = all.length;
+    pageWindowStart = Math.min(
+      Math.max(pageWindowStart, Math.floor(idx/PAGE_WINDOW)*PAGE_WINDOW),
+      Math.max(0, Math.ceil(n/PAGE_WINDOW)*PAGE_WINDOW - PAGE_WINDOW)
+    );
+    elPagesWrap.innerHTML = '';
+    const start = pageWindowStart, end = Math.min(start + PAGE_WINDOW, n);
+    for (let i=start; i<end; i++){
+      const b = document.createElement('button');
+      b.className = 'wv-page' + (i===idx ? ' active' : '');
+      b.textContent = (i+1);
+      b.addEventListener('click', ()=> setIndex(i));
+      elPagesWrap.appendChild(b);
+    }
+    elPagePrev.disabled = (idx <= 0);
+    elPageNext.disabled = (idx >= n - 1);
+  }
+  function updateStamp(){
+    const all = loadAll(); const idx = loadIdx(); const s = all[idx];
+    elStamp.textContent = s ? `Table ${idx+1} • ${new Date(s.created_at).toLocaleString()}` : '';
+  }
+
+  function applySnapshot(snap){
+    if (!snap) return;
+    writeHeader(snap.header);
+    writeMain(snap.data?.main || []);
+    writeGK(snap.data?.gk || []);
+    renderPager(); updateStamp();
+    setReadonly(loadIdx() !== 0);
+  }
+
+  function addNew(){
+    let all = loadAll();
+    const curIdx = loadIdx();
+    if (all[curIdx]){
+      all[curIdx] = snapshot(all[curIdx].label, readHeader(), { main: readMain(), gk: readGK() });
+    } else {
+      all = [ snapshot('Table 1') ];
+    }
+    const blank = snapshot('Table 1', readHeader(), {
+      main: mainRows().map(()=>({workout:'',rings:'',notes:''})),
+      gk:   gkRows().map(()=>({workout:'',rings:'',notes:''}))
+    });
+    all.unshift(blank);
+    saveAll(all); saveIdx(0);
+    pageWindowStart = 0;
+    applySnapshot(blank);
+  }
+
+  function delCurrent(){
+    let all = loadAll(); if (!all.length) return;
+    const idx = loadIdx();
+    if (!confirm(`Delete Table ${idx+1}? This cannot be undone.`)) return;
+    all.splice(idx, 1);
+    if (!all.length){
+      const blank = snapshot('Table 1', readHeader(), {
+        main: mainRows().map(()=>({workout:'',rings:'',notes:''})),
+        gk:   gkRows().map(()=>({workout:'',rings:'',notes:''}))
+      });
+      all = [blank]; saveAll(all); saveIdx(0); pageWindowStart=0; applySnapshot(blank); return;
+    }
+    const nextIdx = Math.min(idx, all.length-1);
+    saveAll(all); saveIdx(nextIdx);
+    pageWindowStart = Math.floor(nextIdx/PAGE_WINDOW)*PAGE_WINDOW;
+    applySnapshot(all[nextIdx]);
+  }
+
+  elPagePrev.addEventListener('click', nextVersion);
+  elPageNext.addEventListener('click', prevVersion);
+  elAdd.addEventListener('click', addNew);
+  elDelete.addEventListener('click', delCurrent);
+
+  (function init(){
+    let all = loadAll();
+    if (!all.length){ all = [ snapshot('Table 1') ]; saveAll(all); saveIdx(0); }
+    pageWindowStart = Math.floor(loadIdx()/PAGE_WINDOW)*PAGE_WINDOW;
+    applySnapshot(all[loadIdx()]);
+
+    ROOT.addEventListener('input', ()=>{
+      const all = loadAll(); if (!all.length) return;
+      const idx = loadIdx(); if (idx !== 0) return;
+      all[0] = snapshot(all[0].label, readHeader(), { main: readMain(), gk: readGK() });
+      saveAll(all); updateStamp();
+    });
+    ROOT.addEventListener('change', (e)=>{
+      if ([elType, elProg, elKG, elTools].includes(e.target)){
+        const all = loadAll(); if (!all.length) return;
+        const idx = loadIdx(); if (idx !== 0) return;
+        all[0] = snapshot(all[0].label, readHeader(), { main: readMain(), gk: readGK() });
+        saveAll(all); updateStamp();
+      }
+    });
+  })();
+})();
+</script>

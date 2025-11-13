@@ -1,8 +1,14 @@
-{# templates/charts/charts.html (sidebar removed + client picker entrypoints, FAB top-right above modal) #}
+{# templates/charts/charts.html — 50% zoomed-out layout #}
 {% extends "base.html" %}
 
 {% block extra_head %}
+  <!-- ✅ Ensure Tailwind is available -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- ✅ Chart Styles -->
   {% include "charts/_charts_styles.html" %}
+
+  <!-- ✅ Chart Scripts -->
   <script defer src="{{ url_for('static', filename='js/charts/core.js') }}"></script>
   <script defer src="{{ url_for('static', filename='js/charts/loader.js') }}"></script>
   <script defer src="{{ url_for('static', filename='js/charts/autosave.js') }}"></script>
@@ -10,40 +16,59 @@
   <script defer src="{{ url_for('static', filename='js/charts/client_picker.js') }}"></script>
 
   <style>
-    /* Fill the parent <main id="app-main"> height */
-    #charts-main { height: 100%; }
+    /* ====== Stable full layout (iPad + keyboard safe) ====== */
+    :root { --vh-lock: 1vh; }
 
-    /* Single-pane layout */
+    #charts-main {
+      height: 100lvh;
+      height: calc(var(--vh-lock) * 100);
+      min-height: 100vh;
+      overflow: hidden;
+    }
+
     #charts-wrapper {
       display: block;
       width: 100%;
       height: 100%;
       overflow: hidden;
+      overscroll-behavior: contain;
     }
 
-    /* Content host scrolls internally */
     #card-host {
       height: 100%;
       overflow: auto;
       -webkit-overflow-scrolling: touch;
       min-width: 0;
+      transform-origin: top left;
+      zoom: 0.5;              /* ✅ 50% ZOOM OUT */
     }
 
-    /* Clients button pinned top-right, ALWAYS above modal & picker */
-    .clients-fab{
+    @supports not (zoom: 0.5) {
+      #card-host {
+        transform: scale(0.5);
+        transform-origin: top left;
+      }
+    }
+
+    /* ===== FAB Clients button ===== */
+    .clients-fab {
       position: fixed;
       right: 16px;
       top: calc(var(--header-h, 64px) + 10px);
-      z-index: 10003;                      /* > picker(10002) > modal(4001) */
-      border: 0; border-radius: 999px;
-      padding: .5rem .9rem; font-weight: 700;
-      background: linear-gradient(90deg,#CC0066 0%, #AA0055 100%);
-      color: #fff; box-shadow: 0 8px 24px rgba(0,0,0,.18);
+      z-index: 10003;
+      border: 0;
+      border-radius: 999px;
+      padding: .5rem .9rem;
+      font-weight: 700;
+      background: linear-gradient(90deg, #CC0066 0%, #AA0055 100%);
+      color: #fff;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, .18);
       cursor: pointer;
     }
-    .clients-fab:hover{ filter: brightness(1.05); }
-    @media (max-width: 768px){
-      .clients-fab{
+    .clients-fab:hover { filter: brightness(1.05); }
+
+    @media (max-width: 768px) {
+      .clients-fab {
         right: 12px;
         top: calc(var(--header-h, 64px) + 8px);
         padding: .45rem .8rem;
@@ -51,11 +76,17 @@
       }
     }
 
-    /* Force the client picker overlay ABOVE the modal layer */
-    #client-picker{
+    /* Picker Overlay above modal */
+    #client-picker {
       position: fixed !important;
       inset: 0 !important;
-      z-index: 10002 !important;           /* sits above modal(4001) */
+      z-index: 10002 !important;
+    }
+
+    /* Modal keyboard lock fix */
+    .client-modal.kbd-locked {
+      height: var(--modal-lock-h) !important;
+      max-height: none !important;
     }
   </style>
 {% endblock %}
@@ -69,17 +100,16 @@
   </div>
 </div>
 
-<button id="open-clients-fab" class="clients-fab" data-open-client-picker
-        title="Open client list" aria-label="Open client list">
-  Clients
-</button>
+<button id="open-clients-fab" class="clients-fab"
+        data-open-client-picker title="Open client list"
+        aria-label="Open client list">Clients</button>
 
 {% include "charts/_client_picker.html" %}
 {% endblock %}
 
 {% block scripts %}
 <script>
-/* Keep --header-h in sync so the FAB sits just under the header */
+/* --- Header height variable for FAB positioning --- */
 (function(){
   const header = document.querySelector('#app-header, header, .app-header');
   function setHeaderVar(){
@@ -87,11 +117,75 @@
     document.documentElement.style.setProperty('--header-h', h + 'px');
   }
   setHeaderVar();
-  window.addEventListener('resize', setHeaderVar, { passive:true });
+  window.addEventListener('resize', setHeaderVar, { passive: true });
+})();
+
+/* --- Prevent iOS keyboard resize jump --- */
+(function(){
+  const maxH = Math.max(window.innerHeight || 0, screen.height || 0);
+  const vh = maxH * 0.01;
+  document.documentElement.style.setProperty('--vh-lock', vh + 'px');
 })();
 </script>
 
 <script>
+/* --- iPad keyboard modal lock --- */
+(function () {
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+  function getActiveModal(el) {
+    return (el && el.closest && el.closest('.client-modal'))
+      || document.querySelector('.client-modal');
+  }
+
+  function lockModal(modal) {
+    if (!modal) return;
+    const h = Math.round(modal.getBoundingClientRect().height);
+    modal.style.setProperty('--modal-lock-h', h + 'px');
+    modal.classList.add('kbd-locked');
+  }
+
+  function unlockModal(modal) {
+    if (!modal) return;
+    modal.classList.remove('kbd-locked');
+    modal.style.removeProperty('--modal-lock-h');
+  }
+
+  document.addEventListener('focusin', (e) => {
+    if (!isIOS) return;
+    const modal = getActiveModal(e.target);
+    if (modal && e.target.matches('input, textarea, select, [contenteditable="true"]')) {
+      lockModal(modal);
+    }
+  }, true);
+
+  document.addEventListener('focusout', (e) => {
+    if (!isIOS) return;
+    const modal = getActiveModal(e.target);
+    if (!modal) return;
+    setTimeout(() => {
+      const active = document.activeElement;
+      if (!active || !modal.contains(active) ||
+        !active.matches('input, textarea, select, [contenteditable="true"]')) {
+        unlockModal(modal);
+      }
+    }, 100);
+  }, true);
+
+  if (isIOS && window.visualViewport) {
+    const vv = window.visualViewport;
+    const onVVChange = () =>
+      document.documentElement.style.setProperty('--vv-offset-left', (vv.offsetLeft || 0) + 'px');
+    vv.addEventListener('resize', onVVChange, { passive: true });
+    vv.addEventListener('scroll', onVVChange, { passive: true });
+    onVVChange();
+  }
+})();
+</script>
+
+<script>
+/* --- Auto-open client chart if ?client=... --- */
 document.addEventListener('DOMContentLoaded', () => {
   const params = new URLSearchParams(location.search);
   const client = params.get('client');
@@ -100,7 +194,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
-// Press "c" to open the client picker (ignored when typing in inputs)
+/* --- Shortcut: Press "C" to open client picker --- */
 document.addEventListener('keydown', (e) => {
   if (e.key.toLowerCase() === 'c' && !/input|textarea|select/i.test(e.target.tagName)) {
     const btn = document.querySelector('[data-open-client-picker]');

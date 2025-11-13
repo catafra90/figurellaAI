@@ -1,0 +1,74 @@
+{# app/templates/charts/workout/_prefill_bridge.html #}
+<script>
+/*
+  Bridge that connects the Type <select> to your prefill logic.
+  It works with /static/js/charts/workout_autofill.js (if present),
+  otherwise it will fall back to blocks_json directly.
+*/
+(function(){
+  const S = document.currentScript;
+  const SCOPE = (S && (S.closest('.client-modal') || S.closest('#client-chart-root'))) || document;
+
+  const TYPE  = SCOPE.querySelector('#workout-rev1-type');
+  const TABLE = SCOPE.querySelector('#rev1-table');
+  if (!TYPE || !TABLE) return;
+
+  function getBlocks(){
+    try{
+      const el = document.getElementById('workout-blocks-json');
+      return el ? JSON.parse(el.textContent || '{}') : {};
+    }catch(_){ return {}; }
+  }
+
+  function fillFromPayload(payload){
+    const body = TABLE.tBodies && TABLE.tBodies[0]; if(!body) return;
+    const rows = Array.from(body.rows);
+    rows.forEach((tr, i)=>{
+      const mv   = tr.querySelector('.rev1-workout');
+      const ring = tr.querySelector('.rev1-rings');
+      const note = tr.querySelector('.rev1-notes');
+      const rec  = payload[i] || {};
+      if (mv)   mv.value   = rec.Workout || rec.Value || '';
+      if (ring) ring.value = rec.Rings   || '';
+      if (note) note.value = rec.Notes   || '';
+      // ensure play button presence
+      if (mv){
+        let btn = tr.querySelector('.movement-cell-btn');
+        const name = (mv.value||'').trim();
+        if (name && !btn){
+          btn = document.createElement('button');
+          btn.type='button';
+          btn.className='movement-cell movement-cell-btn text-gray-600 hover:text-gray-900';
+          btn.title='Preview movement video';
+          btn.innerHTML='<i class="bi bi-play-circle"></i>';
+          btn.dataset.name=name;
+          mv.insertAdjacentElement('afterend', btn);
+        } else if(!name && btn){
+          btn.remove();
+        } else if(btn){
+          btn.dataset.name=name;
+        }
+      }
+    });
+  }
+
+  function prefill(typeVal){
+    // 1) Preferred: custom autofill module (if your JS provides it)
+    if (window.WorkoutAutofill && typeof window.WorkoutAutofill.prefill === 'function'){
+      window.WorkoutAutofill.prefill({ scope:SCOPE, type:typeVal, table:TABLE });
+      return;
+    }
+    // 2) Fallback: use blocks_json structure
+    const blocks = getBlocks();
+    const key = String(typeVal||'').toUpperCase();
+    const payload = (blocks && (blocks[key] || blocks['default'])) || [];
+    fillFromPayload(payload);
+  }
+
+  // initial prefill (on load) — use current select value
+  prefill(TYPE.value);
+
+  // re-prefill on type change
+  TYPE.addEventListener('change', ()=> prefill(TYPE.value));
+})();
+</script>

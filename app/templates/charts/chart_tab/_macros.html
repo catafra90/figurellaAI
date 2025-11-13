@@ -1,0 +1,43 @@
+{% macro header_range(start, end) -%}
+  <thead class="bg-gray-100 text-center text-xs font-semibold uppercase sticky-header">
+    <tr>
+      <th class="border px-2 py-1">#</th>
+      {%- for i in range(start, end + 1) -%}
+        <th class="border px-2 py-1{% if i in [10,20] %} border-l-2 border-gray-300 highlight-col{% endif %}">{{ i }}</th>
+      {%- endfor -%}
+    </tr>
+  </thead>
+{%- endmacro %}
+
+{% macro colgroup10(start) -%}
+  <colgroup>
+    <col style="width:var(--label);">
+    {%- for i in range(10) -%}
+      <col style="width:var(--num);" class="{% if (start+i) in [10,20] %}highlight-col{% endif %}">
+    {%- endfor -%}
+  </colgroup>
+{%- endmacro %}
+
+{% macro row_text(label, row, start, end) -%}
+  <tr class="text-left" data-row-label="{{ label }}">
+    <th class="border px-2 py-1 text-xs font-medium">{{ label }}</th>
+    {%- for i in range(start, end + 1) -%}
+      {%- set key = i|string -%}
+      {%- set cell = (row[key] if (row is mapping and key in row) else '') -%}
+      <td class="border px-2 py-1 {% if i in [10,20] %}highlight-col{% endif %}" data-col="{{ i }}" contenteditable="true" spellcheck="false">{{ cell }}</td>
+    {%- endfor -%}
+  </tr>
+{%- endmacro %}
+
+{% macro row_date(label, row, start, end) -%}
+  <tr class="text-left" data-row-label="{{ label }}">
+    <th class="border px-2 py-1 text-xs font-medium">{{ label }}</th>
+    {%- for i in range(start, end + 1) -%}
+      {%- set key = i|string -%}
+      {%- set val = ((row[key] if (row is mapping and key in row) else '') | string).strip() -%}
+      <td class="border px-2 py-1 {% if i in [10,20] %}highlight-col{% endif %}" data-col="{{ i }}" data-date-cell>
+        <input type="date" class="cell-date" value="{{ val }}" required aria-label="Date {{ i }}">
+      </td>
+    {%- endfor -%}
+  </tr>
+{%- endmacro %}

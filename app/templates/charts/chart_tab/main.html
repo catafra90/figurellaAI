@@ -1,0 +1,16 @@
+{# app/templates/charts/chart_tab/main.html #}
+<section class="space-y-4 p-4 measures-chart" id="measures-chart">
+  {% include 'charts/chart_tab/_toolbar.html' %}
+  {% include 'charts/chart_tab/_styles.html' %}
+
+  <div id="chart-pages" class="card card-pad meas-card"></div>
+
+  {% include 'charts/chart_tab/_macros.html' %}
+  {% include 'charts/chart_tab/_page_template.html' %}
+
+  <script src="/static/js/charts/measures_dropdowns.js" defer></script>
+
+  {% include 'charts/chart_tab/_script_core.html' %}
+  {% include 'charts/chart_tab/_notes.html' %}
+  {% include 'charts/chart_tab/_notes_script.html' %}
+</section>

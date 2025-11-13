@@ -1,0 +1,47 @@
+<script>
+(function(){
+  const script = document.currentScript;
+  const root   = script.closest('.measures-chart');
+  if (!root) return;
+
+  const wrap = root.querySelector('#meas-notes-rows');
+  const btn  = root.querySelector('#btn-add-note');
+  const tpl  = root.querySelector('#meas-notes-template');
+
+  const triggerSave = () => root.dispatchEvent(new Event('input', { bubbles:true }));
+
+  function clearRow(row){
+    row.querySelectorAll('input, textarea').forEach(el => { el.value = ''; });
+  }
+  function wireRowAutosave(row){
+    row.addEventListener('input',  triggerSave, true);
+    row.addEventListener('change', triggerSave, true);
+  }
+  function wireRemove(row){
+    const rm = row.querySelector('.meas-note-remove');
+    if (!rm) return;
+    rm.addEventListener('click', () => {
+      const rows = wrap.querySelectorAll('.meas-notes-row:not(#meas-notes-template)');
+      if (rows.length <= 1) { clearRow(rows[0]); }
+      else { row.remove(); }
+      triggerSave();
+    });
+  }
+  function addRow(){
+    const clone = tpl.cloneNode(true);
+    clone.id = '';
+    clone.classList.remove('hidden');
+    clearRow(clone);
+    wrap.appendChild(clone);
+    wireRemove(clone);
+    wireRowAutosave(clone);
+    (clone.querySelector('input, textarea') || clone).focus();
+    clone.scrollIntoView({ block:'nearest' });
+    triggerSave();
+  }
+
+  // wire initial visible row(s)
+  wrap.querySelectorAll('.meas-notes-row:not(#meas-notes-template)').forEach(r => { wireRemove(r); wireRowAutosave(r); });
+  btn?.addEventListener('click', addRow);
+})();
+</script>

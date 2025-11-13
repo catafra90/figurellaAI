@@ -1,0 +1,226 @@
+{# app/templates/charts/workout/_gk_table.html #}
+<div class="px-4">
+  <div class="card">
+    <div class="card-pad">
+      <h3 class="text-md font-semibold mb-2">Goldorack (TO &amp; B plans)</h3>
+
+      <div id="gk-rev1-section" class="overflow-x-auto">
+        <table class="clean zebra-pink sticky-header gk-numbered" id="gk-rev1-table">
+          <colgroup><col class="num"><col class="workout"><col class="rings"><col class="notes"></colgroup>
+          <thead>
+            <tr>
+              <th style="width:1%; text-align:center; white-space:nowrap">#</th>
+              <th>Movements</th>
+              <th style="width:180px">Rings</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% set wr_gold = (wrdata | selectattr('Goldorack') | list) if wrdata else [] %}
+            {# ✅ Only 4 rows #}
+            {% for j in range(0,4) %}
+              {% set grow = wr_gold[j] if wr_gold|length > j else {} %}
+              {% set gmv = grow.get('Workout', grow.get('Value','')) %}
+              <tr data-gk-id="{{ j }}">
+                <td class="row-num drag-handle text-center font-semibold" title="Drag to reorder">{{ loop.index }}</td>
+                <td>
+                  <div class="flex items-center gap-2">
+                    <input class="rev1-gk-workout w-full field" type="text" value="{{ gmv }}">
+                    {% if gmv %}
+                      <button type="button"
+                              class="movement-cell-btn text-gray-600 hover:text-gray-900"
+                              title="Preview movement video"
+                              data-name="{{ gmv }}">
+                        <i class="bi bi-play-circle"></i>
+                      </button>
+                    {% endif %}
+                  </div>
+                </td>
+                <td><input class="rev1-gk-rings w-full field" type="text" value="{{ grow.get('Rings','') }}"></td>
+                <td><input class="rev1-gk-notes w-full field" type="text" value="{{ grow.get('Notes','') }}"></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const S      = document.currentScript;
+  // ✅ Scope to current client card (modal or page)
+  const SCOPE  = (S && (S.closest('.client-modal') || S.closest('[data-client-id],[data-client-name]'))) || document;
+  const ROOT   = SCOPE.closest?.('[data-client-id],[data-client-name]') || SCOPE;
+
+  function slug(s){
+    return String(s || '')
+      .normalize('NFKD')
+      .replace(/[\u0300-\u036f]/g,'')
+      .replace(/[^a-zA-Z0-9]+/g,'-')
+      .replace(/^-+|-+$/g,'')
+      .toLowerCase();
+  }
+
+  // Build a robust per-client identity
+  const CLIENT_ID   = ROOT?.dataset?.clientId?.trim();
+  const CLIENT_NAME = ROOT?.dataset?.clientName?.trim();
+
+  // Fallback: index of this client container on the page (avoids collisions)
+  const INSTANCE_IDX = (() => {
+    const all = Array.from(document.querySelectorAll('[data-client-id],[data-client-name]'));
+    const i = all.indexOf(ROOT);
+    return i >= 0 ? `idx-${i}` : null;
+  })();
+
+  const CLIENT_KEY =
+      (CLIENT_ID   && `id:${CLIENT_ID}`) ||
+      (CLIENT_NAME && `name:${slug(CLIENT_NAME)}`) ||
+      (INSTANCE_IDX) ||
+      'unknown';
+
+  const TBL   = SCOPE.querySelector('#gk-rev1-table');
+  const TBODY = TBL ? TBL.tBodies[0] : null;
+  if (!TBODY) return;
+
+  // ✅ v3 key to avoid old collisions and keep state per-client
+  const LS_KEY = `workoutrev1:v3:${CLIENT_KEY}:gk_order`;
+
+  const raf=(fn)=>{ let id=0; return (...a)=>{ cancelAnimationFrame(id); id=requestAnimationFrame(()=>fn(...a)); }; };
+  const toast=(m)=>{ const t=SCOPE.querySelector('#rev1-toast'); if(!t) return; t.textContent=m||'Saved'; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),900); };
+
+  const rowId   = (tr)=> tr.getAttribute('data-gk-id');
+  const orderIds= ()=> Array.from(TBODY.rows).map(rowId);
+
+  function renumber(){ Array.from(TBODY.rows).forEach((tr,i)=>{ const c=tr.querySelector('.row-num'); if(c) c.textContent=String(i+1); }); }
+  const renumberRaf = raf(renumber);
+
+  function saveGK(){
+    try{ localStorage.setItem(LS_KEY, JSON.stringify(orderIds())); toast('Reordered (local only)'); }catch(_){}
+  }
+  const saveGKRaf = raf(saveGK);
+
+  function applyGK(){
+    try{
+      const raw=localStorage.getItem(LS_KEY);
+      if(!raw){ renumber(); return; }
+      const ids=JSON.parse(raw)||[];
+      if(!Array.isArray(ids)||!ids.length){ renumber(); return; }
+      const map=new Map(Array.from(TBODY.rows).map(tr=>[rowId(tr),tr]));
+      const used=new Set();
+      ids.forEach(id=>{ const tr=map.get(String(id)); if(tr && !used.has(tr)){ TBODY.appendChild(tr); used.add(tr); }});
+      Array.from(map.values()).forEach(tr=>{ if(!used.has(tr)) TBODY.appendChild(tr); });
+      renumber();
+    }catch(_){ renumber(); }
+  }
+
+  /* Drag & sort stack */
+  function attachSortable(){
+    if (!(window.Sortable && typeof window.Sortable.create==='function')) return false;
+    window.Sortable.create(TBODY,{ handle:'.drag-handle', animation:120, onEnd(){ renumberRaf(); saveGKRaf(); }});
+    return true;
+  }
+  function attachHTML5(){
+    let bound=false;
+    Array.from(TBODY.rows).forEach(tr=>{
+      const h=tr.querySelector('.drag-handle'); if(!h) return;
+      bound=true; tr.draggable=true;
+      tr.addEventListener('dragstart', e=>{ tr.classList.add('dragging'); e.dataTransfer.setData('text/plain',''); });
+      tr.addEventListener('dragend',   ()=>{ tr.classList.remove('dragging'); renumberRaf(); saveGKRaf(); });
+    });
+    TBODY.addEventListener('dragover', e=>{
+      e.preventDefault();
+      const dragging=TBODY.querySelector('tr.dragging'); if(!dragging) return;
+      const rows=Array.from(TBODY.querySelectorAll('tr:not(.dragging)'));
+      const after=rows.find(r => e.clientY <= r.getBoundingClientRect().top + r.offsetHeight/2);
+      if(!after) TBODY.appendChild(dragging); else TBODY.insertBefore(dragging, after);
+    });
+    return bound;
+  }
+  function attachTouch(){
+    let active=null, placeholder=null, startY=0, started=false, timer=null;
+    const SCROLLER = TBODY.closest('.card-pad') || TBODY.closest('.overflow-x-auto') || TBODY.parentElement;
+    const LONG_MS=120, THRESH=6;
+    const y=(e)=> (e.touches && e.touches[0] ? e.touches[0].clientY : (e.clientY ?? 0));
+    const rowFromPoint=(clientY)=>{
+      const rect=TBL.getBoundingClientRect();
+      const el=document.elementFromPoint(Math.max(rect.left+10,10), clientY);
+      const tr=el && el.closest ? el.closest('tr') : null;
+      return (tr && tr.parentElement===TBODY) ? tr : null;
+    };
+    function autoScroll(cy){
+      if(!SCROLLER) return;
+      const r=SCROLLER.getBoundingClientRect(), pad=32;
+      if (cy < r.top+pad) SCROLLER.scrollTop -= 12;
+      else if (cy > r.bottom-pad) SCROLLER.scrollTop += 12;
+    }
+    function begin(tr,e){
+      started=true; active=tr; active.classList.add('touch-dragging');
+      placeholder=document.createElement('tr'); placeholder.className='rev1-placeholder';
+      placeholder.style.height=tr.getBoundingClientRect().height+'px';
+      TBODY.insertBefore(placeholder, tr.nextSibling);
+      if (e.type==='pointerdown' && e.pointerId && e.target.setPointerCapture){
+        try{ e.target.setPointerCapture(e.pointerId); }catch(_){}
+      }
+    }
+    function move(e){
+      if(!active && !started){
+        const cy=y(e);
+        if (Math.abs(cy-startY) > THRESH){ const origin=rowFromPoint(startY)||TBODY.querySelector('tr'); if(origin) begin(origin,e); }
+      }
+      if(!active) return;
+      e.preventDefault();
+      const cy=y(e); autoScroll(cy);
+      const target=rowFromPoint(cy);
+      if(target && target!==placeholder){
+        const r=target.getBoundingClientRect();
+        const before=(cy < r.top + r.height/2);
+        TBODY.insertBefore(placeholder, before ? target : target.nextSibling);
+      }
+    }
+    function end(e){
+      if(timer){ clearTimeout(timer); timer=null; }
+      if(started && active && placeholder){
+        TBODY.insertBefore(active, placeholder);
+        active.classList.remove('touch-dragging');
+        placeholder.remove(); placeholder=null; active=null; started=false;
+        renumberRaf(); saveGKRaf();
+      }
+      document.removeEventListener('touchmove', move, {passive:false});
+      document.removeEventListener('touchend', end);
+      document.removeEventListener('pointermove', move);
+      document.removeEventListener('pointerup', end);
+      if (e && e.type==='pointerup' && e.pointerId && e.target.releasePointerCapture){
+        try{ e.target.releasePointerCapture(e.pointerId); }catch(_){}
+      }
+    }
+    Array.from(TBODY.rows).forEach(tr=>{
+      const handle=tr.querySelector('.drag-handle'); if(!handle) return;
+      const start=(e)=>{
+        if(!e.target.closest('.drag-handle')) return;
+        if (e.type==='touchstart'){ e.preventDefault(); }
+        if (e.type==='pointerdown' && e.pointerType!=='mouse') e.preventDefault();
+        startY=y(e); started=false;
+        timer=setTimeout(()=>{ const origin=rowFromPoint(startY)||tr; if(origin) begin(origin,e); }, LONG_MS);
+        if (e.type==='touchstart'){
+          document.addEventListener('touchmove', move, {passive:false});
+          document.addEventListener('touchend', end);
+        } else {
+          document.addEventListener('pointermove', move);
+          document.addEventListener('pointerup', end);
+        }
+      };
+      handle.addEventListener('touchstart', start, {passive:false});
+      if (window.PointerEvent){ handle.addEventListener('pointerdown', start); }
+    });
+  }
+
+  /* init */
+  applyGK();
+  if (!attachSortable()){
+    const html5OK = attachHTML5();
+    if (!html5OK || /iPad|iPhone|iPod/.test(navigator.userAgent)) attachTouch();
+  }
+})();
+</script>

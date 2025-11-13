@@ -1,0 +1,49 @@
+{# app/templates/charts/workout/_toolbar.html #}
+<div class="rev1-toolbar-wrap">
+  <div class="rev1-toolbar">
+    <!-- Row 1: Program + Clear + KG/Tools -->
+    <div class="toolbar-row" style="display:flex; align-items:center; gap:.75rem; flex-wrap:wrap;">
+      <span class="text-sm font-semibold">Program</span>
+
+      <label for="workout-rev1-type" class="ml-2 text-sm font-medium">Type:</label>
+      <select id="workout-rev1-type" class="select">
+        {% for opt in ['C1','C2','C3','C4','C5','V1','V2','V3','V4','V5','TO1','TO2','TO3','TO4','TO5','B1','B2','B3','B4','B5','B6','B7','B8','B9','B10','B11','B12','B13','B14','B15'] %}
+          <option value="{{ opt }}">{{ opt }}</option>
+        {% endfor %}
+      </select>
+
+      <button type="button" id="rev1-clear" class="btn"
+        onclick="(function(btn){
+          // ✅ Scope to the *current* client card (works for modal or page)
+          const SCOPE = btn.closest('[data-client-id],[data-client-name]') || btn.closest('.client-modal') || document;
+
+          const clearTable = (sel, fields) => {
+            const t = SCOPE.querySelector(sel);
+            if (!t || !t.tBodies || !t.tBodies[0]) return;
+            Array.from(t.tBodies[0].rows).forEach(tr => {
+              fields.forEach(f => {
+                const el = tr.querySelector(f);
+                if (el) el.value = '';
+              });
+              const b = tr.querySelector('.movement-cell-btn');
+              if (b) b.remove();
+            });
+          };
+
+          clearTable('#rev1-table',    ['.rev1-workout','.rev1-rings','.rev1-notes']);
+          clearTable('#gk-rev1-table', ['.rev1-gk-workout','.rev1-gk-rings','.rev1-gk-notes']);
+        })(this)">
+        Clear
+      </button>
+
+      <div class="toolbar-sp" style="display:flex; gap:.5rem; align-items:center;">
+        <label class="text-sm">KG :</label>
+        <input id="workout-rev1-kg" type="text" value="{{ wr_rec.get('KG','') }}" class="field w-24">
+        <label class="text-sm">Tools</label>
+        <input id="workout-rev1-tools" type="text" value="{{ wr_rec.get('Tools','') }}" class="field w-64">
+      </div>
+    </div>
+
+    
+  </div>
+</div>

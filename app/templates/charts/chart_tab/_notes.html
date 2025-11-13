@@ -1,0 +1,48 @@
+<section id="measures-notes" class="space-y-4 pt-2">
+  <div class="flex items-center justify-between">
+    <h2 class="text-xl font-bold">Notes</h2>
+    <button type="button" id="btn-add-note" class="btn btn-add" title="Add note row">
+      <span aria-hidden="true">＋</span> Add Note
+    </button>
+  </div>
+
+  <div id="meas-notes-rows" class="card card-pad">
+    <!-- Template row (hidden) -->
+    <div id="meas-notes-template" class="flex flex-col md:flex-row md:items-start md:space-x-4 form-row mt-4 meas-notes-row hidden">
+      <div class="flex flex-col w-full md:w-32">
+        <label class="text-sm font-medium mb-1">Date</label>
+        <input name="meas_notes_date[]" type="date" class="field w-full meas-notes-date cell-date">
+      </div>
+      <div class="flex flex-col w-full md:w-32">
+        <label class="text-sm font-medium mb-1">Type</label>
+        <input name="meas_notes_type[]" type="text" placeholder="Type" class="field w-full meas-notes-type">
+      </div>
+      <div class="flex flex-col flex-1">
+        <label class="text-sm font-medium mb-1">Notes</label>
+        <textarea name="meas_notes_text[]" rows="3" placeholder="Notes" class="field w-full meas-notes-text"></textarea>
+      </div>
+      <div class="flex flex-col justify-end mt-2 md:mt-0">
+        <button type="button" class="btn btn-remove meas-note-remove" title="Remove this note">Remove</button>
+      </div>
+    </div>
+
+    <!-- Initial visible row -->
+    <div class="flex flex-col md:flex-row md:items-start md:space-x-4 form-row mt-4 meas-notes-row">
+      <div class="flex flex-col w-full md:w-32">
+        <label class="text-sm font-medium mb-1">Date</label>
+        <input name="meas_notes_date[]" type="date" class="field w-full meas-notes-date cell-date" required>
+      </div>
+      <div class="flex flex-col w-full md:w-32">
+        <label class="text-sm font-medium mb-1">Type</label>
+        <input name="meas_notes_type[]" type="text" placeholder="Type" class="field w-full meas-notes-type">
+      </div>
+      <div class="flex flex-col flex-1">
+        <label class="text-sm font-medium mb-1">Notes</label>
+        <textarea name="meas_notes_text[]" rows="3" placeholder="Notes" class="field w-full meas-notes-text"></textarea>
+      </div>
+      <div class="flex flex-col justify-end mt-2 md:mt-0">
+        <button type="button" class="btn btn-remove meas-note-remove" title="Remove this note">Remove</button>
+      </div>
+    </div>
+  </div>
+</section>

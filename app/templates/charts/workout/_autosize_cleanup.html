@@ -1,0 +1,62 @@
+<script>
+(function(){
+  const S = document.currentScript;
+  const SCOPE = (S && (S.closest('.client-modal') || S.closest('[data-client-id],[data-client-name]'))) || document;
+  const ROOT  = SCOPE.closest?.('[data-client-id],[data-client-name]') || SCOPE;
+
+  function slug(s){
+    return String(s || '')
+      .normalize('NFKD').replace(/[\u0300-\u036f]/g,'')
+      .replace(/[^a-zA-Z0-9]+/g,'-').replace(/^-+|-+$/g,'')
+      .toLowerCase();
+  }
+  const CLIENT_ID   = ROOT?.dataset?.clientId?.trim();
+  const CLIENT_NAME = ROOT?.dataset?.clientName?.trim();
+  const CLIENT_KEY  = (CLIENT_ID && `id:${CLIENT_ID}`)
+                   || (CLIENT_NAME && `name:${slug(CLIENT_NAME)}`)
+                   || 'unknown';
+
+  try{
+    SCOPE.querySelectorAll('#rev1-table .field, #gk-rev1-table .field').forEach(el=>{
+      el.classList.remove('border-pink-300','ring-pink-300','bg-pink-50','border-pink-400','bg-rose-50');
+    });
+  }catch(_){}
+
+  (function(){
+    const BODY = SCOPE.querySelector('#rev1-table tbody');
+    if(!BODY) return;
+    function setWidth(el){ var ch=Math.max(6,(el.value||'').length); el.style.width = ch + 'ch'; }
+    BODY.querySelectorAll('input.auto-ch').forEach(el=>{
+      setWidth(el);
+      el.addEventListener('input', ()=> setWidth(el));
+    });
+  })();
+
+  (function(){
+    const KEY = `workoutrev1:v3:${CLIENT_KEY}:state`;
+    const typeEl  = SCOPE.querySelector('#workout-rev1-type');
+    const kgEl    = SCOPE.querySelector('#workout-rev1-kg');
+    const toolsEl = SCOPE.querySelector('#workout-rev1-tools');
+
+    try{
+      const s = JSON.parse(localStorage.getItem(KEY) || '{}');
+      if (typeEl && s.type && Array.from(typeEl.options).some(o=>o.value===s.type)) typeEl.value = s.type;
+      if (kgEl && typeof s.kg==='string') kgEl.value = s.kg;
+      if (toolsEl && typeof s.tools==='string') toolsEl.value = s.tools;
+    }catch(_){}
+
+    function save(){
+      try{
+        localStorage.setItem(KEY, JSON.stringify({
+          type:  typeEl ? typeEl.value : undefined,
+          kg:    kgEl ? kgEl.value : undefined,
+          tools: toolsEl ? toolsEl.value : undefined
+        }));
+      }catch(_){}
+    }
+    [typeEl, kgEl, toolsEl].forEach(el=>{
+      if (el){ el.addEventListener('input', save); el.addEventListener('change', save); }
+    });
+  })();
+})();
+</script>
